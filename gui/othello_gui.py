@@ -276,13 +276,22 @@ class EgaroucidOpeningBook:
         return -1
 
     def _lookup_value_rotated(self, player_board, opp_board):
-        """Look up board value considering rotations"""
+        """Look up board value considering rotations - searches both player orientations"""
+        # Search with current colors (for positions where book has color-specific entries)
         for op in range(8):
             rotated_player = int(get_rotated_bitboard(np.uint64(player_board), op))
             rotated_opp = int(get_rotated_bitboard(np.uint64(opp_board), op))
             idx = self._find_index_exact(rotated_player, rotated_opp)
             if idx >= 0:
                 return int(self.values[idx])
+        # Search with swapped colors (for positions where book stores black-to-move only)
+        # Note: value sign is flipped when swapping colors
+        for op in range(8):
+            rotated_player = int(get_rotated_bitboard(np.uint64(opp_board), op))
+            rotated_opp = int(get_rotated_bitboard(np.uint64(player_board), op))
+            idx = self._find_index_exact(rotated_player, rotated_opp)
+            if idx >= 0:
+                return -int(self.values[idx])  # Flip sign when swapping colors
         return None
 
     def _score_child(self, player_board, opp_board, move_idx):
@@ -345,39 +354,46 @@ class EgaroucidOpeningBook:
         best_prior_map = {}
         best_primary_move = None
         
-        for op in range(8):
-            rotated_player = int(get_rotated_bitboard(np.uint64(player_board), op))
-            rotated_opp = int(get_rotated_bitboard(np.uint64(opp_board), op))
-            if self._find_index_exact(rotated_player, rotated_opp) < 0:
-                continue
-            
-            found_state = True
-            candidates = self._resolve_rotated_state(rotated_player, rotated_opp)
-            if not candidates:
-                continue
-            
-            best_score = max(score for _, score in candidates)
-            best_moves = [move_idx for move_idx, score in candidates if score == best_score]
-            prior_map = {}
-            for move_idx in best_moves:
-                move = int(unrotate_move(int(move_idx), op))
-                if move in legal_set:
-                    prior_map[move] = 1.0
-            
-            if not prior_map:
-                continue
-            
-            norm = 1.0 / float(len(prior_map))
-            for move in list(prior_map.keys()):
-                prior_map[move] = norm
-            primary_move = max(prior_map.items(), key=lambda item: item[1])[0]
-            
-            if len(prior_map) > len(best_prior_map):
-                best_prior_map = prior_map
-                best_primary_move = primary_move
-            elif len(prior_map) == len(best_prior_map) and best_primary_move is None:
-                best_prior_map = prior_map
-                best_primary_move = primary_move
+        # Try both orientations: original and color-swapped
+        orientations = [
+            (player_board, opp_board, 1),  # original colors
+            (opp_board, player_board, -1),  # swapped colors (sign flip)
+        ]
+        
+        for p_board, o_board, sign in orientations:
+            for op in range(8):
+                rotated_player = int(get_rotated_bitboard(np.uint64(p_board), op))
+                rotated_opp = int(get_rotated_bitboard(np.uint64(o_board), op))
+                if self._find_index_exact(rotated_player, rotated_opp) < 0:
+                    continue
+                
+                found_state = True
+                candidates = self._resolve_rotated_state(rotated_player, rotated_opp)
+                if not candidates:
+                    continue
+                
+                best_score = max(score for _, score in candidates)
+                best_moves = [move_idx for move_idx, score in candidates if score == best_score]
+                prior_map = {}
+                for move_idx in best_moves:
+                    move = int(unrotate_move(int(move_idx), op))
+                    if move in legal_set:
+                        prior_map[move] = 1.0
+                
+                if not prior_map:
+                    continue
+                
+                norm = 1.0 / float(len(prior_map))
+                for move in list(prior_map.keys()):
+                    prior_map[move] = norm
+                primary_move = max(prior_map.items(), key=lambda item: item[1])[0]
+                
+                if len(prior_map) > len(best_prior_map):
+                    best_prior_map = prior_map
+                    best_primary_move = primary_move
+                elif len(prior_map) == len(best_prior_map) and best_primary_move is None:
+                    best_prior_map = prior_map
+                    best_primary_move = primary_move
         
         if best_prior_map:
             return best_prior_map, best_primary_move, True
@@ -698,10 +714,10 @@ class UltimateOthello(OthelloSearchMixin):
             return int(self.readout_empty_threshold)
         base_time = self.time_limit_sec if not self.auto_time else 10.0
         if base_time <= 1.5:
-            return 25  # 20→25に引き上げ（5手遅く）
+            return 31  # 27→31（4手さらに早く）
         if base_time <= 5.0:
-            return 27  # 22→27に引き上げ（5手遅く）
-        return 29  # 24→29に引き上げ（5手遅く）
+            return 33  # 29→33（4手さらに早く）
+        return 35  # 31→35（4手さらに早く）
 
     def get_auto_time_limit(self, empty, legal_count, mvs):
         # 設定値に応じて動的に制限時間を調整
@@ -935,7 +951,8 @@ class UltimateOthello(OthelloSearchMixin):
             mcts_gap = mcts_best_wr - mcts_second_wr if mcts_second_wr is not None else 0.0
             
             # 両方が強く同じ手を推奨している場合だけ定石を使わない
-            if ab_gap >= 8.0 and ab_best_wr >= 55.0 and mcts_gap >= 6.0 and mcts_best_wr >= 55.0:
+            # ABは厳密なので閾値を下げ、MCTSは緩いので現状維持
+            if ab_gap >= 5.0 and ab_best_wr >= 52.0 and mcts_gap >= 6.0 and mcts_best_wr >= 55.0:
                 use_book = False
                 reasons.append(f"AB/MCTS一致_強 (AB:{ab_gap:.1f}pt@{ab_best_wr:.0f}%, MCTS:{mcts_gap:.1f}pt@{mcts_best_wr:.0f}%)")
             else:
