@@ -2321,7 +2321,7 @@ class UltimateOthello(OthelloSearchMixin):
                         se = sum(es) if es else 1.0
                         probs_map = {m: (e / se) * 100.0 for (m, _, _), e in zip(combined, es)}
                         pr_str = "[*]" if is_resumed else "[]"
-                        el = time.time() - st_time
+                        el = time.time() - ai_start_time
                         ds = combined[:5]
                         move_summary = self.format_top_moves([(r[0], r[2]) for r in ds], limit=5)
                         self.log(self.format_log_columns([

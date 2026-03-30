@@ -120,6 +120,7 @@ ext_modules = [
             "engine/othello_engine.cpp",
             "engine/othello_engine_bindings.cpp",
             "engine/othello_engine_session.cpp",
+            "engine/othello_core_cpp.cpp",  # Added for fast evaluation
         ],
         include_dirs=[
             pybind11.get_include(),

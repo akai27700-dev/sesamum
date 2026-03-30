@@ -25,6 +25,16 @@ if cpp_engine is not None:
 else:
     print("C++ engine: othello_engine unavailable. Python fallback will be used.", flush=True)
 
+# C++ evaluation function availability
+try:
+    from engine.othello_engine import evaluate_board_full_cpp as _cpp_eval
+    CPP_EVAL_AVAILABLE = True
+    print("C++ evaluation: evaluate_board_full_cpp loaded.", flush=True)
+except ImportError:
+    _cpp_eval = None
+    CPP_EVAL_AVAILABLE = False
+    print("C++ evaluation unavailable. Python version will be used.", flush=True)
+
 # ONNX推論エンジン
 try:
     from .onnx_inference import ONNXInference, create_onnx_model_from_pytorch
@@ -534,7 +544,8 @@ def eval_xc(p, o, cor, cx, cc):
     return v
 
 @njit(cache=True, fastmath=True, nogil=True)
-def evaluate_board_full(P, O, mvs, W):
+def _evaluate_board_full_python(P, O, mvs, W):
+    """Original Numba-compiled Python implementation (fallback)"""
     st = np.int64(0) if mvs <= np.int64(15) else (np.int64(80) if mvs <= np.int64(45) else np.int64(160))
     wp, we, sc = W[st:st+np.int64(64)], W[st+np.int64(64):st+np.int64(80)], np.float64(0.0)
     tp, to = P, O
@@ -579,6 +590,19 @@ def evaluate_board_full(P, O, mvs, W):
     sc += np.float64(count_bits(occ & MASK_B3) & np.int64(1)) * we[np.int64(14)]
     sc += np.float64(count_bits(occ & MASK_B4) & np.int64(1)) * we[np.int64(15)]
     return sc
+
+def evaluate_board_full(P, O, mvs, W):
+    """
+    Evaluate board position using either C++ or Python implementation.
+    Auto-selects based on availability.
+    """
+    if CPP_EVAL_AVAILABLE and _cpp_eval is not None:
+        try:
+            return _cpp_eval(int(P), int(O), int(mvs), W)
+        except Exception as e:
+            print(f"C++ evaluation failed: {e}, falling back to Python", flush=True)
+            return _evaluate_board_full_python(P, O, mvs, W)
+    return _evaluate_board_full_python(P, O, mvs, W)
 
 @njit(cache=True, fastmath=True, nogil=True)
 def exact_eval(P, O):

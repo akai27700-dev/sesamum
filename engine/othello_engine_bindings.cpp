@@ -2,6 +2,8 @@
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
+#include "othello_core_cpp.h"
+
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
@@ -79,6 +81,16 @@ py::dict get_best_move_ab_py(Bitboard p,
                              const std::vector<double>& order_map,
                              int time_limit_ms);
 
+// Wrapper for C++ evaluation function with numpy array support
+double evaluate_board_full_cpp_py(Bitboard P, Bitboard O, int mvs, py::array_t<double> weights) {
+    auto buf = weights.request();
+    if (buf.size != 243) {
+        throw std::runtime_error("Weights must have 243 elements");
+    }
+    double* ptr = static_cast<double*>(buf.ptr);
+    return evaluate_board_full_cpp(P, O, mvs, ptr);
+}
+
 void bind_engine_free_functions(py::module_& m) {
     m.def("clear_tt", &engine_clear_tt);
     m.def("clear_exact_cache", &clear_exact_cache_py);
@@ -93,6 +105,8 @@ void bind_engine_free_functions(py::module_& m) {
     m.def("apply_move", &engine_apply_move);
     m.def("get_flip", &get_flip_py);
     m.def("evaluate_board_full", &evaluate_board_full_py);
+    m.def("evaluate_board_full_cpp", &evaluate_board_full_cpp_py, "Fast C++ evaluation function",
+          py::arg("p"), py::arg("o"), py::arg("mvs"), py::arg("weights"));
     m.def("evaluate_moves", &evaluate_moves_py);
     m.def("evaluate_board_cached", &evaluate_board_cached_py);
     m.def("evaluate_moves_cached", &evaluate_moves_cached_py);
