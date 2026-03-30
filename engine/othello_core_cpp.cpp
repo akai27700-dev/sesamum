@@ -337,3 +337,18 @@ extern "C" double evaluate_board_full_cpp(
 
     return sc;
 }
+
+// Batch evaluation with OpenMP parallelization
+extern "C" void evaluate_board_batch_cpp(
+    const uint64_t* P_arr,
+    const uint64_t* O_arr,
+    const int32_t* mvs_arr,
+    const double* W,
+    double* results,
+    int32_t count
+) {
+    #pragma omp parallel for schedule(dynamic, 4)
+    for (int32_t i = 0; i < count; i++) {
+        results[i] = evaluate_board_full_cpp(P_arr[i], O_arr[i], mvs_arr[i], W);
+    }
+}

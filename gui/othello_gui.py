@@ -945,7 +945,7 @@ class UltimateOthello(OthelloSearchMixin):
 
         details = {
             "rate": min(1.0, max(0.0, adjusted_rate)),
-            "reason": " / ".join(reasons) if reasons else "standard (AB/MCTS未分析又は不一致)",
+            "reason": " / ".join(reasons) if reasons else "standard (AB/MCTS not analyzed or mismatch)",
         }
         return details if return_details else details["rate"]
 
@@ -2601,10 +2601,10 @@ class UltimateOthello(OthelloSearchMixin):
                 )
                 book_rate = book_use_details.get("rate", 1.0)
                 book_reason = book_use_details.get("reason", "standard")
-                self.log(f"book: AB/MCTS判定 - book_rate={int(book_rate*100)}% ({book_reason})")
+                self.log(f"book: AB/MCTS evaluation - book_rate={int(book_rate*100)}% ({book_reason})")
                 
                 if book_rate < 0.999:  # not 100%, so don't use book
-                    self.log(f"book: AB/MCTS一致で強く推奨 - 定石を使わない")
+                    self.log(f"book: Strong agreement between AB/MCTS - not using opening book")
                     best_move = final_scores[0][0] if final_scores else book_move
                 # else: 定石を使う（変更なし）
 

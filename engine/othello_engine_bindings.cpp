@@ -91,6 +91,43 @@ double evaluate_board_full_cpp_py(Bitboard P, Bitboard O, int mvs, py::array_t<d
     return evaluate_board_full_cpp(P, O, mvs, ptr);
 }
 
+// Batch evaluation wrapper with OpenMP parallelization
+py::array_t<double> evaluate_board_batch_cpp_py(
+    py::array_t<uint64_t> P_arr,
+    py::array_t<uint64_t> O_arr,
+    py::array_t<int32_t> mvs_arr,
+    py::array_t<double> weights
+) {
+    auto P_buf = P_arr.request();
+    auto O_buf = O_arr.request();
+    auto mvs_buf = mvs_arr.request();
+    auto W_buf = weights.request();
+    
+    if (W_buf.size != 243) {
+        throw std::runtime_error("Weights must have 243 elements");
+    }
+    
+    int32_t count = static_cast<int32_t>(P_buf.size);
+    if (O_buf.size != count || mvs_buf.size != count) {
+        throw std::runtime_error("P, O, and mvs arrays must have same length");
+    }
+    
+    uint64_t* P_ptr = static_cast<uint64_t*>(P_buf.ptr);
+    uint64_t* O_ptr = static_cast<uint64_t*>(O_buf.ptr);
+    int32_t* mvs_ptr = static_cast<int32_t*>(mvs_buf.ptr);
+    double* W_ptr = static_cast<double*>(W_buf.ptr);
+    
+    // Allocate result array
+    py::array_t<double> results(count);
+    auto res_buf = results.request();
+    double* res_ptr = static_cast<double*>(res_buf.ptr);
+    
+    // Call parallel batch evaluation
+    evaluate_board_batch_cpp(P_ptr, O_ptr, mvs_ptr, W_ptr, res_ptr, count);
+    
+    return results;
+}
+
 void bind_engine_free_functions(py::module_& m) {
     m.def("clear_tt", &engine_clear_tt);
     m.def("clear_exact_cache", &clear_exact_cache_py);
@@ -107,6 +144,8 @@ void bind_engine_free_functions(py::module_& m) {
     m.def("evaluate_board_full", &evaluate_board_full_py);
     m.def("evaluate_board_full_cpp", &evaluate_board_full_cpp_py, "Fast C++ evaluation function",
           py::arg("p"), py::arg("o"), py::arg("mvs"), py::arg("weights"));
+    m.def("evaluate_board_batch_cpp", &evaluate_board_batch_cpp_py, "Parallel batch C++ evaluation",
+          py::arg("p_arr"), py::arg("o_arr"), py::arg("mvs_arr"), py::arg("weights"));
     m.def("evaluate_moves", &evaluate_moves_py);
     m.def("evaluate_board_cached", &evaluate_board_cached_py);
     m.def("evaluate_moves_cached", &evaluate_moves_cached_py);
