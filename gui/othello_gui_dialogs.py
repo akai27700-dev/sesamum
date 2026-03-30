@@ -32,7 +32,7 @@ class StartupSettingsDialog:
         self._add_radio_group(frame, "常に思考", self.use_pondering, [("ON", "on"), ("OFF", "off")])
         self._add_radio_group(frame, "定石ソース", self.book_source, [("JSON", "json"), ("Egaroucid", "egaroucid")])
         self.book_usage_scale = self._add_scale_group(frame, "定石使用確率(JSONのみ)", self.book_usage, 0, 100)
-        self._add_radio_group(frame, "最大思考時間", self.time_limit, [("0.5秒", "0.5"), ("1秒", "1"), ("5秒", "5"), ("10秒", "10"), ("30秒", "30")])
+        self._add_radio_group(frame, "最大思考時間", self.time_limit, [("1秒", "0.5"), ("5秒", "5"), ("10秒", "10"), ("30秒", "30")])
         self._add_radio_group(frame, "プレイヤー", self.player_color, [("黒", "black"), ("白", "white")])
         self.use_nn.trace_add("write", self._toggle_nn_options)
         self.mcts_influence.trace_add("write", self._toggle_nn_options)

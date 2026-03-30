@@ -8,6 +8,7 @@ import time
 import tkinter as tk
 from tkinter import colorchooser, messagebox, simpledialog
 
+
 import numpy as np
 import torch
 
@@ -1047,15 +1048,19 @@ class UltimateOthello(OthelloSearchMixin):
                 func, args, kwargs = self.ui_queue.get_nowait()
                 try:
                     func(*args, **kwargs)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"UI thread error: {type(e).__name__}: {e}", flush=True)
+                    import traceback
+                    traceback.print_exc()
         except queue.Empty:
             pass
         if self.running:
             self.rt.after(16, self.process_ui_queue)
 
     def append_log_message(self, message):
-        if hasattr(self, "log_text"):
+        if self.log_text is None or not hasattr(self, "log_text"):
+            return
+        try:
             self.log_text.config(state="normal")
             has_green = "[GREEN]" in message and "[/GREEN]" in message
             has_blue = "[BLUE]" in message and "[/BLUE]" in message
@@ -1103,6 +1108,8 @@ class UltimateOthello(OthelloSearchMixin):
                 self.log_text.insert("end", message + "\n")
             self.log_text.see("end")
             self.log_text.config(state="disabled")
+        except Exception:
+            pass
 
     def log(self, message, mirror=True):
         if mirror:
@@ -1185,15 +1192,22 @@ class UltimateOthello(OthelloSearchMixin):
 
     def redraw_graphs(self):
         if not self.board_only_mode:
-            self.draw_line_graph(self.win_graph, self.win_rate_history, [(1, "#2563eb"), (2, "#dc2626")], 0.0, 100.0, ["αβ", "MCTS"])
-            self.draw_recent_blends(self.diff_graph)
-            if hasattr(self, 'activation_graph'):
+            if self.win_graph is not None:
+                self.draw_line_graph(self.win_graph, self.win_rate_history, [(1, "#2563eb"), (2, "#dc2626")], 0.0, 100.0, ["αβ", "MCTS"])
+            if self.diff_graph is not None:
+                self.draw_recent_blends(self.diff_graph)
+            if hasattr(self, 'activation_graph') and self.activation_graph is not None:
                 self.draw_activation_maps(self.activation_graph)
-            if hasattr(self, 'connection_graph'):
+            if hasattr(self, 'connection_graph') and self.connection_graph is not None:
                 self.draw_connection_graph(self.connection_graph)
 
     def draw_recent_blends(self, canvas):
-        canvas.delete("all")
+        if canvas is None:
+            return
+        try:
+            canvas.delete("all")
+        except Exception:
+            return
         self.module_activity["BLEND"] = time.time()
         w = int(canvas["width"])
         h = int(canvas["height"])
@@ -1269,7 +1283,12 @@ class UltimateOthello(OthelloSearchMixin):
             self.draw_connection_graph(self.connection_graph)
 
     def draw_connection_graph(self, canvas):
-        canvas.delete("all")
+        if canvas is None:
+            return
+        try:
+            canvas.delete("all")
+        except Exception:
+            return
         w = int(canvas["width"])
         h = int(canvas["height"])
         canvas.create_rectangle(10, 10, w - 10, h - 10, outline="#cbd5e1", fill="#ffffff")
@@ -1349,26 +1368,34 @@ class UltimateOthello(OthelloSearchMixin):
     def refresh_activation_view(self):
         if self.board_only_mode:
             return
-        if not hasattr(self, "activation_graph"):
+        if not hasattr(self, "activation_graph") or self.activation_graph is None:
             return
-        if not self.use_nn or self.nn_model is None:
-            self.activation_snapshot = None
-            self.last_activation_key = None
-            self.draw_activation_maps(self.activation_graph)
-            return
-        p_board = self.B if self.tn == 1 else self.W
-        o_board = self.W if self.tn == 1 else self.B
-        state_key = self.make_state_key(p_board, o_board, self.tn)
-        if state_key != self.last_activation_key:
-            try:
-                self.activation_snapshot = get_nn_activation_snapshot(self.nn_model, p_board, o_board, self.tn, top_k=6)
-            except Exception:
+        try:
+            if not self.use_nn or self.nn_model is None:
                 self.activation_snapshot = None
-            self.last_activation_key = state_key
-        self.draw_activation_maps(self.activation_graph)
+                self.last_activation_key = None
+                self.draw_activation_maps(self.activation_graph)
+                return
+            p_board = self.B if self.tn == 1 else self.W
+            o_board = self.W if self.tn == 1 else self.B
+            state_key = self.make_state_key(p_board, o_board, self.tn)
+            if state_key != self.last_activation_key:
+                try:
+                    self.activation_snapshot = get_nn_activation_snapshot(self.nn_model, p_board, o_board, self.tn, top_k=6)
+                except Exception:
+                    self.activation_snapshot = None
+                self.last_activation_key = state_key
+            self.draw_activation_maps(self.activation_graph)
+        except Exception:
+            pass
 
     def draw_activation_maps(self, canvas):
-        canvas.delete("all")
+        if canvas is None:
+            return
+        try:
+            canvas.delete("all")
+        except Exception:
+            return
         self.module_activity["ACTIV"] = time.time()
         self.mark_connections_active(("TRUNK", "POLICY"), ("TRUNK", "VALUE"))
         w = int(canvas["width"])
@@ -1413,7 +1440,12 @@ class UltimateOthello(OthelloSearchMixin):
             self.draw_activation_heatmap(canvas, grid, curr_x, curr_y, cell, title, subtitle)
         canvas.create_text(16, h - 28, text="最大活性=1.0に正規化", anchor="w", fill="#64748b", font=("Arial", 8))
     def draw_line_graph(self, canvas, history, specs, y_min, y_max, labels):
-        canvas.delete("all")
+        if canvas is None:
+            return
+        try:
+            canvas.delete("all")
+        except Exception:
+            return
         self.module_activity["GRAPH"] = time.time()
         w = int(canvas["width"])
         h = int(canvas["height"])
@@ -1518,13 +1550,22 @@ class UltimateOthello(OthelloSearchMixin):
 
     def s_col(self):
         c = colorchooser.askcolor(initialcolor=self.bc)[1]
-        if c: 
+        if c and hasattr(self, 'cv') and self.cv is not None: 
             self.bc = c
-            self.cv.config(bg=c)
+            try:
+                self.cv.config(bg=c)
+            except Exception:
+                pass
             self.drw()
 
     def toggle_board_only_mode(self):
         """盤面のみ表示モードを切り替え"""
+        # AIスレッドを停止してからレイアウト変更を実行
+        self.ponder_token += 1
+        self.ponder_sf[0] = 1
+        with self.ponder_lock:
+            self.ponder_cache.clear()
+        
         self.board_only_mode = self.board_only_var.get()
         self.rebuild_layout()
         # ログ出力は盤面のみモードの場合はコンソールのみ
@@ -1535,6 +1576,14 @@ class UltimateOthello(OthelloSearchMixin):
 
     def rebuild_layout(self):
         """UIレイアウトを再構築"""
+        # 古いウィジェット参照をクリア
+        self.cv = None
+        self.win_graph = None
+        self.diff_graph = None
+        self.activation_graph = None
+        self.connection_graph = None
+        self.log_text = None
+        
         # 現在のウィジェットを破棄
         for widget in self.main_frame.winfo_children():
             widget.destroy()
@@ -1648,6 +1697,8 @@ class UltimateOthello(OthelloSearchMixin):
             self.btn_pass = None
         self.drw()
         self.chk()
+
+
 
     def mc(self):
         return int(self.B | self.W).bit_count() - 4
@@ -1776,8 +1827,12 @@ class UltimateOthello(OthelloSearchMixin):
         return candidates[:3]
 
     def drw(self, probs_map=None):
-        if not self.running: return
-        self.cv.delete("all")
+        if not self.running or not hasattr(self, 'cv'): 
+            return
+        try:
+            self.cv.delete("all")
+        except Exception:
+            return
         cs = self.cell_size
         piece_pad = max(6, int(cs * 0.1))
         marker_r = max(5, int(cs * 0.08))
@@ -1873,11 +1928,16 @@ class UltimateOthello(OthelloSearchMixin):
         try:
             if not self.running or self.game_id != current_game_id: return
             
+            # **メソッド開始時に時間計測開始**
+            ai_start_time = time.time()
+            is_quick_mode = self.time_limit_sec <= 0.5
+            
             # 変数を初期化
             mvs = 0
             empty = 64
             
-            if not core._NUMBA_WARMED_UP:
+            # 0.5秒以上の時のみNumba準備
+            if not is_quick_mode and not core._NUMBA_WARMED_UP:
                 self.log("Numba kernelを準備中です...")
                 warmed = ensure_numba_warmup()
                 if warmed:
@@ -2048,15 +2108,20 @@ class UltimateOthello(OthelloSearchMixin):
             resolved_flag = False
             use_ab = (not self.use_mcts_only) or is_exact
             
-            st_time = time.time()
+            # **時間計測を開始時点に統一**
             time_limit = self.get_auto_time_limit(empty, len(rms), mvs)
+            
+            # セットアップオーバーヘッドを計算
+            setup_overhead = time.time() - ai_start_time
+            # 0.5秒設定では50ms、1秒設定では100msなどのオーバーヘッド余裕を取る
+            overhead_threshold = 0.05 if is_quick_mode else 0.1
+            actual_time_limit = max(0.05, time_limit - setup_overhead - overhead_threshold)
+            
             auto_time_str = ""  # 自動調整なので表示しない
             weights_list = self.weights_list
             order_map_list = self.order_map_list
-            search_profile = self.get_search_time_profile(empty, len(rms), time_limit, is_exact, bool(ponder_mcts_res))
+            search_profile = self.get_search_time_profile(empty, len(rms), actual_time_limit, is_exact, bool(ponder_mcts_res))
             use_mcts_enabled = bool(search_profile["use_mcts"])
-            current_color = "white" if self.tn == -1 else "black"
-            self.log_section(f"{current_color}")
             self.log(self.format_log_columns([
                 f"ply={mvs}",
                 f"empties={empty}",
@@ -2101,13 +2166,13 @@ class UltimateOthello(OthelloSearchMixin):
                 )
             
             def watchdog():
-                nonlocal st_time, time_limit
+                nonlocal ai_start_time, actual_time_limit
                 check_interval = 0.05
-                while time.time() - st_time < time_limit:
+                while time.time() - ai_start_time < actual_time_limit:
                     if self.sf_arr[0] or not self.running or self.game_id != current_game_id:
                         return
                     time.sleep(check_interval)
-                if time.time() - st_time >= time_limit:
+                if time.time() - ai_start_time >= actual_time_limit:
                     self.sf_arr[0] = 1
 
             threading.Thread(target=watchdog, daemon=True).start()
@@ -2193,14 +2258,14 @@ class UltimateOthello(OthelloSearchMixin):
                     return
                 ab_delay = float(search_profile["ab_delay"])
                 if ab_delay > 0.0:
-                    delay_deadline = st_time + ab_delay
+                    delay_deadline = ai_start_time + ab_delay
                     while time.time() < delay_deadline:
                         if self.sf_arr[0] or not self.running or self.game_id != current_game_id:
                             return
                         time.sleep(0.01)
                 if is_exact:
                     self.log("[BLUE]Start Endgame Solver...[/BLUE]")
-                ab_deadline = None if is_exact or search_profile["ab_budget"] is None else (st_time + float(search_profile["ab_budget"]))
+                ab_deadline = None if is_exact or search_profile["ab_budget"] is None else (ai_start_time + float(search_profile["ab_budget"]))
                 self.log(self.format_log_columns([
                     "ab: start",
                     f"depth={max(start_dp, 2)}",
@@ -2220,7 +2285,7 @@ class UltimateOthello(OthelloSearchMixin):
                         if is_exact:
                             remain_ms = 7000
                         else:
-                            remain_sec = time_limit - (time.time() - st_time)
+                            remain_sec = actual_time_limit - (time.time() - ai_start_time)
                             if ab_deadline is not None:
                                 remain_sec = min(remain_sec, ab_deadline - time.time())
                             remain_ms = int(remain_sec * 1000)
@@ -2325,7 +2390,7 @@ class UltimateOthello(OthelloSearchMixin):
                     probs_map = {m: (e / se) * 100.0 for (m, _, _), e in zip(combined, es)}
 
                     pr_str = "[*]" if is_resumed else "[]"
-                    el = time.time() - st_time
+                    el = time.time() - ai_start_time
                     ds = combined[:5]
                     move_summary = self.format_top_moves([(r[0], r[2]) for r in ds], limit=5)
                     self.log(self.format_log_columns([
