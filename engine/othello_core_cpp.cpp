@@ -3,6 +3,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <intrin.h>
 
 // Bitboard masks (from Python version)
 constexpr uint64_t FULL_MASK = 0xFFFFFFFFFFFFFFFFULL;
@@ -17,33 +18,23 @@ constexpr uint64_t MASK_B2 = 0xF0F0F0F000000000ULL;
 constexpr uint64_t MASK_B3 = 0x000000000F0F0F0FULL;
 constexpr uint64_t MASK_B4 = 0x00000000F0F0F0F0ULL;
 
-// Fast bit counting
-inline int32_t count_bits(uint64_t x) {
-    int32_t c = 0;
-    while (x) {
-        c++;
-        x &= x - 1;
-    }
-    return c;
+// Hardware POPCNT - extremely fast bit counting using CPU instruction
+__forceinline int32_t count_bits(uint64_t x) {
+    return static_cast<int32_t>(_mm_popcnt_u64(x));
 }
 
 // Least significant bit
-inline uint64_t lsb(uint64_t x) {
+__forceinline uint64_t lsb(uint64_t x) {
     return x & (~x + 1);
 }
 
-// Get bit index from LSB
-inline int32_t bit_index(uint64_t x) {
-    int32_t ix = 0;
-    while (x > 1) {
-        x >>= 1;
-        ix++;
-    }
-    return ix;
+// Get bit index from LSB using hardware CTZ (count trailing zeros)
+__forceinline int32_t bit_index(uint64_t x) {
+    return static_cast<int32_t>(_tzcnt_u64(x));
 }
 
-// Neighbor union
-inline uint64_t neighbor_union(uint64_t bb) {
+// Neighbor union - highly optimized with forceinline
+__forceinline uint64_t neighbor_union(uint64_t bb) {
     uint64_t n = 0;
     n |= (bb << 1) & NOT_A_FILE;
     n |= (bb >> 1) & NOT_H_FILE;
@@ -221,104 +212,128 @@ extern "C" uint64_t compute_strict_stable_cpp(uint64_t P, uint64_t O) {
     return s & FULL_MASK;
 }
 
-// Evaluate corner-X-C regions
-inline double eval_xc(uint64_t p, uint64_t o, uint64_t cor, uint64_t cx, uint64_t cc) {
+// Evaluate corner-X-C regions - inlined for speed
+__forceinline double eval_xc(uint64_t p, uint64_t o, uint64_t cor, uint64_t cx, uint64_t cc) {
     double v = 0.0;
     if (!(p & cor) && !(o & cor)) {
         if (p & cx) v -= 50.0;
         if (o & cx) v += 50.0;
-        v -= (double)count_bits(p & cc) * 20.0;
-        v += (double)count_bits(o & cc) * 20.0;
+        v -= static_cast<double>(count_bits(p & cc)) * 20.0;
+        v += static_cast<double>(count_bits(o & cc)) * 20.0;
     } else if (p & cor) {
         if (p & cx) v += 15.0;
-        v += (double)count_bits(p & cc) * 10.0;
+        v += static_cast<double>(count_bits(p & cc)) * 10.0;
     } else {
         if (o & cx) v -= 15.0;
-        v -= (double)count_bits(o & cc) * 10.0;
+        v -= static_cast<double>(count_bits(o & cc)) * 10.0;
     }
     return v;
 }
 
-// Main evaluation function - Core logic moved from Python
+// Fast piece weight accumulation using hardware popcnt
+__forceinline double accumulate_piece_weights(uint64_t bits, const double* weights) {
+    double sum = 0.0;
+    while (bits) {
+        uint64_t t = lsb(bits);
+        int idx = bit_index(t);
+        sum += weights[idx];
+        bits &= bits - 1;
+    }
+    return sum;
+}
+
+// Main evaluation function - HEAVILY OPTIMIZED
 extern "C" double evaluate_board_full_cpp(
     uint64_t P,
     uint64_t O,
     int32_t mvs,
     const double* W  // Weight array of size 243
 ) {
-    // Determine stage
-    int32_t st = 0;
-    if (mvs <= 15) st = 0;
-    else if (mvs <= 45) st = 80;
-    else st = 160;
-
+    // Determine stage once with ternary
+    const int32_t st = (mvs <= 15) ? 0 : ((mvs <= 45) ? 80 : 160);
     const double* wp = &W[st];
     const double* we = &W[st + 64];
-    double sc = 0.0;
-
-    // Material score (piece counts weighted)
-    uint64_t tp = P;
-    while (tp) {
-        uint64_t t = lsb(tp);
-        int32_t ix = bit_index(t);
-        sc += wp[ix];
-        tp &= tp - 1;
-    }
-
-    uint64_t to = O;
-    while (to) {
-        uint64_t t = lsb(to);
-        int32_t ix = bit_index(t);
-        sc -= wp[ix];
-        to &= to - 1;
-    }
-
-    // Mobility
-    int32_t lm = count_bits(get_legal_moves_cpp(P, O));
-    int32_t lo = count_bits(get_legal_moves_cpp(O, P));
-
+    
+    // Material score - single pass with optimized bit iteration
+    double sc = accumulate_piece_weights(P, wp) - accumulate_piece_weights(O, wp);
+    
+    // Precompute frequently used values
     uint64_t emp = ~(P | O) & FULL_MASK;
+    uint64_t occ = P | O;
     uint64_t np_ = neighbor_union(P);
     uint64_t no = neighbor_union(O);
-
-    uint64_t sp = compute_strict_stable_cpp(P, O);
-    uint64_t so = compute_strict_stable_cpp(O, P);
-    uint64_t occ = P | O;
-
+    
+    // Mobility - computed once each
+    uint64_t player_moves = get_legal_moves_cpp(P, O);
+    uint64_t opp_moves = get_legal_moves_cpp(O, P);
+    int32_t lm = count_bits(player_moves);
+    int32_t lo = count_bits(opp_moves);
+    
+    // Mobility multiplier and score
     double m_mult = (mvs >= 20 && mvs <= 45) ? 2.5 : 1.0;
-    sc += (double)(lm - lo) * m_mult * 4.0;
-
-    if ((64 - mvs) % 2 == 0) sc += 10.0;
-    else sc -= 10.0;
-
-    // Corner-X-C evaluation
+    sc += static_cast<double>(lm - lo) * m_mult * 4.0;
+    
+    // Parity score using bitwise AND
+    sc += (((64 - mvs) & 1) == 0) ? 10.0 : -10.0;
+    
+    // Corner-X-C evaluation (4 corners) - inlined
     sc += eval_xc(P, O, 0x1ULL, 0x200ULL, 0x102ULL);
     sc += eval_xc(P, O, 0x80ULL, 0x4000ULL, 0x8040ULL);
     sc += eval_xc(P, O, 0x100000000000000ULL, 0x20000000000000ULL, 0x201000000000000ULL);
     sc += eval_xc(P, O, 0x8000000000000000ULL, 0x400000000000000ULL, 0x4080000000000000ULL);
-
-    // Stable pieces
+    
+    // Stable pieces (only compute in endgame)
+    int32_t sp_count = 0, so_count = 0;
     if (mvs >= 30) {
-        sc += (double)(count_bits(sp & P) - count_bits(so & O)) * 25.0;
+        uint64_t sp = compute_strict_stable_cpp(P, O);
+        uint64_t so = compute_strict_stable_cpp(O, P);
+        sp_count = count_bits(sp & P);
+        so_count = count_bits(so & O);
+        sc += static_cast<double>(sp_count - so_count) * 25.0;
     }
-
-    // Feature-based evaluation
-    sc += ((double)(lm - lo) / 20.0) * we[0];
-    sc += ((double)(count_bits(emp & np_) - count_bits(emp & no)) / 64.0) * we[1];
-    sc += (double)(count_bits(sp & P) - count_bits(so & O)) * we[2];
-    sc += ((double)(count_bits(P & np_) - count_bits(O & no)) / 64.0) * we[3];
-    sc += (double)(count_bits(P & MASK_CORNER) - count_bits(O & MASK_CORNER)) * we[4];
-    sc += (double)(count_bits(occ) & 1) * we[5];
-    sc += (double)(count_bits(P & MASK_X) - count_bits(O & MASK_X)) * we[6];
-    sc += (double)(count_bits(P & MASK_C) - count_bits(O & MASK_C)) * we[7];
-    sc += ((double)(count_bits(P & MASK_B1) - count_bits(O & MASK_B1)) / 16.0) * we[8];
-    sc += ((double)(count_bits(P & MASK_B2) - count_bits(O & MASK_B2)) / 16.0) * we[9];
-    sc += ((double)(count_bits(P & MASK_B3) - count_bits(O & MASK_B3)) / 16.0) * we[10];
-    sc += ((double)(count_bits(P & MASK_B4) - count_bits(O & MASK_B4)) / 16.0) * we[11];
-    sc += (double)(count_bits(occ & MASK_B1) & 1) * we[12];
-    sc += (double)(count_bits(occ & MASK_B2) & 1) * we[13];
-    sc += (double)(count_bits(occ & MASK_B3) & 1) * we[14];
-    sc += (double)(count_bits(occ & MASK_B4) & 1) * we[15];
+    
+    // Feature-based evaluation - batch compute all counts with hardware POPCNT
+    int32_t emp_np = count_bits(emp & np_);
+    int32_t emp_no = count_bits(emp & no);
+    int32_t p_np = count_bits(P & np_);
+    int32_t o_no = count_bits(O & no);
+    int32_t p_corner = count_bits(P & MASK_CORNER);
+    int32_t o_corner = count_bits(O & MASK_CORNER);
+    int32_t occ_bits = count_bits(occ);
+    int32_t p_x = count_bits(P & MASK_X);
+    int32_t o_x = count_bits(O & MASK_X);
+    int32_t p_c = count_bits(P & MASK_C);
+    int32_t o_c = count_bits(O & MASK_C);
+    int32_t p_b1 = count_bits(P & MASK_B1);
+    int32_t o_b1 = count_bits(O & MASK_B1);
+    int32_t p_b2 = count_bits(P & MASK_B2);
+    int32_t o_b2 = count_bits(O & MASK_B2);
+    int32_t p_b3 = count_bits(P & MASK_B3);
+    int32_t o_b3 = count_bits(O & MASK_B3);
+    int32_t p_b4 = count_bits(P & MASK_B4);
+    int32_t o_b4 = count_bits(O & MASK_B4);
+    int32_t occ_b1 = count_bits(occ & MASK_B1);
+    int32_t occ_b2 = count_bits(occ & MASK_B2);
+    int32_t occ_b3 = count_bits(occ & MASK_B3);
+    int32_t occ_b4 = count_bits(occ & MASK_B4);
+    
+    // Apply weights - use static_cast for type safety
+    sc += (static_cast<double>(lm - lo) / 20.0) * we[0];
+    sc += (static_cast<double>(emp_np - emp_no) / 64.0) * we[1];
+    sc += static_cast<double>(sp_count - so_count) * we[2];
+    sc += (static_cast<double>(p_np - o_no) / 64.0) * we[3];
+    sc += static_cast<double>(p_corner - o_corner) * we[4];
+    sc += static_cast<double>(occ_bits & 1) * we[5];
+    sc += static_cast<double>(p_x - o_x) * we[6];
+    sc += static_cast<double>(p_c - o_c) * we[7];
+    sc += (static_cast<double>(p_b1 - o_b1) / 16.0) * we[8];
+    sc += (static_cast<double>(p_b2 - o_b2) / 16.0) * we[9];
+    sc += (static_cast<double>(p_b3 - o_b3) / 16.0) * we[10];
+    sc += (static_cast<double>(p_b4 - o_b4) / 16.0) * we[11];
+    sc += static_cast<double>(occ_b1 & 1) * we[12];
+    sc += static_cast<double>(occ_b2 & 1) * we[13];
+    sc += static_cast<double>(occ_b3 & 1) * we[14];
+    sc += static_cast<double>(occ_b4 & 1) * we[15];
 
     return sc;
 }

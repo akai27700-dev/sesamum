@@ -98,11 +98,15 @@ if sys.platform == "win32":
         '/EHsc',
         '/bigobj',
         '/utf-8',
-        '/Od',
-        '/Ob0',
-        '/GL-',
+        '/O2',          # Maximum optimization
+        '/Ot',          # Optimize for speed
+        '/Oi',          # Enable intrinsics
+        '/Ob2',         # Inline expansion level 2
+        '/arch:AVX2',   # Enable AVX2 instructions
+        '/fp:fast',     # Fast floating point
+        '/GL-',         # Disable link-time codegen for faster build
     ]
-    link_args = ['/INCREMENTAL:NO']
+    link_args = ['/INCREMENTAL:NO', '/LTCG:OFF']
 else:
     compile_args = [
         '-O3',
