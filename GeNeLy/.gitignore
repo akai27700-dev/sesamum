@@ -1,0 +1,7 @@
+__pycache__/
+.vscode/
+.venv/
+build/
+*.pyd
+backup/
+backup_backup/
