@@ -1,9 +1,0 @@
-numpy
-numba
-pybind11
-setuptools
-torch
-onnx
-onnxruntime
-psutil
-wmi
