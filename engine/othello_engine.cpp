@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <future>
 #include <limits>
-#include <memory>
 #include <mutex>
 #include <optional>
 #include <random>
@@ -96,8 +95,8 @@ inline void simd_get_legal_moves_batch(const Bitboard* p_boards, const Bitboard*
         __m256i o = simd_load_bitboards(&o_boards[i*4]);
         __m256i occ = simd_or(p, o);
         
-        
-        
+        // Simplified legal move calculation for SIMD
+        // This is a basic version - full implementation would be more complex
         __m256i legal = simd_not(simd_or(p, o));
         legal = simd_and(legal, full_mask_vec);
         
@@ -109,9 +108,7 @@ constexpr Bitboard FULL_MASK = 0xFFFFFFFFFFFFFFFFULL;
 constexpr Bitboard NOT_A_FILE = 0xFEFEFEFEFEFEFEFEULL;
 constexpr Bitboard NOT_H_FILE = 0x7F7F7F7F7F7F7F7FULL;
 constexpr std::size_t GENE_LEN = 243;
-constexpr std::size_t TT_SIZE = 1u << 17;
-constexpr std::size_t TT_BUCKET_SIZE = 32;
-constexpr std::size_t TT_DEEP_BUCKET_SIZE = TT_BUCKET_SIZE / 2;
+constexpr std::size_t TT_SIZE = 1u << 18;
 constexpr std::size_t MAX_BATCH_SIZE = 262144;
 constexpr std::size_t SIMD_BATCH_SIZE = 64;
 
@@ -311,7 +308,7 @@ inline Bitboard get_legal_moves_optimized(Bitboard p, Bitboard o) {
     const Bitboard m = NOT_A_FILE & NOT_H_FILE;
     Bitboard legal = 0;
     
-    
+    // Egaroucid-style optimized legal move generation
     Bitboard t = (p << 1) & o & m;
     t |= (t << 1) & o & m; t |= (t << 1) & o & m; t |= (t << 1) & o & m; t |= (t << 1) & o & m; t |= (t << 1) & o & m;
     legal |= (t << 1) & empty;
@@ -351,14 +348,14 @@ inline Bitboard get_flip_optimized(Bitboard p, Bitboard o, int idx) {
     const Bitboard mask = 1ULL << idx;
     const Bitboard occ = p | o;
     
-    
+    // そのマスが空いていない場合は反転できない
     if (occ & mask) return 0;
     
-    int r = idx / 8;  
+    int r = idx / 8;  // 標準的なビットボード座標
     int c = idx % 8;
     Bitboard flips = 0;
     
-    
+    // 8方向をチェック
     const int dr[8] = {0, 0, 1, -1, 1, 1, -1, -1};
     const int dc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
     
@@ -499,6 +496,8 @@ double evaluate_board_full(Bitboard p, Bitboard o, int mvs, const std::vector<do
     
     auto& lut = eval_lut();
     int st = mvs <= 15 ? 0 : (mvs <= 45 ? 80 : 160);
+    const double* w_base = w.data() + st;
+    const double* w_feat = w_base + 64;
     double sc = 0.0;
     
     Bitboard tp = p;
@@ -506,18 +505,20 @@ double evaluate_board_full(Bitboard p, Bitboard o, int mvs, const std::vector<do
     while (tp) {
         Bitboard t = lsb(tp);
         int ix = bit_index(t);
-        sc += w[static_cast<std::size_t>(st + ix)];
+        sc += w_base[ix];
         tp &= tp - 1ULL;
     }
     while (to) {
         Bitboard t = lsb(to);
         int ix = bit_index(t);
-        sc -= w[static_cast<std::size_t>(st + ix)];
+        sc -= w_base[ix];
         to &= to - 1ULL;
     }
     
-    int lm = count_bits(get_legal_moves_optimized(p, o));
-    int lo = count_bits(get_legal_moves_optimized(o, p));
+    const Bitboard legal_p = get_legal_moves_optimized(p, o);
+    const Bitboard legal_o = get_legal_moves_optimized(o, p);
+    const int lm = count_bits(legal_p);
+    const int lo = count_bits(legal_o);
     Bitboard emp = ~(p | o) & FULL_MASK;
     Bitboard np = neighbor_union(p);
     Bitboard no = neighbor_union(o);
@@ -539,23 +540,22 @@ double evaluate_board_full(Bitboard p, Bitboard o, int mvs, const std::vector<do
     sc += lut.pattern_table[((p >> 32) & 0xFFFF)] + lut.pattern_table[(p >> 16) & 0xFFFF];
     
     if (mvs >= 30) sc += static_cast<double>(stable_diff) * 25.0;
-    const std::size_t we = static_cast<std::size_t>(st + 64);
     sc += lut.mobility_table[(lm & 0xF) | ((lo & 0xF) << 4)];
-    sc += (static_cast<double>(count_bits(emp & np) - count_bits(emp & no)) / 64.0) * w[we + 1];
-    sc += static_cast<double>(stable_diff) * w[we + 2];
-    sc += (static_cast<double>(count_bits(p & np) - count_bits(o & no)) / 64.0) * w[we + 3];
-    sc += static_cast<double>(count_bits(p & MASK_CORNER) - count_bits(o & MASK_CORNER)) * w[we + 4];
-    sc += static_cast<double>(count_bits(occ) & 1) * w[we + 5];
-    sc += static_cast<double>(count_bits(p & MASK_X) - count_bits(o & MASK_X)) * w[we + 6];
-    sc += static_cast<double>(count_bits(p & MASK_C) - count_bits(o & MASK_C)) * w[we + 7];
-    sc += (static_cast<double>(count_bits(p & MASK_B1) - count_bits(o & MASK_B1)) / 16.0) * w[we + 8];
-    sc += (static_cast<double>(count_bits(p & MASK_B2) - count_bits(o & MASK_B2)) / 16.0) * w[we + 9];
-    sc += (static_cast<double>(count_bits(p & MASK_B3) - count_bits(o & MASK_B3)) / 16.0) * w[we + 10];
-    sc += (static_cast<double>(count_bits(p & MASK_B4) - count_bits(o & MASK_B4)) / 16.0) * w[we + 11];
-    sc += static_cast<double>(count_bits(occ & MASK_B1) & 1) * w[we + 12];
-    sc += static_cast<double>(count_bits(occ & MASK_B2) & 1) * w[we + 13];
-    sc += static_cast<double>(count_bits(occ & MASK_B3) & 1) * w[we + 14];
-    sc += static_cast<double>(count_bits(occ & MASK_B4) & 1) * w[we + 15];
+    sc += (static_cast<double>(count_bits(emp & np) - count_bits(emp & no)) / 64.0) * w_feat[1];
+    sc += static_cast<double>(stable_diff) * w_feat[2];
+    sc += (static_cast<double>(count_bits(p & np) - count_bits(o & no)) / 64.0) * w_feat[3];
+    sc += static_cast<double>(count_bits(p & MASK_CORNER) - count_bits(o & MASK_CORNER)) * w_feat[4];
+    sc += static_cast<double>(count_bits(occ) & 1) * w_feat[5];
+    sc += static_cast<double>(count_bits(p & MASK_X) - count_bits(o & MASK_X)) * w_feat[6];
+    sc += static_cast<double>(count_bits(p & MASK_C) - count_bits(o & MASK_C)) * w_feat[7];
+    sc += (static_cast<double>(count_bits(p & MASK_B1) - count_bits(o & MASK_B1)) / 16.0) * w_feat[8];
+    sc += (static_cast<double>(count_bits(p & MASK_B2) - count_bits(o & MASK_B2)) / 16.0) * w_feat[9];
+    sc += (static_cast<double>(count_bits(p & MASK_B3) - count_bits(o & MASK_B3)) / 16.0) * w_feat[10];
+    sc += (static_cast<double>(count_bits(p & MASK_B4) - count_bits(o & MASK_B4)) / 16.0) * w_feat[11];
+    sc += static_cast<double>(count_bits(occ & MASK_B1) & 1) * w_feat[12];
+    sc += static_cast<double>(count_bits(occ & MASK_B2) & 1) * w_feat[13];
+    sc += static_cast<double>(count_bits(occ & MASK_B3) & 1) * w_feat[14];
+    sc += static_cast<double>(count_bits(occ & MASK_B4) & 1) * w_feat[15];
     return sc;
 }
 
@@ -642,13 +642,29 @@ inline double exact_eval(Bitboard p, Bitboard o) {
 }
 
 struct TTEntry {
-    alignas(16) std::atomic<Bitboard> hash;
-    std::atomic<int> depth;
-    std::atomic<double> value;
-    std::atomic<std::int8_t> flag;
-    std::atomic<std::int8_t> best_move;
-    std::atomic<std::uint32_t> age;
-    std::atomic<std::uint8_t> generation;
+    template <typename T>
+    struct Cell {
+        T value{};
+
+        Cell() = default;
+        Cell(T initial) : value(initial) {}
+
+        T load(std::memory_order = std::memory_order_seq_cst) const {
+            return value;
+        }
+
+        void store(T next, std::memory_order = std::memory_order_seq_cst) {
+            value = next;
+        }
+    };
+
+    alignas(16) Cell<Bitboard> hash;
+    Cell<int> depth;
+    Cell<double> value;
+    Cell<std::int8_t> flag;
+    Cell<std::int8_t> best_move;
+    Cell<std::uint32_t> age;
+    Cell<std::uint8_t> generation;
 
     TTEntry() : hash(0), depth(-1), value(0.0), flag(0), best_move(-1), age(0), generation(0) {}
 
@@ -675,13 +691,13 @@ struct TTEntry {
     }
 };
 
-TTEntry* tt_table() {
-    static std::unique_ptr<TTEntry[]> table;
-    static std::once_flag init_flag;
-    std::call_once(init_flag, []() {
-        table = std::make_unique<TTEntry[]>(TT_SIZE * TT_BUCKET_SIZE);
-    });
-    return table.get();
+std::vector<TTEntry>& tt_table() {
+    static std::vector<TTEntry>* table = []() {
+        auto* ptr = new std::vector<TTEntry>();
+        ptr->resize(TT_SIZE * 32);
+        return ptr;
+    }();
+    return *table;
 }
 
 std::atomic<std::uint32_t>& tt_generation() {
@@ -706,8 +722,8 @@ std::vector<double>& global_order_map() {
 
 const TTEntry* probe_tt_entry(Bitboard p, Bitboard o) {
     Bitboard hv = zobrist_hash(p, o);
-    std::size_t tx0 = static_cast<std::size_t>(hv % TT_SIZE) * TT_BUCKET_SIZE;
-    TTEntry* table = tt_table();
+    std::size_t tx0 = static_cast<std::size_t>(hv % TT_SIZE) * 32;
+    auto& table = tt_table();
     
     _mm_prefetch(reinterpret_cast<const char*>(&table[tx0]), _MM_HINT_T0);
     _mm_prefetch(reinterpret_cast<const char*>(&table[tx0 + 8]), _MM_HINT_T0);
@@ -717,10 +733,10 @@ const TTEntry* probe_tt_entry(Bitboard p, Bitboard o) {
     const TTEntry* deep_entry = nullptr;
     const TTEntry* shallow_entry = nullptr;
     
-    for (std::size_t i = 0; i < TT_BUCKET_SIZE; ++i) {
+    for (int i = 0; i < 32; ++i) {
         Bitboard h = table[tx0 + i].hash.load();
         if (h == hv) {
-            if (i < TT_DEEP_BUCKET_SIZE) {
+            if (i < 16) {
                 return &table[tx0 + i];
             } else if (!deep_entry) {
                 deep_entry = &table[tx0 + i];
@@ -740,7 +756,7 @@ struct SearchContext {
     bool timed_out = false;
     bool allow_tt = true;
     bool thread_safe_tt = false;
-    bool nn_enabled = false;  
+    bool nn_enabled = false;  // NNが有効かどうかのフラグ
     std::array<std::array<int, 2>, 64> killer_moves{};
     std::array<std::array<double, 64>, 2> history_scores{};
     std::array<std::array<double, 64>, 2> history_avg_depth{};
@@ -748,7 +764,6 @@ struct SearchContext {
 };
 
 std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool passed, bool is_exact, SearchContext& ctx);
-inline double compute_exact_move_order_score(Bitboard p, Bitboard o, int sq, int mvs, const SearchContext& ctx);
 
 struct MPCThreshold {
     int depth;
@@ -759,22 +774,20 @@ struct MPCThreshold {
     double beta_coeff;
 };
 
-constexpr std::array<MPCThreshold, 6> MPC_THRESHOLDS = {{
-    {4, 0.8, -0.8, 1, 0.75, 0.75},
-    {6, 1.0, -1.0, 1, 0.80, 0.80},
-    {8, 1.5, -1.5, 2, 0.85, 0.85}, 
-    {10, 2.0, -2.0, 3, 0.90, 0.90},
+constexpr std::array<MPCThreshold, 4> MPC_THRESHOLDS = {{
     {12, 2.5, -2.5, 4, 0.95, 0.95},
-    {14, 3.0, -3.0, 5, 0.97, 0.97}
+    {14, 3.0, -3.0, 5, 0.97, 0.97},
+    {16, 3.5, -3.5, 6, 0.98, 0.98},
+    {18, 4.0, -4.0, 7, 0.99, 0.99}
 }};
 
-inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value);
+inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value, std::int8_t& flag);
 inline bool try_iid(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, int& best_move);
 inline bool try_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, bool is_exact, SearchContext& ctx);
 inline bool try_reverse_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double beta, bool is_exact, SearchContext& ctx);
 
-inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value) {
-    if (is_exact || depth < 3) return false;
+inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value, std::int8_t& flag) {
+    if (is_exact || depth < 12) return false;  // depth >= 12 からのみMPC適用
     
     for (const auto& mpc : MPC_THRESHOLDS) {
         if (depth >= mpc.depth) {
@@ -786,6 +799,7 @@ inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double a
             
             if (alpha_value <= mpc_alpha) {
                 value = alpha_value;
+                flag = 3;
                 return true;
             }
             
@@ -794,6 +808,7 @@ inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double a
             
             if (beta_value >= mpc_beta) {
                 value = beta_value;
+                flag = 2;
                 return true;
             }
         }
@@ -816,25 +831,33 @@ inline bool try_iid(Bitboard p, Bitboard o, int mvs, int depth, double alpha, do
 }
 
 inline bool try_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, bool is_exact, SearchContext& ctx) {
-    if (is_exact || depth > 3) return false;
-    
+    if (is_exact || depth > 2) return false;
+
+    const Bitboard valid = get_legal_moves_optimized(p, o);
+    if ((valid & MASK_CORNER) != 0) return false;
+    const int move_count = count_bits(valid);
+    if (move_count == 0) return false;
+
     double futility_margin = 0.0;
-    if (depth == 1) futility_margin = 80.0;
-    else if (depth == 2) futility_margin = 160.0;
-    else if (depth == 3) futility_margin = 240.0;
-    
+    if (depth == 1) futility_margin = 48.0;
+    else if (depth == 2) futility_margin = 112.0 + static_cast<double>(move_count) * 4.0;
+
     double static_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
     return static_eval + futility_margin < alpha;
 }
 
 inline bool try_reverse_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double beta, bool is_exact, SearchContext& ctx) {
-    if (is_exact || depth > 3) return false;
-    
+    if (is_exact || depth > 2) return false;
+
+    const Bitboard valid = get_legal_moves_optimized(p, o);
+    if ((valid & MASK_CORNER) != 0) return false;
+    const int move_count = count_bits(valid);
+    if (move_count == 0) return false;
+
     double reverse_margin = 0.0;
-    if (depth == 1) reverse_margin = 120.0;
-    else if (depth == 2) reverse_margin = 240.0;
-    else if (depth == 3) reverse_margin = 360.0;
-    
+    if (depth == 1) reverse_margin = 56.0;
+    else if (depth == 2) reverse_margin = 128.0 + static_cast<double>(move_count) * 4.0;
+
     double static_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
     return static_eval - reverse_margin > beta;
 }
@@ -862,8 +885,10 @@ inline int tt_replace_priority(int depth, std::int8_t flag) {
 }
 
 inline void store_tt(Bitboard hv, int depth, double value, std::int8_t flag, int best_move, bool thread_safe_tt) {
-    TTEntry* table = tt_table();
-    std::size_t tx0 = static_cast<std::size_t>(hv % TT_SIZE) * TT_BUCKET_SIZE;
+    auto& table = tt_table();
+    std::size_t tx0 = static_cast<std::size_t>(hv % TT_SIZE) * 32;
+    std::size_t deep_end = tx0 + 16;
+    std::size_t shallow_end = tx0 + 32;
     std::shared_lock<std::shared_mutex> lock(tt_mutexes()[tt_mutex_index(hv)], std::defer_lock);
     if (thread_safe_tt) lock.lock();
     
@@ -878,7 +903,7 @@ inline void store_tt(Bitboard hv, int depth, double value, std::int8_t flag, int
     
     int new_priority = tt_replace_priority(depth, flag);
     
-    for (std::size_t i = 0; i < TT_DEEP_BUCKET_SIZE; ++i) {
+    for (int i = 0; i < 16; ++i) {
         Bitboard h = table[tx0 + i].hash.load();
         if (h == hv) {
             if (new_priority >= tt_replace_priority(table[tx0 + i])) {
@@ -890,8 +915,8 @@ inline void store_tt(Bitboard hv, int depth, double value, std::int8_t flag, int
     
     if (depth >= 6) {
         int min_priority = INT_MAX;
-        std::size_t replace_idx = 0;
-        for (std::size_t i = 0; i < TT_DEEP_BUCKET_SIZE; ++i) {
+        int replace_idx = 0;
+        for (int i = 0; i < 16; ++i) {
             Bitboard h = table[tx0 + i].hash.load();
             int p = tt_replace_priority(table[tx0 + i]);
             if (h == 0 || p < min_priority) {
@@ -908,8 +933,8 @@ inline void store_tt(Bitboard hv, int depth, double value, std::int8_t flag, int
     }
     
     int min_priority = INT_MAX;
-    std::size_t replace_idx = TT_DEEP_BUCKET_SIZE;
-    for (std::size_t i = TT_DEEP_BUCKET_SIZE; i < TT_BUCKET_SIZE; ++i) {
+    int replace_idx = 16;
+    for (int i = 16; i < 32; ++i) {
         Bitboard h = table[tx0 + i].hash.load();
         int p = tt_replace_priority(table[tx0 + i]);
         if (h == 0 || p < min_priority) {
@@ -948,15 +973,15 @@ std::vector<int> reorder_root_moves(const std::vector<int>& ordered_indices, int
 }
 
 inline bool probe_tt(Bitboard hv, int depth, double alpha, double beta, int& tm, double& value, bool thread_safe_tt) {
-    TTEntry* table = tt_table();
-    std::size_t tx0 = static_cast<std::size_t>(hv % TT_SIZE) * TT_BUCKET_SIZE;
+    auto& table = tt_table();
+    std::size_t tx0 = static_cast<std::size_t>(hv % TT_SIZE) * 32;
     
     _mm_prefetch(reinterpret_cast<const char*>(&table[tx0]), _MM_HINT_T0);
     _mm_prefetch(reinterpret_cast<const char*>(&table[tx0 + 8]), _MM_HINT_T0);
     _mm_prefetch(reinterpret_cast<const char*>(&table[tx0 + 16]), _MM_HINT_T0);
     _mm_prefetch(reinterpret_cast<const char*>(&table[tx0 + 24]), _MM_HINT_T0);
     
-    for (std::size_t i = 0; i < TT_BUCKET_SIZE; ++i) {
+    for (int i = 0; i < 32; ++i) {
         Bitboard h = table[tx0 + i].hash.load();
         if (h == hv) {
             int d = table[tx0 + i].depth.load();
@@ -1003,13 +1028,11 @@ inline double estimate_search_complexity(Bitboard p, Bitboard o, Bitboard valid)
 inline double compute_dynamic_pvs_window(int depth, double complexity, std::size_t move_index, bool is_exact) {
     if (is_exact) return 1.0;
 
-    double window = 1.0 + complexity * 1.25;
-    if (depth >= 8) window += 0.25;
-    if (depth >= 12) window += 0.35;
-    if (depth >= 15) window *= 1.5;
-    if (move_index >= 4) window += 0.20;
-
-    return std::max(1.0, std::min(4.5, window));
+    double window = 1.0 + complexity * 1.10;
+    if (depth >= 8) window += 0.20;
+    if (depth >= 12) window += 0.25;
+    if (move_index >= 4) window += 0.15;
+    return std::max(1.0, std::min(3.5, window));
 }
 
 inline int compute_dynamic_lmr_reduction(
@@ -1020,21 +1043,47 @@ inline int compute_dynamic_lmr_reduction(
     double score_gap,
     bool nn_enabled
 ) {
-    int reduction = 1 + (move_index >= 4 ? 1 : 0) + (move_index >= 8 ? 1 : 0) + (move_index >= 12 ? 1 : 0);
-    reduction += (depth >= 6 ? 1 : 0) + (depth >= 10 ? 1 : 0);
-    if (move_count >= 12) reduction += 1;
+    int reduction = 1 + (move_index >= 4 ? 1 : 0) + (move_index >= 8 ? 1 : 0);
+    reduction += (depth >= 8 ? 1 : 0);
+    if (move_count >= 10) reduction += 1;
 
-    if (complexity >= 0.72) reduction -= 1;
-    else if (complexity <= 0.32) reduction += 1;
-    if (complexity <= 0.22 && depth >= 12) reduction += 1;
+    if (complexity >= 0.70) reduction -= 1;
+    else if (complexity <= 0.30) reduction += 1;
 
     if (score_gap <= 24.0) reduction -= 1;
     else if (score_gap >= 160.0) reduction += 1;
 
-    if (move_index >= (move_count / 2) && complexity < 0.45) reduction += 1;
     if (nn_enabled) reduction -= 1;
-
     return std::max(0, reduction);
+}
+
+inline std::size_t compute_late_move_pruning_start(int depth, std::size_t move_count, double complexity) {
+    std::size_t start = 0;
+    if (depth <= 1) start = 2;
+    else if (depth == 2) start = 4;
+    else if (depth == 3) start = 6;
+    else return move_count + 1;
+
+    if (complexity <= 0.30) start += 2;
+    else if (complexity >= 0.65 && start > 1) start -= 1;
+
+    return std::min(move_count + 1, start);
+}
+
+inline bool is_pruning_sensitive_move(Bitboard bit, int flip_count) {
+    return (bit & (MASK_CORNER | MASK_EDGE | MASK_X | MASK_C)) != 0 || flip_count >= 8;
+}
+
+struct OrderedMove {
+    int sq = -1;
+    Bitboard bit = 0;
+    Bitboard flip = 0;
+    int flip_count = 0;
+    double score = 0.0;
+};
+
+inline bool should_use_nn_move_ordering(bool nn_enabled, int depth, std::size_t move_count, double complexity) {
+    return nn_enabled && depth >= 5 && move_count <= 12 && complexity <= 0.88;
 }
 
 inline void age_history_scores(SearchContext& ctx, std::size_t side) {
@@ -1046,7 +1095,6 @@ inline void age_history_scores(SearchContext& ctx, std::size_t side) {
 inline void record_history_cutoff(SearchContext& ctx, int mvs, int sq, int depth) {
     const std::size_t side = static_cast<std::size_t>(mvs & 1);
     const std::size_t move = static_cast<std::size_t>(sq);
-
     age_history_scores(ctx, side);
 
     int& success_count = ctx.history_success_counts[side][move];
@@ -1055,75 +1103,100 @@ inline void record_history_cutoff(SearchContext& ctx, int mvs, int sq, int depth
 
     success_count += 1;
     avg_depth += (static_cast<double>(depth) - avg_depth) / static_cast<double>(success_count);
-
-    double depth_bonus = static_cast<double>(depth * depth) * (1.0 + 0.08 * std::min(depth, 12));
-    double success_bonus = static_cast<double>(std::min(success_count, 32)) * 2.0;
-    history_score += depth_bonus + avg_depth * 0.5 + success_bonus;
+    history_score += static_cast<double>(depth * depth) + avg_depth * 0.5 + static_cast<double>(std::min(success_count, 32)) * 2.0;
 }
 
-inline bool try_nn_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx) {
-    if (is_exact || depth < 3 || !ctx.nn_enabled) return false;
-    
-    
-    double nn_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
-    
-    
-    double nn_margin = 50.0 * (depth - 2); 
-    double confidence = std::min(0.3, 0.1 * depth); 
-    
-    
-    if (nn_eval > alpha + nn_margin) {
-        double adjusted_alpha = alpha + nn_margin * confidence;
-        if (nn_eval > adjusted_alpha) {
-            return true;
-        }
+inline double compute_move_order_bonus(const SearchContext& ctx, int mvs, int sq, Bitboard bit, int tt_move) {
+    double score = 0.0;
+    if (sq == tt_move) score += 1e12;
+
+    const int ply_idx = std::max(0, std::min(63, mvs));
+    if (ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0] == sq) score += 1e11;
+    else if (ctx.killer_moves[static_cast<std::size_t>(ply_idx)][1] == sq) score += 5e10;
+
+    const std::size_t side = static_cast<std::size_t>(mvs & 1);
+    score += ctx.history_scores[side][static_cast<std::size_t>(sq)] * 128.0;
+    score += ctx.history_avg_depth[side][static_cast<std::size_t>(sq)] * 32.0;
+    score += static_cast<double>(std::min(32, ctx.history_success_counts[side][static_cast<std::size_t>(sq)])) * 64.0;
+
+    if ((bit & MASK_CORNER) != 0) score += 1e9;
+    else if ((bit & MASK_EDGE) != 0) score += 5e7;
+    if ((bit & MASK_X) != 0) score -= 3e8;
+    else if ((bit & MASK_C) != 0) score -= 1e8;
+
+    return score;
+}
+
+// NNベースの枝刈り - NN評価を使って探索の早期打ち切り
+inline bool try_nn_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value, std::int8_t& flag) {
+    if (is_exact || depth < 8 || !ctx.nn_enabled) return false;
+
+    const double nn_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
+    const double nn_margin = 120.0 + static_cast<double>(depth) * 18.0;
+
+    if (beta < 1e17 && nn_eval >= beta + nn_margin) {
+        value = nn_eval;
+        flag = 2;
+        return true;
     }
-    
-    
-    if (nn_eval < beta - nn_margin) {
-        double adjusted_beta = beta - nn_margin * confidence;
-        if (nn_eval < adjusted_beta) {
-            return true;
-        }
+
+    if (alpha > -1e17 && nn_eval <= alpha - nn_margin) {
+        value = nn_eval;
+        flag = 3;
+        return true;
     }
-    
+
     return false;
 }
 
-inline std::vector<std::pair<int, double>> order_moves_with_nn(Bitboard p, Bitboard o, Bitboard valid, int mvs, SearchContext& ctx) {
-    std::vector<std::pair<int, double>> moves;
-    
+// NNベースのMove Ordering - NN評価値と既存ヒューリスティックを合成
+inline int fill_ordered_moves_with_nn(
+    Bitboard p,
+    Bitboard o,
+    Bitboard valid,
+    int mvs,
+    SearchContext& ctx,
+    int tt_move,
+    std::array<OrderedMove, 64>& moves
+) {
+    int move_count = 0;
     while (valid) {
         Bitboard bit = lsb(valid);
         valid ^= bit;
         int idx = bit_index(bit);
+        
         Bitboard f = get_flip_optimized(p, o, idx);
         Bitboard np = (p | bit | f) & FULL_MASK;
         Bitboard no = (o ^ f) & FULL_MASK;
         
-        
+        // 各手のNN評価を計算
         double move_score = evaluate_board_full(np, no, mvs + 1, *ctx.weights);
-        
-        
-        if ((bit & MASK_CORNER) != 0) move_score += 1000.0;
-        
-        
-        if ((bit & MASK_EDGE) != 0) move_score += 100.0;
-        
-        moves.emplace_back(idx, move_score);
+        move_score += compute_move_order_bonus(ctx, mvs, idx, bit, tt_move);
+
+        moves[move_count++] = OrderedMove{idx, bit, f, count_bits(f), move_score};
     }
     
-    
-    std::sort(moves.begin(), moves.end(), 
-              [](const auto& a, const auto& b) { return a.second > b.second; });
-    
-    return moves;
+    // 評価値の高い順にソート
+    std::sort(moves.begin(), moves.begin() + move_count,
+              [](const OrderedMove& a, const OrderedMove& b) { return a.score > b.score; });
+
+    return move_count;
 }
 
 std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool passed, bool is_exact, SearchContext& ctx) {
     Bitboard hv = zobrist_hash(p, o);
     int tm = -1;
     double oa = alpha;
+    bool static_eval_cached = false;
+    double static_eval = 0.0;
+    auto get_static_eval = [&]() -> double {
+        if (!static_eval_cached) {
+            static_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
+            static_eval_cached = true;
+        }
+        return static_eval;
+    };
+
     if (ctx.allow_tt) {
         double tt_value = 0.0;
         if (probe_tt(hv, depth, alpha, beta, tm, tt_value, ctx.thread_safe_tt)) return {tt_value, 1};
@@ -1146,22 +1219,28 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         return {v, 1};
     }
 
-    
-    if (try_nn_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx)) {
-        double nn_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
-        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, nn_eval, 2, tm, ctx.thread_safe_tt);
-        return {nn_eval, 1};
+    double pruned_value = 0.0;
+    std::int8_t pruned_flag = 0;
+    if (try_nn_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx, pruned_value, pruned_flag)) {
+        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
+        return {pruned_value, 1};
     }
 
-    if (try_mpc_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx, oa)) {
-        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, oa, 2, tm, ctx.thread_safe_tt);
-        return {oa, 1};
+    if (try_mpc_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx, pruned_value, pruned_flag)) {
+        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
+        return {pruned_value, 1};
     }
 
     if (try_reverse_futility_pruning(p, o, mvs, depth, beta, is_exact, ctx)) {
-        double static_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
-        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, static_eval, 2, tm, ctx.thread_safe_tt);
-        return {static_eval, 1};
+        const double eval = get_static_eval();
+        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, eval, 2, tm, ctx.thread_safe_tt);
+        return {eval, 1};
+    }
+
+    if (try_futility_pruning(p, o, mvs, depth, alpha, is_exact, ctx)) {
+        const double eval = get_static_eval();
+        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, eval, 3, tm, ctx.thread_safe_tt);
+        return {eval, 1};
     }
 
     if (try_iid(p, o, mvs, depth, alpha, beta, is_exact, ctx, tm)) {
@@ -1169,28 +1248,37 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         if (entry) tm = entry->best_move.load();
     }
 
-    if (!is_exact && !passed && depth >= 2 && beta > -5000.0) {
+    if (!is_exact &&
+        !passed &&
+        depth >= 6 &&
+        beta < 1e17 &&
+        count_bits(valid) >= 4 &&
+        (valid & MASK_CORNER) == 0 &&
+        estimate_search_complexity(p, o, valid) < 0.82 &&
+        get_static_eval() >= beta - (82.0 + static_cast<double>(depth) * 10.0)) {
         Bitboard opp_valid = get_legal_moves_optimized(o, p);
         if (opp_valid) {
-            int nmp_depth = depth - 4 - (depth >= 8 ? 2 : 1);
-            auto [nmp_value, nmp_nodes] = alphabeta(o, p, mvs, nmp_depth, -beta, -beta + 1.0, true, is_exact, ctx);
-            nmp_value = -nmp_value;
-            
-            if (nmp_value >= beta) {
-                if (depth >= 6) {
-                    auto [verify_value, verify_nodes] = alphabeta(o, p, mvs, nmp_depth - 1, -beta, -beta + 1.0, true, is_exact, ctx);
-                    verify_value = -verify_value;
-                    if (verify_value >= beta) {
+            int nmp_depth = depth - 4 - (depth >= 10 ? 2 : 1);
+            if (nmp_depth > 0) {
+                auto [nmp_value, nmp_nodes] = alphabeta(o, p, mvs, nmp_depth, -beta, -beta + 1.0, true, is_exact, ctx);
+                nmp_value = -nmp_value;
+
+                if (nmp_value >= beta) {
+                    if (depth >= 8 && nmp_depth - 1 > 0) {
+                        auto [verify_value, verify_nodes] = alphabeta(o, p, mvs, nmp_depth - 1, -beta, -beta + 1.0, true, is_exact, ctx);
+                        verify_value = -verify_value;
+                        if (verify_value >= beta) {
+                            if (!ctx.timed_out && ctx.allow_tt) {
+                                store_tt(hv, depth, beta, 2, -1, ctx.thread_safe_tt);
+                            }
+                            return {beta, nmp_nodes + verify_nodes + 1};
+                        }
+                    } else {
                         if (!ctx.timed_out && ctx.allow_tt) {
                             store_tt(hv, depth, beta, 2, -1, ctx.thread_safe_tt);
                         }
-                        return {beta, nmp_nodes + verify_nodes + 1};
+                        return {beta, nmp_nodes + 1};
                     }
-                } else {
-                    if (!ctx.timed_out && ctx.allow_tt) {
-                        store_tt(hv, depth, beta, 2, -1, ctx.thread_safe_tt);
-                    }
-                    return {beta, nmp_nodes + 1};
                 }
             }
         }
@@ -1198,107 +1286,93 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
 
     tt_generation().fetch_add(1, std::memory_order_relaxed);
     const double position_complexity = estimate_search_complexity(p, o, valid);
-
-    std::vector<std::pair<int, double>> nn_ordered_moves;
-    if (is_exact) {
-        Bitboard v_temp = valid;
-        while (v_temp) {
-            Bitboard bit = lsb(v_temp);
-            v_temp ^= bit;
-            int sq = bit_index(bit);
-            double score = compute_exact_move_order_score(p, o, sq, mvs, ctx);
-            if (sq == tm) score += 1e12;
-            nn_ordered_moves.emplace_back(sq, score);
-        }
-        std::sort(nn_ordered_moves.begin(), nn_ordered_moves.end(),
-                  [](const auto& a, const auto& b) { return a.second > b.second; });
-    } else if (ctx.nn_enabled && depth >= 2) {
-        nn_ordered_moves = order_moves_with_nn(p, o, valid, mvs, ctx);
-    } else {
-        
-        struct MoveScore {
-            Bitboard bit;
-            double score;
-            int sq;
-        };
-        struct MoveScoreGreater {
-            bool operator()(const MoveScore& lhs, const MoveScore& rhs) const {
-                return lhs.score > rhs.score;
-            }
-        };
-        
-        std::array<MoveScore, 64> moves{};
-        int move_count = 0;
-        Bitboard v_temp = valid;
-        while (v_temp) {
-            Bitboard bit = lsb(v_temp);
-            v_temp ^= bit;
-            int sq = bit_index(bit);
-            double score = (*ctx.order_map)[static_cast<std::size_t>(sq)];
-            if (sq == tm) score += 1e12;
-            int ply_idx = std::max(0, std::min(63, mvs));
-            if (ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0] == sq) score += 1e11;
-            else if (ctx.killer_moves[static_cast<std::size_t>(ply_idx)][1] == sq) score += 5e10;
-            score += ctx.history_scores[static_cast<std::size_t>(mvs & 1)][static_cast<std::size_t>(sq)] * 1024.0;
-            score += ctx.history_avg_depth[static_cast<std::size_t>(mvs & 1)][static_cast<std::size_t>(sq)] * 96.0;
-            score += static_cast<double>(std::min(32, ctx.history_success_counts[static_cast<std::size_t>(mvs & 1)][static_cast<std::size_t>(sq)])) * 256.0;
-
-            
-            if (sq == 0 || sq == 7 || sq == 56 || sq == 63) score += 1e9;
-            else if (sq % 8 == 0 || sq % 8 == 7 || sq / 8 == 0 || sq / 8 == 7) score += 5e8;
-
-            moves[move_count++] = {bit, score, sq};
-        }
-        
-        
-        std::sort(moves.data(), moves.data() + move_count, MoveScoreGreater{});
-        
-        
-        for (int i = 0; i < move_count; ++i) {
-            nn_ordered_moves.emplace_back(moves[i].sq, moves[i].score);
-        }
+    const std::size_t legal_move_count = static_cast<std::size_t>(count_bits(valid));
+    const bool use_nn_ordering = should_use_nn_move_ordering(ctx.nn_enabled, depth, legal_move_count, position_complexity);
+    if (!is_exact && depth <= 3) {
+        (void)get_static_eval();
     }
-    
+
+    std::array<OrderedMove, 64> ordered_moves{};
+    int move_count = 0;
+    if (use_nn_ordering) {
+        move_count = fill_ordered_moves_with_nn(p, o, valid, mvs, ctx, tm, ordered_moves);
+    } else {
+        // 従来のMove Orderingにフォールバック
+        Bitboard v_temp = valid;
+        while (v_temp) {
+            Bitboard bit = lsb(v_temp);
+            v_temp ^= bit;
+            int sq = bit_index(bit);
+            Bitboard flip = get_flip_optimized(p, o, sq);
+            int flip_count = count_bits(flip);
+            double score = (*ctx.order_map)[static_cast<std::size_t>(sq)] + compute_move_order_bonus(ctx, mvs, sq, bit, tm);
+            if (!is_exact && depth <= 3) {
+                score += get_static_eval() * 0.01;
+            }
+            score += static_cast<double>(flip_count) * (position_complexity <= 0.45 ? 18.0 : 8.0);
+
+            ordered_moves[move_count++] = OrderedMove{sq, bit, flip, flip_count, score};
+        }
+        
+        // 従来のスコアでソート
+        std::sort(ordered_moves.begin(), ordered_moves.begin() + move_count,
+                  [](const OrderedMove& a, const OrderedMove& b) { return a.score > b.score; });
+    }
+    const std::size_t late_move_pruning_start = !is_exact
+        ? compute_late_move_pruning_start(depth, static_cast<std::size_t>(move_count), position_complexity)
+        : 0;
+
     double max_val = -1e18;
     int bm = -1;
     std::int64_t nodes = 1;
     bool found_pv = false;
 
-    
-    for (size_t i = 0; i < nn_ordered_moves.size(); ++i) {
+    // NNベースにソートされた手を探索
+    for (int i = 0; i < move_count; ++i) {
         if (check_timeout(ctx)) break;
-        int sq = nn_ordered_moves[i].first;
-        Bitboard bit = 1ULL << sq;
-        Bitboard f = get_flip_optimized(p, o, sq);
+        const OrderedMove& move = ordered_moves[static_cast<std::size_t>(i)];
+        int sq = move.sq;
+        Bitboard bit = move.bit;
+        Bitboard f = move.flip;
         Bitboard np = (p | bit | f) & FULL_MASK;
         Bitboard no = (o ^ f) & FULL_MASK;
         double val = 0.0;
         std::int64_t n = 0;
-        const double pvs_window = compute_dynamic_pvs_window(depth, position_complexity, i, is_exact);
-        const double score_gap = i > 0 ? std::max(0.0, nn_ordered_moves[i - 1].second - nn_ordered_moves[i].second) : 0.0;
-        
+        const double pvs_window = compute_dynamic_pvs_window(depth, position_complexity, static_cast<std::size_t>(i), is_exact);
+        const double score_gap = i > 0 ? std::max(0.0, ordered_moves[static_cast<std::size_t>(i - 1)].score - move.score) : 0.0;
+        const int flip_count = move.flip_count;
+
+        if (!is_exact &&
+            depth <= 3 &&
+            i > 0 &&
+            static_cast<std::size_t>(i) >= late_move_pruning_start &&
+            alpha > -1e17 &&
+            !is_pruning_sensitive_move(bit, flip_count)) {
+            const double late_move_margin = 44.0 + static_cast<double>(depth) * 20.0 + static_cast<double>(flip_count) * 6.0;
+            if (get_static_eval() + late_move_margin <= alpha) {
+                continue;
+            }
+        }
+
         int reduction = 0;
-        if (
-            !is_exact &&
-            depth >= 2 &&
+        if (!is_exact &&
+            depth >= 4 &&
             i >= 2 &&
-            nn_ordered_moves.size() >= 3 &&
+            move_count >= 4 &&
             sq != ctx.killer_moves[static_cast<std::size_t>(std::max(0, std::min(63, mvs)))][0] &&
             sq != ctx.killer_moves[static_cast<std::size_t>(std::max(0, std::min(63, mvs)))][1] &&
             !(sq == 0 || sq == 7 || sq == 56 || sq == 63) &&
-            position_complexity < 0.95 &&
-            !(ctx.nn_enabled && std::min(0.3, 0.1 * depth) > 0.2 && i < 4) &&
-            !(position_complexity >= 0.60 && score_gap <= 20.0)
-        ) {
+            flip_count <= 10 &&
+            position_complexity < 0.90) {
             reduction = compute_dynamic_lmr_reduction(
                 depth,
-                i,
-                nn_ordered_moves.size(),
+                static_cast<std::size_t>(i),
+                static_cast<std::size_t>(move_count),
                 position_complexity,
                 score_gap,
-                ctx.nn_enabled
+                use_nn_ordering
             );
-            if (reduction > depth - 1) reduction = depth - 1;
+            if (reduction > depth - 2) reduction = depth - 2;
         }
         
         if (found_pv) {
@@ -1327,7 +1401,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         
         if (ctx.timed_out) break;
         
-        
+        // Alpha-Beta updates
         if (val > max_val) {
             max_val = val;
             bm = sq;
@@ -1339,7 +1413,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         if (val > alpha) {
             alpha = val;
             if (val >= beta) {
-                
+                // Beta cutoff - update history and killer moves
                 int ply_idx = std::max(0, std::min(63, mvs));
                 if (sq != ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0]) {
                     ctx.killer_moves[static_cast<std::size_t>(ply_idx)][1] = ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0];
@@ -1351,9 +1425,11 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         }
     }
     
-    
+    // Store result in transposition table
     if (!ctx.timed_out && ctx.allow_tt) {
-        int flag = (max_val > oa) ? 1 : (max_val < beta ? 2 : 0);
+        int flag = 1;
+        if (max_val >= beta) flag = 2;
+        else if (max_val <= oa) flag = 3;
         store_tt(hv, depth, max_val, flag, bm, ctx.thread_safe_tt);
     }
     
@@ -1488,62 +1564,6 @@ int count_empty_regions(Bitboard empty_mask, int* small_region_count = nullptr) 
     return regions;
 }
 
-int region_size_for_square(Bitboard empty_mask, int sq) {
-    Bitboard target = (1ULL << sq) & empty_mask;
-    if (!target) return 0;
-    Bitboard region = target;
-    Bitboard frontier = region;
-    while (frontier) {
-        Bitboard expanded = neighbor_union(frontier) & empty_mask & (~region);
-        region |= expanded;
-        frontier = expanded;
-    }
-    return count_bits(region);
-}
-
-inline double compute_exact_move_order_score(Bitboard p, Bitboard o, int sq, int mvs, const SearchContext& ctx) {
-    Bitboard bit = 1ULL << sq;
-    Bitboard flip = get_flip_optimized(p, o, sq);
-    Bitboard np = (p | bit | flip) & FULL_MASK;
-    Bitboard no = (o ^ flip) & FULL_MASK;
-    Bitboard occ_after = np | no;
-    Bitboard empty_before = (~(p | o)) & FULL_MASK;
-    Bitboard empty_after = (~occ_after) & FULL_MASK;
-
-    double score = (*ctx.order_map)[static_cast<std::size_t>(sq)];
-    if (sq == 0 || sq == 7 || sq == 56 || sq == 63) score += 1e9;
-    else if (sq % 8 == 0 || sq % 8 == 7 || sq / 8 == 0 || sq / 8 == 7) score += 5e8;
-
-    const int region_size = region_size_for_square(empty_before, sq);
-    if (region_size > 0) {
-        score += (region_size & 1) ? 18000.0 : -9000.0;
-        if (region_size <= 4) score += 4000.0;
-    }
-
-    const int next_moves = count_bits(get_legal_moves_optimized(no, np));
-    const int reply_moves = count_bits(get_legal_moves_optimized(np, no));
-    score -= static_cast<double>(next_moves) * 1200.0;
-    score += static_cast<double>(reply_moves) * 320.0;
-    if (next_moves == 0) score += 22000.0;
-
-    const Bitboard sp = compute_strict_stable(np, no);
-    const Bitboard so = compute_strict_stable(no, np);
-    const int stable_diff = count_bits(sp & np) - count_bits(so & no);
-    score += static_cast<double>(stable_diff) * 3500.0;
-
-    int small_regions = 0;
-    const int region_count = count_empty_regions(empty_after, &small_regions);
-    score -= static_cast<double>(region_count) * 1500.0;
-    score += static_cast<double>(small_regions) * 2200.0;
-
-    if (mvs >= 48) {
-        const int disc_diff = count_bits(np) - count_bits(no);
-        score += static_cast<double>(disc_diff) * 220.0;
-    }
-
-    return score;
-}
-
 int estimate_root_parallel_lanes(int move_count, int depth, bool is_exact) {
     if (move_count <= 1 || depth < 2) {
         return 1;
@@ -1645,7 +1665,7 @@ public:
         std::shared_lock<std::shared_mutex> lock(mutexes_[idx]);
         const auto& entry = cache_[idx];
         if (entry.p == p && entry.o == o && entry.turn == turn && entry.is_resolved) {
-            
+            // Accept if empty count matches (same game phase)
             if (entry.empty_count == empty_count) {
                 return entry;
             }
@@ -1682,7 +1702,7 @@ public:
     }
 
 private:
-    static constexpr std::size_t CACHE_SIZE = 1u << 20; 
+    static constexpr std::size_t CACHE_SIZE = 1u << 20; // 65536 entries
     std::array<ExactCacheEntry, CACHE_SIZE> cache_;
     mutable std::array<std::shared_mutex, CACHE_SIZE> mutexes_;
 };
@@ -1692,6 +1712,8 @@ ExactResultCache& exact_cache() {
     return cache;
 }
 
+// Calculate dynamic MCTS influence based on simulation count
+// Higher simulation count = higher confidence = higher influence
 double calculate_mcts_influence_ratio(int simulation_count, int empty_count, bool is_auto_mode) {
     if (simulation_count <= 0) return 0.0;
     
@@ -1748,6 +1770,7 @@ double calculate_mcts_influence_ratio(int simulation_count, int empty_count, boo
     return std::max(0.0, std::min(1.0, base_influence));
 }
 
+#if 0
 struct MCTSStateKey {
     Bitboard p = 0;
     Bitboard o = 0;
@@ -2406,10 +2429,7 @@ public:
                         combined.push_back(LayerResult{curr_ordered[i], search_result.first[i], win_rate});
                         layer_nodes += search_result.second[i];
                     }
-                    std::sort(combined.begin(), combined.end(), [is_exact](const LayerResult& a, const LayerResult& b) {
-                        if (is_exact && a.value != b.value) {
-                            return a.value > b.value;
-                        }
+                    std::sort(combined.begin(), combined.end(), [](const LayerResult& a, const LayerResult& b) {
                         return a.win_rate > b.win_rate;
                     });
                     curr_ordered.clear();
@@ -2523,6 +2543,8 @@ private:
     BatchMCTS mcts_;
     std::vector<double> root_policy_buffer_;
 };
+
+#endif
 
 std::vector<double> evaluate_moves(Bitboard p, Bitboard o, int mvs, const std::vector<int>& indices, const std::vector<double>& weights) {
     std::vector<double> out;
@@ -2639,10 +2661,7 @@ IterativeSearchResult get_best_move_ab_impl(Bitboard p, Bitboard o, int mvs, int
             results.push_back({curr_ordered[i], vals[i], wr, nodes[i]});
             layer_nodes += nodes[i];
         }
-        std::sort(results.begin(), results.end(), [depth_exact](const Result& a, const Result& b) {
-            if (depth_exact && a.val != b.val) {
-                return a.val > b.val;
-            }
+        std::sort(results.begin(), results.end(), [](const Result& a, const Result& b) {
             return a.wr > b.wr;
         });
         curr_ordered.clear();
@@ -2676,7 +2695,7 @@ IterativeSearchResult get_best_move_ab_impl(Bitboard p, Bitboard o, int mvs, int
 
 bool should_use_early_exact(Bitboard p, Bitboard o, int empties, int base_threshold) {
     if (empties <= base_threshold) return true;
-    if (empties > base_threshold + 8) return false;
+    if (empties > base_threshold + 3) return false;
     const int own_moves = count_bits(get_legal_moves_optimized(p, o));
     const int opp_moves = count_bits(get_legal_moves_optimized(o, p));
     int total_moves = own_moves + opp_moves;
@@ -2693,12 +2712,12 @@ bool should_use_early_exact(Bitboard p, Bitboard o, int empties, int base_thresh
     int small_regions = 0;
     const int region_count = count_empty_regions(empty_mask, &small_regions);
     const bool pass_pressure = min_moves <= 2;
-    const bool low_branch = total_moves <= 10;
-    const bool narrow_frontier = frontier <= 16;
+    const bool low_branch = total_moves <= 8;
+    const bool narrow_frontier = frontier <= 14;
     int exact_score = 0;
     if (low_branch) exact_score += 2;
-    if (total_moves <= 7) exact_score += 1;
-    if (min_moves <= 3) exact_score += 2;
+    if (total_moves <= 6) exact_score += 1;
+    if (pass_pressure) exact_score += 2;
     if (min_moves <= 1) exact_score += 1;
     if (narrow_frontier) exact_score += 1;
     if (frontier <= 10) exact_score += 1;
@@ -2707,30 +2726,30 @@ bool should_use_early_exact(Bitboard p, Bitboard o, int empties, int base_thresh
     if (region_count <= 3) exact_score += 1;
     if (small_regions > 0) exact_score += 1;
     if (empties <= base_threshold + 1) exact_score += 1;
-    if (empties <= base_threshold + 5) exact_score += 1;
-    if (frontier <= 20) exact_score += 1;
-    return exact_score >= (empties <= base_threshold + 1 ? 3 : (empties <= base_threshold + 5 ? 4 : 5));
+    return exact_score >= (empties <= base_threshold + 1 ? 5 : 7);
 }
 
 void clear_tt() {
-    TTEntry* table = tt_table();
-    for (std::size_t i = 0; i < TT_SIZE * TT_BUCKET_SIZE; ++i) {
-        table[i].hash.store(0);
-        table[i].depth.store(-1);
-        table[i].value.store(0.0);
-        table[i].flag.store(0);
-        table[i].best_move.store(-1);
-        table[i].age.store(0);
-        table[i].generation.store(0);
+    auto& table = tt_table();
+    TTEntry empty_entry{};
+    for (auto& entry : table) {
+        entry.hash.store(0);
+        entry.depth.store(-1);
+        entry.value.store(0.0);
+        entry.flag.store(0);
+        entry.best_move.store(-1);
+        entry.age.store(0);
+        entry.generation.store(0);
     }
     tt_generation().store(1);
 }
 
+// Performance benchmark function
 std::vector<double> benchmark_optimizations(int iterations = 1000) {
     std::vector<double> results(4);
     auto start = std::chrono::high_resolution_clock::now();
     
-    
+    // Benchmark 1: TT operations
     Bitboard test_p = 0x0000000810000000ULL;
     Bitboard test_o = 0x0000001008000000ULL;
     for (int i = 0; i < iterations; ++i) {
@@ -2742,7 +2761,7 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
     auto end = std::chrono::high_resolution_clock::now();
     results[0] = std::chrono::duration<double>(end - start).count();
     
-    
+    // Benchmark 2: Bitboard operations
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iterations * 100; ++i) {
         Bitboard legal = get_legal_moves_optimized(test_p, test_o);
@@ -2752,7 +2771,7 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
     end = std::chrono::high_resolution_clock::now();
     results[1] = std::chrono::duration<double>(end - start).count();
     
-    
+    // Benchmark 3: Evaluation
     std::vector<double> weights = make_board_perfect_seed();
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iterations * 10; ++i) {
@@ -2761,7 +2780,7 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
     end = std::chrono::high_resolution_clock::now();
     results[2] = std::chrono::duration<double>(end - start).count();
     
-    
+    // Benchmark 4: SIMD batch evaluation (if available)
 #if defined(__AVX2__)
     if (iterations >= 4) {
         Bitboard p_boards[4] = {test_p, test_p, test_p, test_p};
@@ -2779,7 +2798,7 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
         results[3] = 0.0;
     }
 #else
-    results[3] = -1.0; 
+    results[3] = -1.0; // SIMD not available
 #endif
     
     return results;
@@ -2787,265 +2806,331 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
 
 }
 
+void bind_engine_free_functions(py::module_& m);
+void bind_engine_session_classes(py::module_& m);
+
+Bitboard engine_get_legal_moves(Bitboard p, Bitboard o) {
+    return get_legal_moves_optimized(p, o);
+}
+
+Bitboard engine_get_flip(Bitboard p, Bitboard o, int idx) {
+    return get_flip_optimized(p, o, idx);
+}
+
+int engine_count_bits(Bitboard x) {
+    return count_bits(x);
+}
+
+int engine_bit_index(Bitboard x) {
+    return bit_index(x);
+}
+
+Bitboard engine_lsb(Bitboard x) {
+    return lsb(x);
+}
+
+std::vector<int> engine_legal_move_indices(Bitboard p, Bitboard o) {
+    return legal_move_indices(p, o);
+}
+
+const std::vector<double>& engine_require_global_weights() {
+    return require_global_weights();
+}
+
+const std::vector<double>& engine_require_global_order_map() {
+    return require_global_order_map();
+}
+
+void engine_clear_tt() {
+    clear_tt();
+}
+
+double engine_calculate_mcts_influence_ratio(int simulation_count, int empty_count, bool is_auto_mode) {
+    return calculate_mcts_influence_ratio(simulation_count, empty_count, is_auto_mode);
+}
+
+void engine_set_eval_data(const py::array_t<double, py::array::c_style | py::array::forcecast>& weights,
+                          const py::array_t<double, py::array::c_style | py::array::forcecast>& order_map) {
+    set_eval_data(weights, order_map);
+}
+
+std::vector<double> engine_benchmark_optimizations(int iterations) {
+    return benchmark_optimizations(iterations);
+}
+
+std::pair<Bitboard, Bitboard> engine_apply_move(Bitboard p, Bitboard o, int idx) {
+    return apply_move(p, o, idx);
+}
+
+bool engine_should_use_early_exact(Bitboard p, Bitboard o, int empties, int base_threshold) {
+    return should_use_early_exact(p, o, empties, base_threshold);
+}
+
+double engine_calculate_win_rate(double ev, bool is_exact) {
+    return calculate_win_rate(ev, is_exact);
+}
+
+std::tuple<std::vector<double>, std::vector<std::int64_t>, bool> engine_search_root_parallel_layer(
+    Bitboard p,
+    Bitboard o,
+    int mvs,
+    int depth,
+    bool is_exact,
+    const std::vector<int>& ordered_indices,
+    const std::vector<double>* root_policy,
+    int time_limit_ms
+) {
+    SearchContext ctx;
+    ctx.weights = &require_global_weights();
+    ctx.order_map = &require_global_order_map();
+    ctx.root_policy = root_policy;
+    if (!is_exact && time_limit_ms > 0) {
+        ctx.use_deadline = true;
+        ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
+    }
+    auto result = search_root_parallel_impl(p, o, mvs, depth, is_exact, ordered_indices, ctx);
+    return std::make_tuple(std::move(result.first), std::move(result.second), ctx.timed_out);
+}
+
+py::dict probe_exact_cache_py(Bitboard p, Bitboard o, int turn, int empty_count) {
+    py::dict out;
+    auto entry_opt = exact_cache().get(p, o, turn, empty_count);
+    if (entry_opt.has_value()) {
+        const auto& entry = entry_opt.value();
+        out["found"] = true;
+        out["best_move"] = entry.best_move;
+        out["best_value"] = entry.best_value;
+        out["best_win_rate"] = entry.best_win_rate;
+        out["is_resolved"] = entry.is_resolved;
+        py::dict move_values;
+        py::dict move_win_rates;
+        for (const auto& [move, value] : entry.move_values) {
+            move_values[py::int_(move)] = value;
+        }
+        for (const auto& [move, wr] : entry.move_win_rates) {
+            move_win_rates[py::int_(move)] = wr;
+        }
+        out["move_values"] = move_values;
+        out["move_win_rates"] = move_win_rates;
+    } else {
+        out["found"] = false;
+        out["best_move"] = -1;
+        out["best_value"] = 0.0;
+        out["best_win_rate"] = 50.0;
+        out["is_resolved"] = false;
+        out["move_values"] = py::dict();
+        out["move_win_rates"] = py::dict();
+    }
+    return out;
+}
+
+void clear_exact_cache_py() {
+    exact_cache().clear();
+}
+
+void store_exact_cache_py(
+    Bitboard p,
+    Bitboard o,
+    int turn,
+    int best_move,
+    double best_value,
+    double best_win_rate,
+    const std::unordered_map<int, double>& move_values,
+    const std::unordered_map<int, double>& move_win_rates,
+    int empty_count
+) {
+    exact_cache().store(p, o, turn, best_move, best_value, best_win_rate, move_values, move_win_rates, empty_count);
+}
+
+py::dict probe_tt_py(Bitboard p, Bitboard o) {
+    py::dict out;
+    if (const TTEntry* entry = probe_tt_entry(p, o)) {
+        out["found"] = true;
+        out["depth"] = entry->depth.load();
+        out["value"] = entry->value.load();
+        out["flag"] = entry->flag.load();
+        out["best_move"] = entry->best_move.load();
+    } else {
+        out["found"] = false;
+        out["depth"] = -1;
+        out["value"] = 0.0;
+        out["flag"] = 0;
+        out["best_move"] = -1;
+    }
+    return out;
+}
+
+Bitboard get_legal_moves_py(Bitboard p, Bitboard o) {
+    return get_legal_moves_optimized(p, o);
+}
+
+Bitboard get_flip_py(Bitboard p, Bitboard o, int idx) {
+    return get_flip_optimized(p, o, idx);
+}
+
+double evaluate_board_full_py(Bitboard p, Bitboard o, int mvs, const std::vector<double>& weights) {
+    py::gil_scoped_release release;
+    return evaluate_board_full(p, o, mvs, weights);
+}
+
+std::vector<double> evaluate_moves_py(Bitboard p, Bitboard o, int mvs, const std::vector<int>& indices, const std::vector<double>& weights) {
+    py::gil_scoped_release release;
+    return evaluate_moves(p, o, mvs, indices, weights);
+}
+
+double evaluate_board_cached_py(Bitboard p, Bitboard o, int mvs) {
+    py::gil_scoped_release release;
+    return evaluate_board_full(p, o, mvs, require_global_weights());
+}
+
+std::vector<double> evaluate_moves_cached_py(Bitboard p, Bitboard o, int mvs, const std::vector<int>& indices) {
+    py::gil_scoped_release release;
+    return evaluate_moves(p, o, mvs, indices, require_global_weights());
+}
+
+py::dict analyze_legal_moves_cached_py(Bitboard p, Bitboard o, int mvs) {
+    MoveAnalysisResult result;
+    {
+        py::gil_scoped_release release;
+        result = analyze_legal_moves_cached(p, o, mvs);
+    }
+    py::dict out;
+    out["moves"] = result.moves;
+    out["evals"] = result.evals;
+    out["next_p"] = result.next_p;
+    out["next_o"] = result.next_o;
+    return out;
+}
+
+std::pair<std::vector<double>, std::vector<std::int64_t>> search_root_parallel_py(
+    Bitboard p,
+    Bitboard o,
+    int mvs,
+    int depth,
+    bool is_exact,
+    const std::vector<int>& ordered_indices,
+    const std::vector<double>& weights,
+    const std::vector<double>& order_map,
+    int time_limit_ms
+) {
+    SearchContext ctx;
+    ctx.weights = &weights;
+    ctx.order_map = &order_map;
+    if (time_limit_ms > 0) {
+        ctx.use_deadline = true;
+        ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
+    }
+    py::gil_scoped_release release;
+    return search_root_parallel_impl(p, o, mvs, depth, is_exact, ordered_indices, ctx);
+}
+
+std::pair<std::vector<double>, std::vector<std::int64_t>> search_root_parallel_cached_py(
+    Bitboard p,
+    Bitboard o,
+    int mvs,
+    int depth,
+    bool is_exact,
+    const std::vector<int>& ordered_indices,
+    int time_limit_ms
+) {
+    SearchContext ctx;
+    ctx.weights = &require_global_weights();
+    ctx.order_map = &require_global_order_map();
+    if (time_limit_ms > 0) {
+        ctx.use_deadline = true;
+        ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
+    }
+    py::gil_scoped_release release;
+    return search_root_parallel_impl(p, o, mvs, depth, is_exact, ordered_indices, ctx);
+}
+
+py::dict search_root_parallel_cached_status_py(
+    Bitboard p,
+    Bitboard o,
+    int mvs,
+    int depth,
+    bool is_exact,
+    const std::vector<int>& ordered_indices,
+    int time_limit_ms
+) {
+    SearchContext ctx;
+    ctx.weights = &require_global_weights();
+    ctx.order_map = &require_global_order_map();
+    if (time_limit_ms > 0) {
+        ctx.use_deadline = true;
+        ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
+    }
+    std::pair<std::vector<double>, std::vector<std::int64_t>> result;
+    {
+        py::gil_scoped_release release;
+        result = search_root_parallel_impl(p, o, mvs, depth, is_exact, ordered_indices, ctx);
+    }
+    py::dict out;
+    out["vals"] = result.first;
+    out["nodes"] = result.second;
+    out["timed_out"] = ctx.timed_out;
+    return out;
+}
+
+py::dict search_root_parallel_cached_status_policy_py(
+    Bitboard p,
+    Bitboard o,
+    int mvs,
+    int depth,
+    bool is_exact,
+    const std::vector<int>& ordered_indices,
+    const std::vector<double>& root_policy,
+    int time_limit_ms
+) {
+    SearchContext ctx;
+    ctx.weights = &require_global_weights();
+    ctx.order_map = &require_global_order_map();
+    ctx.root_policy = &root_policy;
+    if (time_limit_ms > 0) {
+        ctx.use_deadline = true;
+        ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
+    }
+    std::pair<std::vector<double>, std::vector<std::int64_t>> result;
+    {
+        py::gil_scoped_release release;
+        result = search_root_parallel_impl(p, o, mvs, depth, is_exact, ordered_indices, ctx);
+    }
+    py::dict out;
+    out["vals"] = result.first;
+    out["nodes"] = result.second;
+    out["timed_out"] = ctx.timed_out;
+    return out;
+}
+
+py::dict get_best_move_ab_py(
+    Bitboard p,
+    Bitboard o,
+    int mvs,
+    int max_depth,
+    bool is_exact,
+    const std::vector<int>& ordered_indices,
+    const std::vector<double>& weights,
+    const std::vector<double>& order_map,
+    int time_limit_ms
+) {
+    IterativeSearchResult result;
+    {
+        py::gil_scoped_release release;
+        result = get_best_move_ab_impl(p, o, mvs, max_depth, is_exact, ordered_indices, weights, order_map, time_limit_ms);
+    }
+    py::dict out;
+    out["completed_depth"] = result.completed_depth;
+    out["best_move"] = result.best_move;
+    out["moves"] = result.moves;
+    out["values"] = result.values;
+    out["win_rates"] = result.win_rates;
+    out["nodes"] = result.nodes;
+    out["resolved"] = result.resolved;
+    out["timed_out"] = result.timed_out;
+    return out;
+}
+
 PYBIND11_MODULE(othello_engine, m) {
-    m.def("clear_tt", &clear_tt);
-    m.def("clear_exact_cache", []() { exact_cache().clear(); });
-    m.def("probe_exact_cache", [](Bitboard p, Bitboard o, int turn, int empty_count) {
-        py::dict out;
-        auto entry_opt = exact_cache().get(p, o, turn, empty_count);
-        if (entry_opt.has_value()) {
-            const auto& entry = entry_opt.value();
-            out["found"] = true;
-            out["best_move"] = entry.best_move;
-            out["best_value"] = entry.best_value;
-            out["best_win_rate"] = entry.best_win_rate;
-            out["is_resolved"] = entry.is_resolved;
-            py::dict move_values;
-            py::dict move_win_rates;
-            for (const auto& [move, value] : entry.move_values) {
-                move_values[py::int_(move)] = value;
-            }
-            for (const auto& [move, wr] : entry.move_win_rates) {
-                move_win_rates[py::int_(move)] = wr;
-            }
-            out["move_values"] = move_values;
-            out["move_win_rates"] = move_win_rates;
-        } else {
-            out["found"] = false;
-            out["best_move"] = -1;
-            out["best_value"] = 0.0;
-            out["best_win_rate"] = 50.0;
-            out["is_resolved"] = false;
-            out["move_values"] = py::dict();
-            out["move_win_rates"] = py::dict();
-        }
-        return out;
-    });
-    m.def("store_exact_cache", [](Bitboard p, Bitboard o, int turn, int best_move, double best_value, double best_win_rate,
-                                  const std::unordered_map<int, double>& move_values,
-                                  const std::unordered_map<int, double>& move_win_rates,
-                                  int empty_count) {
-        exact_cache().store(p, o, turn, best_move, best_value, best_win_rate, move_values, move_win_rates, empty_count);
-    });
-    m.def("calculate_mcts_influence", &calculate_mcts_influence_ratio, py::arg("simulation_count"), py::arg("empty_count"), py::arg("is_auto_mode") = false);
-    m.def("set_eval_data", &set_eval_data);
-    m.def("benchmark_optimizations", &benchmark_optimizations, py::arg("iterations") = 1000);
-    m.def("probe_tt", [](Bitboard p, Bitboard o) {
-        py::dict out;
-        if (const TTEntry* entry = probe_tt_entry(p, o)) {
-            out["found"] = true;
-            out["depth"] = entry->depth.load();
-            out["value"] = entry->value.load();
-            out["flag"] = entry->flag.load();
-            out["best_move"] = entry->best_move.load();
-        } else {
-            out["found"] = false;
-            out["depth"] = -1;
-            out["value"] = 0.0;
-            out["flag"] = 0;
-            out["best_move"] = -1;
-        }
-        return out;
-    });
-    m.def("get_legal_moves", [](Bitboard p, Bitboard o) { return get_legal_moves_optimized(p, o); });
-    m.def("legal_move_indices", &legal_move_indices);
-    m.def("apply_move", [](Bitboard p, Bitboard o, int idx) {
-        return apply_move(p, o, idx);
-    });
-    m.def("get_flip", [](Bitboard p, Bitboard o, int idx) { return get_flip_optimized(p, o, idx); });
-    m.def("evaluate_board_full", [](Bitboard p, Bitboard o, int mvs, const std::vector<double>& weights) {
-        py::gil_scoped_release release;
-        return evaluate_board_full(p, o, mvs, weights);
-    });
-    m.def("evaluate_moves", [](Bitboard p, Bitboard o, int mvs, const std::vector<int>& indices, const std::vector<double>& weights) {
-        py::gil_scoped_release release;
-        return evaluate_moves(p, o, mvs, indices, weights);
-    });
-    m.def("evaluate_board_cached", [](Bitboard p, Bitboard o, int mvs) {
-        py::gil_scoped_release release;
-        return evaluate_board_full(p, o, mvs, require_global_weights());
-    });
-    m.def("evaluate_moves_cached", [](Bitboard p, Bitboard o, int mvs, const std::vector<int>& indices) {
-        py::gil_scoped_release release;
-        return evaluate_moves(p, o, mvs, indices, require_global_weights());
-    });
-    m.def("analyze_legal_moves_cached", [](Bitboard p, Bitboard o, int mvs) {
-        MoveAnalysisResult result;
-        {
-            py::gil_scoped_release release;
-            result = analyze_legal_moves_cached(p, o, mvs);
-        }
-        py::dict out;
-        out["moves"] = result.moves;
-        out["evals"] = result.evals;
-        out["next_p"] = result.next_p;
-        out["next_o"] = result.next_o;
-        return out;
-    });
-    m.def("search_root_parallel", [](Bitboard p, Bitboard o, int mvs, int depth, bool is_exact, const std::vector<int>& ordered_indices, const std::vector<double>& weights, const std::vector<double>& order_map, int time_limit_ms) {
-        SearchContext ctx;
-        ctx.weights = &weights;
-        ctx.order_map = &order_map;
-        if (time_limit_ms > 0) {
-            ctx.use_deadline = true;
-            ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
-        }
-        py::gil_scoped_release release;
-        return search_root_parallel_impl(p, o, mvs, depth, is_exact, ordered_indices, ctx);
-    }, py::arg("p"), py::arg("o"), py::arg("mvs"), py::arg("depth"), py::arg("is_exact"), py::arg("ordered_indices"), py::arg("weights"), py::arg("order_map"), py::arg("time_limit_ms") = 0);
-    m.def("search_root_parallel_cached", [](Bitboard p, Bitboard o, int mvs, int depth, bool is_exact, const std::vector<int>& ordered_indices, int time_limit_ms) {
-        SearchContext ctx;
-        ctx.weights = &require_global_weights();
-        ctx.order_map = &require_global_order_map();
-        if (time_limit_ms > 0) {
-            ctx.use_deadline = true;
-            ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
-        }
-        py::gil_scoped_release release;
-        return search_root_parallel_impl(p, o, mvs, depth, is_exact, ordered_indices, ctx);
-    }, py::arg("p"), py::arg("o"), py::arg("mvs"), py::arg("depth"), py::arg("is_exact"), py::arg("ordered_indices"), py::arg("time_limit_ms") = 0);
-    m.def("search_root_parallel_cached_status", [](Bitboard p, Bitboard o, int mvs, int depth, bool is_exact, const std::vector<int>& ordered_indices, int time_limit_ms) {
-        SearchContext ctx;
-        ctx.weights = &require_global_weights();
-        ctx.order_map = &require_global_order_map();
-        if (time_limit_ms > 0) {
-            ctx.use_deadline = true;
-            ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
-        }
-        std::pair<std::vector<double>, std::vector<std::int64_t>> result;
-        {
-            py::gil_scoped_release release;
-            result = search_root_parallel_impl(p, o, mvs, depth, is_exact, ordered_indices, ctx);
-        }
-        py::dict out;
-        out["vals"] = result.first;
-        out["nodes"] = result.second;
-        out["timed_out"] = ctx.timed_out;
-        return out;
-    }, py::arg("p"), py::arg("o"), py::arg("mvs"), py::arg("depth"), py::arg("is_exact"), py::arg("ordered_indices"), py::arg("time_limit_ms") = 0);
-    m.def("search_root_parallel_cached_status_policy", [](Bitboard p, Bitboard o, int mvs, int depth, bool is_exact, const std::vector<int>& ordered_indices, const std::vector<double>& root_policy, int time_limit_ms) {
-        SearchContext ctx;
-        ctx.weights = &require_global_weights();
-        ctx.order_map = &require_global_order_map();
-        ctx.root_policy = &root_policy;
-        if (time_limit_ms > 0) {
-            ctx.use_deadline = true;
-            ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
-        }
-        std::pair<std::vector<double>, std::vector<std::int64_t>> result;
-        {
-            py::gil_scoped_release release;
-            result = search_root_parallel_impl(p, o, mvs, depth, is_exact, ordered_indices, ctx);
-        }
-        py::dict out;
-        out["vals"] = result.first;
-        out["nodes"] = result.second;
-        out["timed_out"] = ctx.timed_out;
-        return out;
-    }, py::arg("p"), py::arg("o"), py::arg("mvs"), py::arg("depth"), py::arg("is_exact"), py::arg("ordered_indices"), py::arg("root_policy"), py::arg("time_limit_ms") = 0);
-    m.def("should_use_early_exact", &should_use_early_exact, py::arg("p"), py::arg("o"), py::arg("empties"), py::arg("base_threshold"));
-    py::class_<BatchMCTS>(m, "BatchMCTS")
-        .def(py::init<double, double>(), py::arg("c_puct") = 2.0, py::arg("virtual_loss") = 1.0)
-        .def("initialize_root", &BatchMCTS::initialize_root, py::arg("p"), py::arg("o"), py::arg("turn"), py::arg("policy_logits"), py::arg("add_noise") = false)
-        .def("collect_leaves", &BatchMCTS::collect_leaves, py::arg("p"), py::arg("o"), py::arg("turn"), py::arg("batch_size"), py::arg("stop_flag"))
-        .def("expand_leaves", &BatchMCTS::expand_leaves, py::arg("tickets"), py::arg("policy_batch"), py::arg("value_batch"))
-        .def("collect_and_expand", &BatchMCTS::collect_and_expand, py::arg("p"), py::arg("o"), py::arg("turn"), py::arg("batch_size"), py::arg("stop_flag"), py::arg("infer_batch"))
-        .def("root_stats", &BatchMCTS::root_stats, py::arg("p"), py::arg("o"), py::arg("turn"));
-    py::class_<SearchSession>(m, "SearchSession")
-        .def(py::init<double, double>(), py::arg("c_puct") = 2.0, py::arg("virtual_loss") = 1.0)
-        .def("run", [](SearchSession& self,
-                       Bitboard p,
-                       Bitboard o,
-                       int turn,
-                       int mvs,
-                       int start_depth,
-                       bool is_exact,
-                       const std::vector<int>& ordered_indices,
-                       const std::vector<double>& root_policy,
-                       bool use_ab,
-                       bool use_mcts,
-                       double time_limit_sec,
-                       int mcts_batch_size,
-                       double ab_delay_sec,
-                       int ab_time_limit_ms,
-                       int max_depth,
-                       bool add_root_noise,
-                       py::array_t<std::uint8_t, py::array::c_style | py::array::forcecast> stop_flag,
-                       py::function infer_batch,
-                       py::object ab_progress) {
-            if (stop_flag.ndim() != 1 || stop_flag.shape(0) < 1) {
-                throw std::invalid_argument("stop_flag must be a uint8 array with at least one element");
-            }
-            py::function progress_cb = ab_progress.is_none() ? py::function() : ab_progress.cast<py::function>();
-            SearchSessionResult result;
-            {
-                py::gil_scoped_release release;
-                result = self.run(
-                    p,
-                    o,
-                    turn,
-                    mvs,
-                    start_depth,
-                    is_exact,
-                    ordered_indices,
-                    root_policy,
-                    use_ab,
-                    use_mcts,
-                    time_limit_sec,
-                    mcts_batch_size,
-                    ab_delay_sec,
-                    ab_time_limit_ms,
-                    max_depth,
-                    add_root_noise,
-                    stop_flag.mutable_data(),
-                    infer_batch,
-                    progress_cb
-                );
-            }
-            py::dict ab_out;
-            ab_out["completed_depth"] = result.ab.completed_depth;
-            ab_out["attempted_depth"] = result.ab.attempted_depth;
-            ab_out["resolved"] = result.ab.resolved;
-            ab_out["timed_out"] = result.ab.timed_out;
-            ab_out["nodes"] = result.ab.total_nodes;
-            ab_out["moves"] = result.ab.moves;
-            ab_out["values"] = result.ab.values;
-            ab_out["win_rates"] = result.ab.win_rates;
-            py::dict mcts_out;
-            py::dict mcts_scores;
-            py::dict mcts_visits;
-            for (const auto& entry : result.mcts.move_win_rates) {
-                mcts_scores[py::int_(entry.first)] = entry.second;
-            }
-            for (const auto& entry : result.mcts.root_visits) {
-                mcts_visits[py::int_(entry.first)] = entry.second;
-            }
-            mcts_out["move_win_rates"] = mcts_scores;
-            mcts_out["root_visits"] = mcts_visits;
-            mcts_out["best_wr"] = result.mcts.best_wr;
-            mcts_out["simulation_count"] = result.mcts.simulation_count;
-            mcts_out["nn_batch_count"] = result.mcts.nn_batch_count;
-            mcts_out["nn_leaf_count"] = result.mcts.nn_leaf_count;
-            py::dict out;
-            out["ab"] = ab_out;
-            out["mcts"] = mcts_out;
-            return out;
-        }, py::arg("p"), py::arg("o"), py::arg("turn"), py::arg("mvs"), py::arg("start_depth"), py::arg("is_exact"), py::arg("ordered_indices"), py::arg("root_policy"), py::arg("use_ab"), py::arg("use_mcts"), py::arg("time_limit_sec"), py::arg("mcts_batch_size"), py::arg("ab_delay_sec"), py::arg("ab_time_limit_ms"), py::arg("max_depth") = 60, py::arg("add_root_noise") = false, py::arg("stop_flag"), py::arg("infer_batch"), py::arg("ab_progress") = py::none());
-    m.def("get_best_move_ab", [](Bitboard p, Bitboard o, int mvs, int max_depth, bool is_exact, const std::vector<int>& ordered_indices, const std::vector<double>& weights, const std::vector<double>& order_map, int time_limit_ms) {
-        IterativeSearchResult result;
-        {
-            py::gil_scoped_release release;
-            result = get_best_move_ab_impl(p, o, mvs, max_depth, is_exact, ordered_indices, weights, order_map, time_limit_ms);
-        }
-        py::dict out;
-        out["completed_depth"] = result.completed_depth;
-        out["best_move"] = result.best_move;
-        out["moves"] = result.moves;
-        out["values"] = result.values;
-        out["win_rates"] = result.win_rates;
-        out["nodes"] = result.nodes;
-        out["resolved"] = result.resolved;
-        out["timed_out"] = result.timed_out;
-        return out;
-    }, py::arg("p"), py::arg("o"), py::arg("mvs"), py::arg("max_depth"), py::arg("is_exact"), py::arg("ordered_indices"), py::arg("weights"), py::arg("order_map"), py::arg("time_limit_ms") = 0);
+    bind_engine_free_functions(m);
+    bind_engine_session_classes(m);
 }

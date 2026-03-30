@@ -3,6 +3,7 @@ from setuptools import Extension, setup
 import pybind11
 import platform
 
+
 def get_compile_args():
     system = platform.system()
     if system == "Windows":
@@ -17,12 +18,14 @@ def get_compile_args():
             "-mavx2", "-mfma", "-fopenmp"
         ]
 
+
 def get_link_args():
     system = platform.system()
     if system == "Windows":
         return ["/openmp"]
     else:
         return ["-fopenmp"]
+
 
 ext_modules = [
     Extension(
@@ -34,6 +37,7 @@ ext_modules = [
         extra_link_args=get_link_args(),
     )
 ]
+
 
 setup(
     name="othello_engine",

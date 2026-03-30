@@ -6,7 +6,7 @@ import time
 
 import numpy as np
 
-                                          
+# Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import core.othello_core as core
@@ -17,7 +17,6 @@ _FULL_MASK = core._FULL_MASK
 calculate_win_rate = core.calculate_win_rate
 cpp_engine = core.cpp_engine
 ensure_numba_warmup = core.ensure_numba_warmup
-get_runtime_device_str = core.get_runtime_device_str
 get_flip = core.get_flip
 get_mcts_win_rates_time_batched = core.get_mcts_win_rates_time_batched
 get_rotated_bitboard = core.get_rotated_bitboard
@@ -26,6 +25,7 @@ nn_infer_batch = core.nn_infer_batch
 search_root_parallel = core.search_root_parallel
 unrotate_move = core.unrotate_move
 zobrist_hash = core.zobrist_hash
+
 
 class OthelloSearchMixin:
     def make_state_key(self, p_board, o_board, turn):
@@ -48,7 +48,7 @@ class OthelloSearchMixin:
             (not self.running)
             or self.game_id != current_game_id
             or self.ponder_token != ponder_token
-            or self.tn == self.hc                           
+            or self.tn == self.hc  # AIの手番の時だけ停止（相手ターン中は続ける）
             or bool(ponder_sf[0])
         )
 
@@ -143,24 +143,7 @@ class OthelloSearchMixin:
                 }
             )
         candidates.sort(key=lambda x: -x["score"])
-        top_candidates = candidates[:5]
-        if not top_candidates:
-            return top_candidates
-        scores = [float(candidate["score"]) for candidate in top_candidates]
-        best_score = scores[0]
-        second_score = scores[1] if len(scores) >= 2 else (best_score - 999.0)
-        score_gap = float(best_score - second_score)
-        exp_weights = [math.exp(max(-12.0, min(12.0, (score - best_score) / 24.0))) for score in scores]
-        total_weight = float(sum(exp_weights)) if exp_weights else 1.0
-        dominant_share = (exp_weights[0] / total_weight) if total_weight > 0.0 else 1.0
-        dominant_reply = bool(len(top_candidates) >= 2 and (score_gap >= 120.0 or dominant_share >= 0.72))
-        for rank, candidate in enumerate(top_candidates):
-            candidate["ponder_rank"] = rank
-            candidate["ponder_weight"] = (exp_weights[rank] / total_weight) if total_weight > 0.0 else (1.0 if rank == 0 else 0.0)
-            candidate["ponder_score_gap"] = score_gap if rank == 0 else 0.0
-            candidate["ponder_dominant_reply"] = dominant_reply
-            candidate["ponder_focus_share"] = dominant_share
-        return top_candidates
+        return candidates[:3]
 
     def merge_ponder_cache_entry(self, cache_key, ordered_moves=None, completed_depth=None, mcts_res=None, best_mcts_wr=None, root_visits=None, mcts_sim_count=None):
         with self.ponder_lock:
@@ -191,14 +174,14 @@ class OthelloSearchMixin:
         with self.ponder_lock:
             if worker_name == "mcts":
                 if self.ponder_mcts_thread and self.ponder_mcts_thread.is_alive():
-                                                              
+                    # Don't join if this is the current thread
                     if self.ponder_mcts_thread != threading.current_thread():
                         self.ponder_mcts_thread.join(timeout=0.5)
                 self.ponder_mcts_thread = None
                 self.ponder_thread = None
             elif worker_name == "αβ":
                 if self.ponder_ab_thread and self.ponder_ab_thread.is_alive():
-                                                              
+                    # Don't join if this is the current thread
                     if self.ponder_ab_thread != threading.current_thread():
                         self.ponder_ab_thread.join(timeout=0.5)
                 self.ponder_ab_thread = None
@@ -243,21 +226,18 @@ class OthelloSearchMixin:
         try:
             self.mark_modules_active("PONDER", "MCTS", "NN-IN", "TRUNK", "POLICY", "VALUE")
             self.mark_connections_active(("PONDER", "MCTS"), ("BOARD", "NN-IN"), ("NN-IN", "TRUNK"), ("TRUNK", "POLICY"), ("TRUNK", "VALUE"), ("POLICY", "MCTS"), ("VALUE", "MCTS"))
-            runtime_device = get_runtime_device_str()
-            if runtime_device == "cuda":
+            if DEVICE_STR == "cuda":
                 cycle_budget = max(2.2, self.time_limit_sec * (0.70 if self.light_mode else 1.10))
                 cycle_budget = min(10.0, cycle_budget)
                 warm_slice = 0.35 if self.light_mode else min(0.90, max(0.45, self.time_limit_sec * 0.07))
             else:
-                cycle_budget = max(0.7, self.time_limit_sec * (0.32 if self.light_mode else 0.48))
+                cycle_budget = max(0.9, self.time_limit_sec * (0.45 if self.light_mode else 0.70))
                 cycle_budget = min(4.0, cycle_budget)
                 warm_slice = 0.18 if self.light_mode else min(0.45, max(0.20, self.time_limit_sec * 0.05))
-            candidate_weights = (0.58, 0.24, 0.12, 0.04, 0.02)
+            candidate_weights = (0.58, 0.27, 0.15)
             warm_rounds = 2 if self.time_limit_sec >= 5.0 else 1
             round_idx = 0
             while not self.should_stop_pondering(current_game_id, ponder_token, ponder_sf):
-                dominant_reply = bool(candidates and candidates[0].get("ponder_dominant_reply", False))
-                focus_share = float(candidates[0].get("ponder_focus_share", 0.0)) if candidates else 0.0
                 for rank, candidate in enumerate(candidates):
                     if self.should_stop_pondering(current_game_id, ponder_token, ponder_sf):
                         return
@@ -268,32 +248,24 @@ class OthelloSearchMixin:
                         continue
                     curr_ordered = legal_indices
                     if round_idx < warm_rounds:
-                        candidate_time = warm_slice * (1.8 if dominant_reply and rank == 0 else 0.55 if dominant_reply else 1.0)
+                        candidate_time = warm_slice
                     else:
-                        if dominant_reply:
-                            if rank == 0:
-                                candidate_time = cycle_budget * max(0.70, min(0.90, focus_share + 0.10))
-                            else:
-                                fallback_weight = candidate_weights[min(rank, len(candidate_weights) - 1)]
-                                candidate_time = cycle_budget * fallback_weight * 0.35
-                        else:
-                            adaptive_weight = float(candidate.get("ponder_weight", candidate_weights[min(rank, len(candidate_weights) - 1)]))
-                            candidate_time = cycle_budget * max(0.02, adaptive_weight)
+                        candidate_time = cycle_budget * candidate_weights[min(rank, len(candidate_weights) - 1)]
                     if candidate_time <= 0.05:
                         continue
                     try:
                         if self.light_mode:
-                            ponder_batch_size = 256 if runtime_device == "cuda" else 96
+                            ponder_batch_size = 4096 if DEVICE_STR == "cuda" else 192
                         else:
-                            if runtime_device == "cuda":
+                            if DEVICE_STR == "cuda":
                                 if self.time_limit_sec >= 15.0:
-                                    ponder_batch_size = 1024
+                                    ponder_batch_size = 16384
                                 elif self.time_limit_sec >= 10.0:
-                                    ponder_batch_size = 768
+                                    ponder_batch_size = 12288
                                 else:
-                                    ponder_batch_size = 512
+                                    ponder_batch_size = 8192
                             else:
-                                ponder_batch_size = 256 if self.time_limit_sec >= 10.0 else 128
+                                ponder_batch_size = 768
                         cached_mcts_res, cached_best_mcts_wr, cached_mcts_sim_count, _, _, cached_root_visits = get_mcts_win_rates_time_batched(
                             self.nn_model,
                             candidate["αβ"],
@@ -336,12 +308,10 @@ class OthelloSearchMixin:
                 cycle_budget = max(1.4, self.time_limit_sec * 0.85)
                 cycle_budget = min(6.0, cycle_budget)
                 warm_slice = min(0.40, max(0.15, self.time_limit_sec * 0.03))
-            candidate_weights = (0.56, 0.26, 0.12, 0.04, 0.02)
+            candidate_weights = (0.56, 0.28, 0.16)
             warm_rounds = 2 if self.time_limit_sec >= 5.0 else 1
             round_idx = 0
             while not self.should_stop_pondering(current_game_id, ponder_token, ponder_sf):
-                dominant_reply = bool(candidates and candidates[0].get("ponder_dominant_reply", False))
-                focus_share = float(candidates[0].get("ponder_focus_share", 0.0)) if candidates else 0.0
                 for rank, candidate in enumerate(candidates):
                     if self.should_stop_pondering(current_game_id, ponder_token, ponder_sf):
                         return
@@ -351,17 +321,9 @@ class OthelloSearchMixin:
                     if not legal_indices:
                         continue
                     if round_idx < warm_rounds:
-                        candidate_time = warm_slice * (1.8 if dominant_reply and rank == 0 else 0.55 if dominant_reply else 1.0)
+                        candidate_time = warm_slice
                     else:
-                        if dominant_reply:
-                            if rank == 0:
-                                candidate_time = cycle_budget * max(0.72, min(0.92, focus_share + 0.12))
-                            else:
-                                fallback_weight = candidate_weights[min(rank, len(candidate_weights) - 1)]
-                                candidate_time = cycle_budget * fallback_weight * 0.30
-                        else:
-                            adaptive_weight = float(candidate.get("ponder_weight", candidate_weights[min(rank, len(candidate_weights) - 1)]))
-                            candidate_time = cycle_budget * max(0.02, adaptive_weight)
+                        candidate_time = cycle_budget * candidate_weights[min(rank, len(candidate_weights) - 1)]
                     if candidate_time <= 0.05:
                         continue
                     with self.ponder_lock:
@@ -407,7 +369,7 @@ class OthelloSearchMixin:
                             if bool(status.get("timed_out", False)):
                                 break
                             
-                                                
+                            # Pondering中の深度ログを出力
                             elapsed = time.time() - start_t
                             nodes = status.get("nodes", 0)
                             best_move = curr_ordered[0] if curr_ordered else -1
@@ -445,26 +407,17 @@ class OthelloSearchMixin:
             self.drw(probs_map)
 
     def _get_live_mcts_batch_size(self, time_limit):
-        runtime_device = get_runtime_device_str()
         if self.light_mode:
-            return 512 if runtime_device == "cuda" else 192
-        if runtime_device == "cuda":
+            return 8192 if DEVICE_STR == "cuda" else 384
+        if DEVICE_STR == "cuda":
             if time_limit >= 15.0:
-                return 4096
+                return 65536
             if time_limit >= 10.0:
-                return 3072
+                return 49152
             if time_limit >= 5.0:
-                return 2048
-            if time_limit >= 2.0:
-                return 1024
-            return 512
-        if time_limit >= 10.0:
-            return 512
-        if time_limit >= 5.0:
-            return 384
-        if time_limit >= 2.0:
-            return 256
-        return 128
+                return 32768
+            return 16384
+        return 1536 if time_limit >= 10.0 else 1024
 
     def _run_cpp_search_session(self, aB, oB, mvs, start_dp, is_exact, rms, root_policy_vector, use_ab, use_mcts_enabled, time_limit, search_profile, current_game_id, is_resumed):
         if cpp_engine is None or not hasattr(cpp_engine, "SearchSession"):

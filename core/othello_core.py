@@ -25,7 +25,7 @@ if cpp_engine is not None:
 else:
     print("C++ engine: othello_engine unavailable. Python fallback will be used.", flush=True)
 
-            
+# ONNX推論エンジン
 try:
     from .onnx_inference import ONNXInference, create_onnx_model_from_pytorch
     ONNX_AVAILABLE = True
@@ -34,9 +34,10 @@ except ImportError:
     ONNX_AVAILABLE = False
     print("ONNX inference engine unavailable.", flush=True)
 
+
 _NN_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 
-                          
+# PCスペックを自動検出して最適なスレッド数を設定
 import os
 import multiprocessing
 
@@ -44,15 +45,15 @@ def get_optimal_thread_count():
     """PCスペックに応じた最適なスレッド数を返す（Numba上限20を考慮）"""
     cpu_count = multiprocessing.cpu_count()
     
-                                                   
+    # Intel Core Ultra 7 265KFは24スレッドだが、Numbaの上限は20
     if cpu_count >= 24:
-        return 20            
+        return 20  # Numbaの上限
     elif cpu_count >= 16:
-        return 20            
+        return 20  # Numbaの上限
     elif cpu_count >= 8:
-        return min(20, cpu_count * 2)                   
+        return min(20, cpu_count * 2)  # 中性能CPU：20スレッドまで
     else:
-        return min(16, cpu_count * 2)                   
+        return min(16, cpu_count * 2)  # 低性能CPU：16スレッドまで
 
 optimal_threads = get_optimal_thread_count()
 set_num_threads(optimal_threads)
@@ -69,7 +70,7 @@ ONNX_MODEL_PATH = os.path.join(BASE_DIR, "data", "model_best.onnx")
 DEVICE_STR = "cuda" if torch.cuda.is_available() else "cpu"
 DEVICE = torch.device(DEVICE_STR)
 
-            
+# ONNX推論エンジン
 _onnx_inference_engine = None
 _use_onnx = False
 
@@ -83,12 +84,12 @@ def initialize_onnx_engine(force_pytorch: bool = False):
         return
     
     try:
-                            
+        # ONNXモデルが存在しない場合は作成
         if not os.path.exists(ONNX_MODEL_PATH) and os.path.exists(BEST_MODEL_PATH):
             print(f"Converting PyTorch model to ONNX: {BEST_MODEL_PATH} -> {ONNX_MODEL_PATH}")
             create_onnx_model_from_pytorch(BEST_MODEL_PATH, ONNX_MODEL_PATH)
         
-                        
+        # ONNX推論エンジンを初期化
         if os.path.exists(ONNX_MODEL_PATH):
             _onnx_inference_engine = ONNXInference(ONNX_MODEL_PATH, use_gpu=(DEVICE_STR == "cuda"))
             _use_onnx = True
@@ -109,34 +110,29 @@ def is_using_onnx():
     """ONNXを使用しているか確認"""
     return _use_onnx
 
-def get_runtime_device_str():
-    if _use_onnx and _onnx_inference_engine is not None:
-        return _onnx_inference_engine.get_runtime_device()
-    return DEVICE_STR
-
 def print_system_info():
     """システム情報を表示"""
     print("=" * 60)
     print("SYSTEM INFORMATION")
     print("=" * 60)
     
-          
+    # OS情報
     print(f"OS: {platform.system()} {platform.release()}")
     print(f"Python: {platform.python_version()}")
     print(f"Architecture: {platform.machine()}")
     
-           
+    # CPU情報
     cpu_count = multiprocessing.cpu_count()
     cpu_freq = psutil.cpu_freq()
     
-                   
+    # より詳細なCPU情報を取得
     try:
         import wmi
         c = wmi.WMI()
         cpu_info = c.Win32_Processor()[0]
         cpu_name = cpu_info.Name.strip()
     except:
-                                 
+        # WMIが使えない場合はpsutilの情報を使用
         cpu_name = platform.processor() or "Unknown CPU"
         if "Family" in cpu_name and "Model" in cpu_name:
             cpu_name = "Unknown CPU (see system properties)"
@@ -147,14 +143,14 @@ def print_system_info():
     print(f"  Frequency: {cpu_freq.current:.0f} MHz" if cpu_freq else "  Frequency: Unknown")
     print(f"  Usage: {psutil.cpu_percent()}%")
     
-           
+    # メモリ情報
     memory = psutil.virtual_memory()
     print(f"\nMemory:")
     print(f"  Total: {memory.total / (1024**3):.1f} GB")
     print(f"  Available: {memory.available / (1024**3):.1f} GB")
     print(f"  Usage: {memory.percent}%")
     
-           
+    # GPU情報
     print(f"\nGPU:")
     if torch.cuda.is_available():
         gpu_count = torch.cuda.device_count()
@@ -173,7 +169,7 @@ def print_system_info():
     else:
         print("  No CUDA GPU available")
     
-              
+    # 推論エンジン情報
     print(f"\nInference Engine:")
     if ONNX_AVAILABLE and _onnx_inference_engine is not None:
         info = _onnx_inference_engine.get_model_info()
@@ -194,7 +190,7 @@ _FULL_MASK = np.uint64(0xFFFFFFFFFFFFFFFF)
 _NOT_A_FILE = np.uint64(0xFEFEFEFEFEFEFEFE)
 _NOT_H_FILE = np.uint64(0x7F7F7F7F7F7F7F7F)
 GENE_LEN = 243
-TT_SIZE = int(2**23)
+TT_SIZE = int(2**20)
 
 MASK_CORNER = np.uint64(0x8100000000000081)
 MASK_X = np.uint64(0x0042000000004200)
@@ -236,15 +232,15 @@ inital_weights = make_board_perfect_seed()
 
 def calculate_win_rate(ev, ie=False):
     if ie: 
-                                  
+        # exact solveでも控えめな勝率計算にする
         if ev > 1000:
-            return 95.0 + min(5.0, (ev - 1000) / 1000.0)            
+            return 95.0 + min(5.0, (ev - 1000) / 1000.0)  # 最大100%まで
         elif ev > 0:
-            return 50.0 + min(45.0, ev / 22.22)               
+            return 50.0 + min(45.0, ev / 22.22)  # ev=1000で95%
         elif ev < -1000:
-            return 5.0 - min(5.0, (-ev - 1000) / 1000.0)          
+            return 5.0 - min(5.0, (-ev - 1000) / 1000.0)  # 最小0%まで
         else:
-            return 50.0 + max(-45.0, ev / 22.22)               
+            return 50.0 + max(-45.0, ev / 22.22)  # ev=-1000で5%
     return 100.0 / (1.0 + math.exp(-max(-4000.0, min(4000.0, ev)) / 400.0))
 
 def compute_blend_weights(
@@ -617,9 +613,17 @@ def alphabeta(P, O, mvs, depth, alpha, beta, passed, is_exact, W, order_map, tk_
         if is_exact: return exact_eval(P, O), 1
         return evaluate_board_full(P, O, mvs, W), 1
 
+    # Razoring: 浅いノードで明らかに悪い評価値の場合、フルミニマックスをスキップ
+    if depth == np.int64(1) and not is_exact:
+        static_eval = evaluate_board_full(P, O, mvs, W)
+        razor_margin = np.float64(150.0)
+        if static_eval + razor_margin < alpha:
+            return static_eval, 1
+
     count = count_bits(valid)
     moves = np.zeros(count, dtype=np.uint64)
     scores = np.zeros(count, dtype=np.float64)
+    sq_indices = np.zeros(count, dtype=np.int64)
     
     v_temp = valid
     idx = 0
@@ -628,21 +632,25 @@ def alphabeta(P, O, mvs, depth, alpha, beta, passed, is_exact, W, order_map, tk_
         v_temp ^= bit
         moves[idx] = bit
         sq_idx = count_bits(bit - np.uint64(1))
+        sq_indices[idx] = sq_idx
         scores[idx] = order_map[sq_idx]
         if sq_idx == tm:
-            scores[idx] += 1e9
+            scores[idx] += 1000.0
         idx += 1
         
-    for i in range(1, count):
+    for i in range(np.int64(1), count):
         key_m = moves[i]
         key_s = scores[i]
-        j = i - 1
+        key_sq = sq_indices[i]
+        j = i - np.int64(1)
         while j >= 0 and scores[j] < key_s:
             moves[j + 1] = moves[j]
             scores[j + 1] = scores[j]
+            sq_indices[j + 1] = sq_indices[j]
             j -= 1
         moves[j + 1] = key_m
         scores[j + 1] = key_s
+        sq_indices[j + 1] = key_sq
 
     max_val = -1e18
     bm = -1
@@ -651,22 +659,36 @@ def alphabeta(P, O, mvs, depth, alpha, beta, passed, is_exact, W, order_map, tk_
     for i in range(count):
         if stop_flag[0]: break
         bit = moves[i]
-        sq_idx = count_bits(bit - np.uint64(1))
+        sq_idx = sq_indices[i]
         f = get_flip(P, O, sq_idx)
         
         nP = (P | bit | f) & _FULL_MASK
         nO = (O ^ f) & _FULL_MASK
 
+        # Late Move Reduction: 3番目以降の移動で、depth が十分にある場合は浅く調査
+        reduced_depth = depth - np.int64(1)
+        if i >= np.int64(3) and depth >= np.int64(3) and not is_exact:
+            # より遅い移動は浅く調査
+            lmr_reduction = np.int64(1) + (i - np.int64(3)) // np.int64(4)
+            reduced_depth = depth - lmr_reduction - np.int64(1)
+            if reduced_depth < np.int64(1):
+                reduced_depth = np.int64(1)
+        
         if i == 0:
             val, n = alphabeta(nO, nP, mvs + 1, depth - 1, -beta, -alpha, False, is_exact, W, order_map, tk_arr, ti_arr, stop_flag)
             val = -val
             nodes += n
         else:
-            val, n = alphabeta(nO, nP, mvs + 1, depth - 1, -alpha - 1.0, -alpha, False, is_exact, W, order_map, tk_arr, ti_arr, stop_flag)
+            val, n = alphabeta(nO, nP, mvs + 1, reduced_depth, -alpha - 1.0, -alpha, False, is_exact, W, order_map, tk_arr, ti_arr, stop_flag)
             val = -val
             nodes += n
-            if val > alpha and val < beta:
-                val2, n2 = alphabeta(nO, nP, mvs + 1, depth - 1, -beta, -val, False, is_exact, W, order_map, tk_arr, ti_arr, stop_flag)
+            # LMRで浅く調査した結果が改善した場合、フルウィンドウで再調査
+            if reduced_depth < depth - 1 and val > alpha and val < beta:
+                val, n = alphabeta(nO, nP, mvs + 1, depth - 1, -beta, -alpha, False, is_exact, W, order_map, tk_arr, ti_arr, stop_flag)
+                val = -val
+                nodes += n
+            elif val > alpha and val < beta:
+                val2, n2 = alphabeta(nO, nP, mvs + 1, depth - 1, -val, -alpha, False, is_exact, W, order_map, tk_arr, ti_arr, stop_flag)
                 val = -val2
                 nodes += n2
         
@@ -739,11 +761,11 @@ def _warmup_numba():
     ti_arr = np.zeros((TT_SIZE * 2, 4), dtype=np.float64)
     sf_arr = np.zeros(1, dtype=np.uint8)
     
-                
-                                                                                                              
-                                                                                                              
-                                
-                          
+    # テストコードを無効化
+    # search_root_parallel(P, O, np.int64(4), 1, False, ordered_indices, W, order_map, tk_arr, ti_arr, sf_arr)
+    # search_root_parallel(P, O, np.int64(60), 1, True, ordered_indices, W, order_map, tk_arr, ti_arr, sf_arr)
+    # get_rotated_bitboard(P, 1)
+    # unrotate_move(19, 1)
 
 def ensure_numba_warmup():
     global _NUMBA_WARMED_UP
@@ -782,29 +804,32 @@ def board_to_tensor_batch(states):
     return states_to_tensor_numba(P_arr, O_arr, turn_arr)
 
 def nn_infer_batch(model, tensor_batch):
-    """バッチ推論を実行（実行時はONNX優先）"""
+    """バッチ推論を実行（ONNX/PyTorch自動選択）"""
     if _use_onnx and _onnx_inference_engine is not None:
-        if isinstance(tensor_batch, np.ndarray):
-            input_batch = tensor_batch
-        else:
-            input_batch = tensor_batch.detach().cpu().numpy()
-        return _onnx_inference_engine.infer_batch(input_batch)
-
-    if model is None:
-        raise RuntimeError("ONNX runtime is not initialized and no PyTorch model is available")
-
+        # ONNX推論を使用
+        try:
+            return _onnx_inference_engine.infer_batch(tensor_batch.cpu().numpy())
+        except Exception as e:
+            print(f"ONNX inference failed: {e}, falling back to PyTorch", flush=True)
+            # フォールバックしてPyTorchを使用
+    
+    # PyTorch推論
     try:
         with torch.inference_mode():
             if DEVICE_STR == "cuda":
                 with torch.amp.autocast('cuda', dtype=torch.float16):
+                    # Clear CUDA cache before inference to prevent memory buildup
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
                     p_b, v_b = model(tensor_batch)
+                    # Synchronize CUDA operations
                     torch.cuda.synchronize()
             else:
                 p_b, v_b = model(tensor_batch)
         return torch.softmax(p_b, dim=1).float().cpu().numpy(), v_b.float().cpu().numpy()
     except RuntimeError as e:
         if "out of memory" in str(e).lower():
-                                             
+            # Clear GPU memory and retry once
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()
@@ -821,13 +846,12 @@ def nn_infer_batch(model, tensor_batch):
 
 def make_input_tensor(states):
     tensors = board_to_tensor_batch(states)
-    if _use_onnx and _onnx_inference_engine is not None:
-        return tensors
     cpu_tensor = torch.from_numpy(tensors)
     if DEVICE_STR == "cuda":
         cpu_tensor = cpu_tensor.pin_memory()
         return cpu_tensor.to(device=DEVICE, dtype=torch.float32, non_blocking=True)
     return cpu_tensor.to(device=DEVICE, dtype=torch.float32)
+
 
 class ResidualBlock(nn.Module):
     def __init__(self, channels):
@@ -870,10 +894,10 @@ class OthelloNet(nn.Module):
         return p, v
 
 def get_nn_activation_snapshot(model, P, O, turn, top_k=6):
-    if model is None or _use_onnx or not hasattr(model, "eval"):
+    if model is None:
         return None
     model.eval()
-    tensor_batch = torch.from_numpy(board_to_tensor_batch([(int(P), int(O), int(turn))])).to(device=DEVICE, dtype=torch.float32)
+    tensor_batch = make_input_tensor([(int(P), int(O), int(turn))])
     with torch.inference_mode():
         x = torch.relu(model.bn(model.start_conv(tensor_batch)))
         for block in model.res_blocks:
@@ -908,8 +932,9 @@ def build_valid_mask(valid):
         mask[a] = 1.0
     return mask
 
+
 class GPUMCTS:
-    def __init__(self, c_puct=2.0, virtual_loss=1.0):
+    def __init__(self, c_puct=2.0, virtual_loss=1.0, max_nodes=100000):
         self.W_val = {}
         self.N = {}
         self.Ns = {}
@@ -918,6 +943,30 @@ class GPUMCTS:
         self.valid_masks = {}
         self.c_puct = c_puct
         self.virtual_loss = virtual_loss
+        self.max_nodes = max_nodes
+        self.node_count = 0
+    
+    def clear_old_nodes(self, target_size=50000):
+        """メモリが満杯になったら古いノードを削除"""
+        if len(self.visited) > self.max_nodes:
+            nodes_to_keep = list(self.visited)[-target_size:]
+            keep_set = set(nodes_to_keep)
+            
+            keys_to_del = [k for k in self.W_val.keys() if k[0] not in keep_set]
+            for k in keys_to_del:
+                del self.W_val[k]
+                if k in self.N:
+                    del self.N[k]
+            
+            keys_to_del = [k for k in self.Ns.keys() if k not in keep_set]
+            for k in keys_to_del:
+                del self.Ns[k]
+                if k in self.P_probs:
+                    del self.P_probs[k]
+                if k in self.valid_masks:
+                    del self.valid_masks[k]
+            
+            self.visited = keep_set
 
     def initialize_root(self, state, policy_logits, valid_mask, add_noise=False):
         priors = policy_logits * valid_mask
@@ -1016,6 +1065,12 @@ class GPUMCTS:
 
     def expand_leaf(self, leaf, path, policy_logits, value, valid_mask):
         self.visited.add(leaf)
+        self.node_count += 1
+        
+        # メモリ上限チェック：定期的に古いノードを削除
+        if self.node_count % 500 == 0 and len(self.visited) > self.max_nodes:
+            self.clear_old_nodes()
+        
         self.valid_masks[leaf] = valid_mask
         priors = policy_logits * valid_mask
         sum_p = float(np.sum(priors))
@@ -1033,39 +1088,39 @@ class GPUMCTS:
                 continue
             self.W_val[(state, action)] = self.W_val.get((state, action), 0.0) + self.virtual_loss + v
 
+
 def _current_mcts_batch_size(batch_size, remain):
-    runtime_device = get_runtime_device_str()
-    if runtime_device == "cuda":
+    # GPUの場合は大きなバッチサイズ
+    if DEVICE_STR == "cuda":
         if remain >= 10.0:
-            return min(batch_size, 4096)
+            return min(batch_size, 32768)
         if remain >= 5.0:
-            return min(batch_size, 3072)
+            return min(batch_size, 24576)
         if remain >= 2.0:
-            return min(batch_size, 2048)
+            return min(batch_size, 16384)
         if remain >= 1.0:
-            return min(batch_size, 1024)
+            return min(batch_size, 8192)
         if remain >= 0.4:
-            return min(batch_size, 512)
-        return min(batch_size, 256)
+            return min(batch_size, 4096)
+        return min(batch_size, 2048)
     
+    # CPUの場合は中程度のバッチサイズで速度とメモリのバランスを取る
     if remain >= 5.0:
-        return min(batch_size, 1024)
+        return min(batch_size, 2048)  # 時間がある場合は少し大きめ
     if remain >= 2.0:
-        return min(batch_size, 512)
+        return min(batch_size, 1024)  # 標準的なサイズ
     if remain >= 1.0:
-        return min(batch_size, 256)
+        return min(batch_size, 512)   # 中程度
     if remain >= 0.3:
-        return min(batch_size, 128)
-    return min(batch_size, 64)
+        return min(batch_size, 256)   # 小さめ
+    return min(batch_size, 128)       # 最小サイズ
+
 
 def get_mcts_win_rates_time_batched(model, P, O, turn, time_limit, batch_size, sf_arr, add_root_noise=False):
-    effective_time_limit = float(time_limit)
-    if get_runtime_device_str() != "cuda":
-        effective_time_limit *= 0.62
-        effective_time_limit = max(0.15, effective_time_limit)
+    model.eval()
     state = (int(P), int(O), turn)
     start_t = time.perf_counter()
-    deadline = start_t + effective_time_limit
+    deadline = start_t + time_limit
     simulation_count = 0
     nn_batch_count = 0
     nn_leaf_count = 0
@@ -1089,7 +1144,7 @@ def get_mcts_win_rates_time_batched(model, P, O, turn, time_limit, batch_size, s
             [],
             False,
             True,
-            float(effective_time_limit),
+            float(time_limit),
             int(batch_size),
             0.0,
             0,
@@ -1187,3 +1242,4 @@ def get_mcts_win_rates_time_batched(model, P, O, turn, time_limit, batch_size, s
 
     best_wr = move_win_rates.get(best_a, 50.0) if best_a != -1 else 50.0
     return move_win_rates, best_wr, simulation_count, nn_batch_count, nn_leaf_count, root_visits
+

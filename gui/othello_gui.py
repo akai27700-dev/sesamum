@@ -11,7 +11,7 @@ from tkinter import colorchooser, messagebox, simpledialog
 import numpy as np
 import torch
 
-                                          
+# Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import core.othello_core as core
@@ -24,7 +24,6 @@ BLEND_CALIBRATION_LOG_PATH = os.path.join(BASE_DIR, "data", "blend_calibration_s
 DEVICE = core.DEVICE
 DEVICE_STR = core.DEVICE_STR
 GENE_LEN = core.GENE_LEN
-ONNX_MODEL_PATH = core.ONNX_MODEL_PATH
 TT_SIZE = core.TT_SIZE
 USE_WEIGHT = core.USE_WEIGHT
 WEIGHTS_PATH = core.WEIGHTS_PATH
@@ -47,15 +46,12 @@ make_input_tensor = core.make_input_tensor
 nn_infer_batch = core.nn_infer_batch
 neighbor_union = core.neighbor_union
 OthelloNet = core.OthelloNet
-initialize_onnx_engine = core.initialize_onnx_engine
-get_inference_engine = core.get_inference_engine
-get_runtime_device_str = core.get_runtime_device_str
-is_using_onnx = core.is_using_onnx
 search_root_parallel = core.search_root_parallel
 compute_strict_stable = core.compute_strict_stable
 unrotate_move = core.unrotate_move
 zobrist_hash = core.zobrist_hash
 
+# Egaroucid openbook constants
 _EGAROUCID_BOOK_PATH = os.path.join(BASE_DIR, "data", "book.egbk3")
 _EGAROUCID_CACHE_PATH = os.path.join(BASE_DIR, "data", "opening_book_egbk3_cache.npz")
 _EGAROUCID_RECORD_DTYPE = np.dtype(
@@ -71,18 +67,28 @@ _EGAROUCID_RECORD_DTYPE = np.dtype(
     ]
 )
 _ROTATE_MOVE_TABLE = [[0] * 64 for _ in range(8)]
-for _op in range(8):
-    for _rot_idx in range(64):
-        _ROTATE_MOVE_TABLE[_op][int(unrotate_move(_rot_idx, _op))] = _rot_idx
-del _op, _rot_idx
+
+
+def _build_rotate_move_table():
+    """Build the rotation move lookup table"""
+    for _op in range(8):
+        for _rot_idx in range(64):
+            _ROTATE_MOVE_TABLE[_op][int(unrotate_move(_rot_idx, _op))] = _rot_idx
+
+
+_build_rotate_move_table()
+
 
 def rotate_move(move_idx, op):
+    """Rotate a move index by operation"""
     move = int(move_idx)
     if move < 0 or move > 63:
         return move
     return int(_ROTATE_MOVE_TABLE[int(op)][move])
 
+
 def _legal_moves_mask_raw(player_board, opp_board):
+    """Get legal moves mask using C++ engine or Numba fallback"""
     if cpp_engine is not None:
         try:
             return int(cpp_engine.get_legal_moves(int(player_board), int(opp_board)))
@@ -90,7 +96,9 @@ def _legal_moves_mask_raw(player_board, opp_board):
             pass
     return int(get_legal_moves(np.uint64(player_board), np.uint64(opp_board)))
 
+
 def _apply_move_pair_raw(player_board, opp_board, move_idx):
+    """Apply a move and return both boards"""
     if cpp_engine is not None:
         try:
             next_player, next_opp = cpp_engine.apply_move(int(player_board), int(opp_board), int(move_idx))
@@ -105,7 +113,10 @@ def _apply_move_pair_raw(player_board, opp_board, move_idx):
     next_opp = (opp_board ^ flip) & _FULL_MASK
     return int(next_player), int(next_opp)
 
+
 class EgaroucidOpeningBook:
+    """Egaroucid .egbk3 opening book loader with caching"""
+    
     def __init__(self, book_path, cache_path=None):
         self.book_path = os.path.abspath(book_path)
         self.cache_path = cache_path or _EGAROUCID_CACHE_PATH
@@ -125,29 +136,38 @@ class EgaroucidOpeningBook:
         return self.state_count > 0
 
     def _get_cache_meta(self):
-        stat = os.stat(self.book_path)
-        return np.array([1, int(stat.st_mtime_ns), int(stat.st_size)], dtype=np.int64)
+        """Get metadata for cache validation"""
+        if os.path.exists(self.book_path):
+            stat = os.stat(self.book_path)
+            return np.array([1, int(stat.st_mtime_ns), int(stat.st_size)], dtype=np.int64)
+        # egbk3 ファイルがない場合は、キャッシュのメタデータをスキップ検証
+        return None
 
     def _load_cache(self):
+        """Load from cache file if valid"""
         if not self.cache_path or not os.path.exists(self.cache_path):
             return False
         try:
             with np.load(self.cache_path, allow_pickle=False) as data:
                 meta = data["meta"]
-                if meta.shape != (3,) or not np.array_equal(meta.astype(np.int64), self._get_cache_meta()):
+                cache_meta = self._get_cache_meta()
+                # ソースファイルが存在しない場合（キャッシュのみ）はメタデータチェックをスキップ
+                if cache_meta is not None and (meta.shape != (3,) or not np.array_equal(meta.astype(np.int64), cache_meta)):
                     return False
                 self.keys_p = data["p"].astype(np.uint64, copy=False)
                 self.keys_o = data["o"].astype(np.uint64, copy=False)
                 self.values = data["value"].astype(np.int16, copy=False)
                 self.levels = data["level"].astype(np.int8, copy=False)
                 self.leaf_moves = data["leaf_move"].astype(np.int16, copy=False)
-        except Exception:
+        except Exception as e:
+            print(f"Cache load error: {e}")
             return False
         self.state_count = int(self.keys_p.size)
         self._move_cache.clear()
         return self.state_count > 0
 
     def _save_cache(self):
+        """Save cache to npz file"""
         if not self.cache_path or self.state_count <= 0:
             return
         try:
@@ -164,12 +184,14 @@ class EgaroucidOpeningBook:
             pass
 
     def _load(self):
+        """Load book from cache or egbk3 file"""
         if self._load_cache():
             return
         self._load_egbk3()
         self._save_cache()
 
     def _load_egbk3(self):
+        """Load Egaroucid .egbk3 book file"""
         with open(self.book_path, "rb") as f:
             header = f.read(14)
             if len(header) < 14:
@@ -182,6 +204,8 @@ class EgaroucidOpeningBook:
             records = np.fromfile(f, dtype=_EGAROUCID_RECORD_DTYPE, count=n_boards)
         if int(records.size) != n_boards:
             raise ValueError("Egaroucid book data is truncated")
+        
+        # Filter valid records
         valid_mask = (
             (records["value"] >= -64)
             & (records["value"] <= 64)
@@ -196,12 +220,16 @@ class EgaroucidOpeningBook:
             self.leaf_moves = np.full(0, -1, dtype=np.int16)
             self.state_count = 0
             return
+        
+        # Sort records
         order = np.lexsort((records["opponent"], records["player"]))
         keys_p = records["player"][order]
         keys_o = records["opponent"][order]
         values = records["value"][order].astype(np.int16, copy=False)
         levels = records["level"][order].astype(np.int8, copy=False)
         leaf_moves = records["leaf_move"][order].astype(np.int16, copy=False)
+        
+        # Deduplicate
         self.keys_p, self.keys_o, self.values, self.levels, self.leaf_moves = self._dedupe_sorted(
             keys_p, keys_o, values, levels, leaf_moves
         )
@@ -210,6 +238,7 @@ class EgaroucidOpeningBook:
 
     @staticmethod
     def _dedupe_sorted(keys_p, keys_o, values, levels, leaf_moves):
+        """Remove duplicate records, keeping best level"""
         n = int(keys_p.size)
         keep = np.empty(n, dtype=np.int64)
         write = 0
@@ -230,6 +259,7 @@ class EgaroucidOpeningBook:
         return keys_p[keep], keys_o[keep], values[keep], levels[keep], leaf_moves[keep]
 
     def _find_index_exact(self, player_board, opp_board):
+        """Binary search for exact board state"""
         if self.state_count <= 0:
             return -1
         player_board = np.uint64(player_board)
@@ -245,6 +275,7 @@ class EgaroucidOpeningBook:
         return -1
 
     def _lookup_value_rotated(self, player_board, opp_board):
+        """Look up board value considering rotations"""
         for op in range(8):
             rotated_player = int(get_rotated_bitboard(np.uint64(player_board), op))
             rotated_opp = int(get_rotated_bitboard(np.uint64(opp_board), op))
@@ -254,6 +285,7 @@ class EgaroucidOpeningBook:
         return None
 
     def _score_child(self, player_board, opp_board, move_idx):
+        """Score child node after move"""
         next_player, next_opp = _apply_move_pair_raw(player_board, opp_board, move_idx)
         child_player = next_opp
         child_opp = next_player
@@ -276,10 +308,12 @@ class EgaroucidOpeningBook:
         return -int(child_value)
 
     def _resolve_rotated_state(self, player_board, opp_board):
+        """Resolve best moves for rotated state"""
         cache_key = (int(player_board), int(opp_board))
         cached = self._move_cache.get(cache_key)
         if cached is not None:
             return cached
+        
         legal_mask = _legal_moves_mask_raw(player_board, opp_board)
         candidates = []
         remaining = legal_mask
@@ -289,27 +323,38 @@ class EgaroucidOpeningBook:
             score = self._score_child(player_board, opp_board, move_idx)
             if score is not None:
                 candidates.append((int(move_idx), int(score)))
+        
         if not candidates:
             idx = self._find_index_exact(player_board, opp_board)
             if idx >= 0:
                 leaf_move = int(self.leaf_moves[idx])
                 if 0 <= leaf_move < 64 and ((legal_mask >> leaf_move) & 1):
                     candidates.append((leaf_move, int(self.values[idx])))
+        
         self._move_cache[cache_key] = candidates
         return candidates
 
     def get_prior_info(self, player_board, opp_board, legal_moves):
+        """Get prior move information for current position"""
         legal_set = {int(move) for move in legal_moves}
         if self.state_count <= 0 or not legal_set:
             return {}, None, False
+        
+        found_state = False
+        best_prior_map = {}
+        best_primary_move = None
+        
         for op in range(8):
             rotated_player = int(get_rotated_bitboard(np.uint64(player_board), op))
             rotated_opp = int(get_rotated_bitboard(np.uint64(opp_board), op))
             if self._find_index_exact(rotated_player, rotated_opp) < 0:
                 continue
+            
+            found_state = True
             candidates = self._resolve_rotated_state(rotated_player, rotated_opp)
             if not candidates:
-                return {}, None, True
+                continue
+            
             best_score = max(score for _, score in candidates)
             best_moves = [move_idx for move_idx, score in candidates if score == best_score]
             prior_map = {}
@@ -317,14 +362,26 @@ class EgaroucidOpeningBook:
                 move = int(unrotate_move(int(move_idx), op))
                 if move in legal_set:
                     prior_map[move] = 1.0
+            
             if not prior_map:
-                return {}, None, True
+                continue
+            
             norm = 1.0 / float(len(prior_map))
             for move in list(prior_map.keys()):
                 prior_map[move] = norm
             primary_move = max(prior_map.items(), key=lambda item: item[1])[0]
-            return prior_map, primary_move, True
-        return {}, None, False
+            
+            if len(prior_map) > len(best_prior_map):
+                best_prior_map = prior_map
+                best_primary_move = primary_move
+            elif len(prior_map) == len(best_prior_map) and best_primary_move is None:
+                best_prior_map = prior_map
+                best_primary_move = primary_move
+        
+        if best_prior_map:
+            return best_prior_map, best_primary_move, True
+        return {}, None, found_state
+
 
 class UltimateOthello(OthelloSearchMixin):
     def __init__(self, r):
@@ -371,12 +428,15 @@ class UltimateOthello(OthelloSearchMixin):
         self.use_cpp_engine = cpp_engine is not None
         self.use_tt_resume = True
         self.opening_book_rate = 0.5
-        self.book_source = "egaroucid"
         self.time_limit_sec = 10.0
-        self.auto_time = True           
+        self.auto_time = True  # 常に自動モード
         self.auto_mode_type = "normal"
         self.readout_empty_threshold = 22
         self.exact_auto = True
+        self.mcts_batch_size = 256  # デフォルトのMCTSバッチサイズ
+        self.ab_time_limit_ms = 5000  # デフォルトのAB探索時間制限(ms)
+        self.stop_flag = np.zeros(1, dtype=np.uint8)  # 停止フラグ
+        self.nn_infer_batch = []  # NN推論バッチ
 
         self.rt.update_idletasks()
         settings_dialog = StartupSettingsDialog(self.rt, cpp_engine is not None)
@@ -387,9 +447,8 @@ class UltimateOthello(OthelloSearchMixin):
             "mcts_influence": 50,
             "use_tt": True,
             "book_usage": 50,
-            "book_source": "egaroucid",
             "time_limit": 10.0,
-            "auto_time": True,           
+            "auto_time": True,  # 常に自動モード
             "auto_mode_type": "normal",
             "player_color": "black",
             "use_pondering": True,
@@ -397,24 +456,23 @@ class UltimateOthello(OthelloSearchMixin):
         self.use_cpp_engine = settings["use_cpp"]
         self.use_nn = settings["use_nn"]
         self.use_mcts.set(settings["use_mcts"])
-        self.auto_time = settings.get("auto_time", True)              
+        self.auto_time = settings.get("auto_time", True)  # デフォルトでTrue
         
         if self.auto_time:
-                                                                
-            self.mcts_influence_pct = 40                          
+            # Start with reasonable base influence for auto mode
+            self.mcts_influence_pct = 40  # Base 40% for auto mode
         else:
             self.mcts_influence_pct = int(settings.get("mcts_influence", 50))
             
         self.opening_book_rate = int(settings.get("book_usage", 50)) / 100.0
-        self.book_source = str(settings.get("book_source", "egaroucid")).lower()
         self.use_mcts_enabled = bool(settings["use_mcts"]) and (self.auto_time or self.mcts_influence_pct > 0)
         self.use_mcts_only = self.use_mcts_enabled and not self.auto_time and self.mcts_influence_pct >= 100
         self.use_tt_resume = settings["use_tt"]
         self.auto_time = settings.get("auto_time", False)
-        self.time_limit_sec = settings.get("time_limit", 10.0)                        
+        self.time_limit_sec = settings.get("time_limit", 10.0)  # auto_timeでもユーザー設定を尊重
         self.auto_mode_type = "normal"
         self.use_pondering = settings.get("use_pondering", True)
-        self.board_only_mode = False               
+        self.board_only_mode = False  # デフォルトは通常モード
         self.readout_empty_threshold = int(settings.get("readout_empty", 22))
         self.exact_auto = True
         self.ui_scale = 1.0
@@ -451,28 +509,25 @@ class UltimateOthello(OthelloSearchMixin):
         if self.use_nn:
             self.mark_modules_active("NN-IN", "TRUNK", "POLICY", "VALUE")
             self.mark_connections_active(("BOARD", "NN-IN"), ("NN-IN", "TRUNK"), ("TRUNK", "POLICY"), ("TRUNK", "VALUE"))
+            self.nn_model = OthelloNet().to(DEVICE)
+            self.log(f"{BEST_MODEL_PATH} | device={DEVICE_STR}")
+            if os.path.exists(BEST_MODEL_PATH):
+                self.nn_model.load_state_dict(torch.load(BEST_MODEL_PATH, map_location=DEVICE, weights_only=True))
+                self.log("ニューラルネットワークモデルを読み込みました。")
+            else:
+                self.log("ニューラルネットワークモデルが見つからないため、未学習初期値を使用します。")
+            self.nn_model.eval()
             try:
-                self.log(f"{ONNX_MODEL_PATH} | requested_device={DEVICE_STR}")
-                initialize_onnx_engine()
-                self.nn_model = get_inference_engine()
-                runtime_device = get_runtime_device_str()
-                if self.nn_model is None or not is_using_onnx():
-                    raise RuntimeError("ONNX runtime could not be initialized")
-                self.log(f"ONNXモデルを読み込みました。runtime={runtime_device}")
-                try:
-                    d_st = np.zeros((1, 3, 8, 8), dtype=np.float32)
-                    _ = nn_infer_batch(self.nn_model, d_st)
-                    self.log("ONNX推論のウォームアップが完了しました。")
-                except Exception:
-                    self.log("ONNX推論のウォームアップをスキップしました。")
-            except Exception as exc:
-                self.nn_model = None
-                self.use_nn = False
-                self.use_mcts.set(False)
-                self.use_mcts_enabled = False
-                self.use_mcts_only = False
-                self.mcts_influence_pct = 0
-                self.log(f"ONNXモデルの初期化に失敗したため、NN/MCTSを無効化します。 ({exc})")
+                d_st = torch.zeros((1, 3, 8, 8), dtype=torch.float32, device=DEVICE)
+                with torch.inference_mode():
+                    if DEVICE_STR == "cuda":
+                        with torch.amp.autocast('cuda', dtype=torch.float16):
+                            _ = self.nn_model(d_st)
+                    else:
+                        _ = self.nn_model(d_st)
+                self.log("ニューラルネットワークのウォームアップが完了しました。")
+            except Exception:
+                self.log("ニューラルネットワークのウォームアップをスキップしました。")
         else:
             self.use_mcts.set(False)
             self.use_mcts_enabled = False
@@ -480,56 +535,64 @@ class UltimateOthello(OthelloSearchMixin):
             self.mcts_influence_pct = 0
             self.log("ニューラルネットワークは無効です。")
 
-        self.opening_book = {}
-        egaroucid_book_path = os.environ.get("EGAROUCID_BOOK_PATH", _EGAROUCID_BOOK_PATH)
-        json_book_path = os.path.join(BASE_DIR, "data", "opening_book.json")
-        loaded_book = False
-        preferred_sources = ["egaroucid", "json"] if self.book_source == "egaroucid" else ["json", "egaroucid"]
-
-        for source in preferred_sources:
-            if source == "egaroucid":
-                if not (egaroucid_book_path and os.path.exists(egaroucid_book_path)):
-                    continue
-                self.log(f"Egaroucid book を読み込み中: {egaroucid_book_path}")
-                try:
-                    self.opening_book = EgaroucidOpeningBook(egaroucid_book_path)
-                    loaded_book = bool(self.opening_book)
-                    if loaded_book:
-                        self.book_source = "egaroucid"
-                        self.mark_modules_active("BOOK")
-                        self.mark_connections_active(("BOARD", "BOOK"))
-                        self.log(f"Egaroucid book を読み込みました。局面数: {len(self.opening_book)}")
-                        break
-                except Exception as exc:
-                    self.opening_book = {}
-                    self.log(f"Egaroucid book の読み込みに失敗しました。 ({exc})")
-            else:
-                if not os.path.exists(json_book_path):
-                    continue
-                self.log(f"定石データを読み込み中: {json_book_path}")
-                try:
-                    with open(json_book_path, "r") as f:
-                        self.opening_book = json.load(f)
-                    loaded_book = bool(self.opening_book)
-                    if loaded_book:
-                        self.book_source = "json"
-                        self.mark_modules_active("BOOK")
-                        self.mark_connections_active(("BOARD", "BOOK"))
-                        self.log(f"定石データを読み込みました。局面数: {len(self.opening_book)}")
-                        break
-                except Exception:
-                    self.opening_book = {}
-                    self.log("定石データの読み込みに失敗しました。")
-
-        if not loaded_book:
-            self.log("定石データが見つかりません。")
+        # Load Egaroucid openbook (npz cache prioritized)
+        self.opening_book = None
+        npz_path = _EGAROUCID_CACHE_PATH
+        egbk3_path = _EGAROUCID_BOOK_PATH
+        
+        # Priority: npz cache > egbk3 > skip
+        if os.path.exists(npz_path):
+            try:
+                self.log(f"npz キャッシュから定石を読み込み中: {npz_path}")
+                # Create EgaroucidOpeningBook and load directly from cache
+                self.opening_book = EgaroucidOpeningBook.__new__(EgaroucidOpeningBook)
+                self.opening_book.book_path = egbk3_path
+                self.opening_book.cache_path = npz_path
+                self.opening_book.keys_p = np.zeros(0, dtype=np.uint64)
+                self.opening_book.keys_o = np.zeros(0, dtype=np.uint64)
+                self.opening_book.values = np.zeros(0, dtype=np.int16)
+                self.opening_book.levels = np.zeros(0, dtype=np.int8)
+                self.opening_book.leaf_moves = np.full(0, -1, dtype=np.int16)
+                self.opening_book.state_count = 0
+                self.opening_book._move_cache = {}
+                
+                # Load from cache
+                if self.opening_book._load_cache():
+                    self.mark_modules_active("BOOK")
+                    self.mark_connections_active(("BOARD", "BOOK"))
+                    self.log(f"[OK] Egaroucid npz キャッシュ読み込み完了: 局面数 {len(self.opening_book)}")
+                else:
+                    self.log("[WARN] npz キャッシュが無効です。")
+                    self.opening_book = None
+            except Exception as e:
+                self.log(f"[ERROR] npz キャッシュの読み込み失敗: {e}")
+                self.opening_book = None
+        
+        # Fallback to egbk3
+        if self.opening_book is None and os.path.exists(egbk3_path):
+            try:
+                self.log(f"egbk3 ファイルから定石を読み込み中: {egbk3_path}")
+                self.opening_book = EgaroucidOpeningBook(egbk3_path)
+                if self.opening_book:
+                    self.mark_modules_active("BOOK")
+                    self.mark_connections_active(("BOARD", "BOOK"))
+                    self.log(f"[OK] Egaroucid egbk3 読み込み完了: 局面数 {len(self.opening_book)}")
+                else:
+                    self.log("[WARN] egbk3 ファイルが空です。")
+                    self.opening_book = None
+            except Exception as e:
+                self.log(f"[ERROR] egbk3 ファイルの読み込み失敗: {e}")
+                self.opening_book = None
+        
+        if self.opening_book is None:
+            self.log("[WARN] 定石データが利用できません。定石なしで動作します。")
 
         self.tk_arr = np.zeros(TT_SIZE * 2, dtype=np.uint64)
         self.ti_arr = np.zeros((TT_SIZE * 2, 4), dtype=np.float64)
         self.sf_arr = np.zeros(1, dtype=np.uint8)
-        time_str = f"max {self.time_limit_sec:.0f}s"             
+        time_str = f"max {self.time_limit_sec:.0f}s"  # 最大時間として表示
         mcts_influence_str = "auto%" if self.auto_time else f"{self.mcts_influence_pct}%"
-        self.log(f"探索設定: TT size={TT_SIZE * 2}, C++={'ON' if self.use_cpp_engine else 'OFF'}, NN={'ON' if self.use_nn else 'OFF'}, MCTS={'ON' if self.use_mcts_enabled else 'OFF'}, MCTS influence={mcts_influence_str}, book={self.book_source}:{int(self.opening_book_rate*100)}%, TT reuse={'ON' if self.use_tt_resume else 'OFF'}, time limit={time_str}, exact solve starts=always-auto, pondering={'ON' if self.use_pondering else 'OFF'}")
+        self.log(f"探索設定: TT size={TT_SIZE * 2}, C++={'ON' if self.use_cpp_engine else 'OFF'}, NN={'ON' if self.use_nn else 'OFF'}, MCTS={'ON' if self.use_mcts_enabled else 'OFF'}, MCTS influence={mcts_influence_str}, book={int(self.opening_book_rate*100)}%, TT reuse={'ON' if self.use_tt_resume else 'OFF'}, time limit={time_str}, exact solve starts=always-auto, pondering={'ON' if self.use_pondering else 'OFF'}")
 
         self.rt.title(f"GeNeLy")
         self.rt.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -550,14 +613,14 @@ class UltimateOthello(OthelloSearchMixin):
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         if self.board_only_mode:
-                                  
+            # 盤面のみ表示モード：盤面だけを中央に配置
             self.main_frame.grid_columnconfigure(0, weight=1)
             self.main_frame.grid_rowconfigure(0, weight=1)
             
             self.board_frame = tk.Frame(self.main_frame, bg="#eef2f7")
             self.board_frame.grid(row=0, column=0, sticky="nsew")
         else:
-                           
+            # 通常モード：3列レイアウト
             self.main_frame.grid_columnconfigure(0, weight=0)
             self.main_frame.grid_columnconfigure(1, weight=1)
             self.main_frame.grid_columnconfigure(2, weight=0)
@@ -576,7 +639,7 @@ class UltimateOthello(OthelloSearchMixin):
             self.log_host_frame = tk.Frame(self.main_frame, bg="#eef2f7")
             self.log_host_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 0))
 
-               
+        # 盤面の配置
         if self.board_only_mode:
             self.cv = tk.Canvas(self.board_frame, width=self.board_size, height=self.board_size, bg=self.bc)
             self.cv.pack(expand=True)
@@ -604,7 +667,7 @@ class UltimateOthello(OthelloSearchMixin):
         
         self.rt.after(16, self.process_ui_queue)
 
-                         
+        # ウィンドウサイズの最小値を調整
         if self.board_only_mode:
             self.rt.minsize(self.board_size + 40, self.board_size + 40)
         else:
@@ -623,31 +686,24 @@ class UltimateOthello(OthelloSearchMixin):
         self.drw()
         self.chk()
 
-    def get_exact_base_threshold(self, empty=None, legal_count=None, mvs=None, time_budget=None):
+    def get_exact_base_threshold(self):
         if not self.exact_auto:
             return int(self.readout_empty_threshold)
-        if time_budget is not None:
-            base_time = float(time_budget)
-        elif self.auto_time and empty is not None:
-            est_legal = int(legal_count) if legal_count is not None else 10
-            est_mvs = int(mvs) if mvs is not None else max(0, 60 - int(empty))
-            base_time = float(self.get_auto_time_limit(int(empty), est_legal, est_mvs))
-        else:
-            base_time = float(self.time_limit_sec)
+        base_time = self.time_limit_sec if not self.auto_time else 10.0
         if base_time <= 1.5:
-            return 30
+            return 25  # 20→25に引き上げ（5手遅く）
         if base_time <= 5.0:
-            return 32
-        return 34
+            return 27  # 22→27に引き上げ（5手遅く）
+        return 29  # 24→29に引き上げ（5手遅く）
 
     def get_auto_time_limit(self, empty, legal_count, mvs):
-                           
+        # 設定値に応じて動的に制限時間を調整
         if not self.auto_time:
             return self.time_limit_sec
         
-                 
+        # 基準時間を設定
         if self.time_limit_sec == 0.5:
-            return 0.5           
+            return 0.5  # 0.5秒は固定
         elif self.time_limit_sec == 1.0:
             base_time = 0.8
             max_time = 1.0
@@ -664,28 +720,28 @@ class UltimateOthello(OthelloSearchMixin):
             base_time = self.time_limit_sec * 0.7
             max_time = self.time_limit_sec
         
-                        
-                            
+        # 合法手の数に応じて時間を調整
+        # 合法手が多いほど長く、少ないほど短く
         if legal_count <= 4:
-            move_factor = 0.6                
+            move_factor = 0.6  # 合法手が少ない場合は短く
         elif legal_count <= 8:
             move_factor = 0.8
         elif legal_count <= 12:
-            move_factor = 1.0      
+            move_factor = 1.0  # 標準
         elif legal_count <= 16:
             move_factor = 1.2
         else:
-            move_factor = 1.4               
+            move_factor = 1.4  # 合法手が多い場合は長く
         
-                   
+        # ゲームフェーズ調整
         if empty >= 40:
-            phase_factor = 1.1           
+            phase_factor = 1.1  # 序盤は少し長め
         elif empty >= 20:
-            phase_factor = 1.0         
+            phase_factor = 1.0  # 中盤は標準
         else:
-            phase_factor = 0.8         
+            phase_factor = 0.8  # 終盤は短め
         
-                 
+        # 最終時間を計算
         final_time = base_time * move_factor * phase_factor
         return max(base_time * 0.5, min(max_time, final_time))
 
@@ -718,7 +774,7 @@ class UltimateOthello(OthelloSearchMixin):
             moves.append((m, v, wr))
             move_values[int(m)] = float(v)
             move_win_rates[int(m)] = float(wr)
-        moves.sort(key=lambda x: (x[1], x[2]), reverse=True)
+        moves.sort(key=lambda x: x[2], reverse=True)
         self.exact_cache[key] = {
             "moves": moves,
             "timestamp": time.time(),
@@ -754,73 +810,7 @@ class UltimateOthello(OthelloSearchMixin):
             regions += 1
         return regions, small_regions
 
-    def _extract_confidence_metrics(self, ab_result=None, mcts_result=None, root_visits=None):
-        ab_gap = 0.0
-        mcts_gap = 0.0
-        mcts_visit_share = 0.0
-
-        ab_moves = list(ab_result.get("moves", [])) if ab_result else []
-        ab_win_rates = list(ab_result.get("win_rates", [])) if ab_result else []
-        if len(ab_moves) >= 2 and len(ab_win_rates) >= 2:
-            ab_pairs = sorted(zip(ab_moves, ab_win_rates), key=lambda x: x[1], reverse=True)
-            ab_gap = float(ab_pairs[0][1]) - float(ab_pairs[1][1])
-
-        mcts_move_win_rates = dict(mcts_result.get("move_win_rates", {})) if mcts_result else {}
-        if len(mcts_move_win_rates) >= 2:
-            mcts_pairs = sorted(
-                (float(rate) for rate in mcts_move_win_rates.values()),
-                reverse=True,
-            )
-            mcts_gap = mcts_pairs[0] - mcts_pairs[1]
-
-        if root_visits:
-            total_visits = float(sum(max(0, int(v)) for v in root_visits.values()))
-            if total_visits > 0.0:
-                mcts_visit_share = float(max(root_visits.values())) / total_visits
-
-        return {
-            "ab_gap": max(0.0, float(ab_gap)),
-            "mcts_gap": max(0.0, float(mcts_gap)),
-            "mcts_visit_share": max(0.0, min(1.0, float(mcts_visit_share))),
-        }
-
-    def adjust_time_limit_for_decision(self, base_time_limit, empty, legal_count, ab_result=None, mcts_result=None):
-        metrics = self._extract_confidence_metrics(ab_result, mcts_result)
-        ab_gap = metrics["ab_gap"]
-        mcts_gap = metrics["mcts_gap"]
-
-        pressure = 0.0
-        if legal_count >= 2:
-            if ab_gap < 1.2:
-                pressure += 0.18
-            elif ab_gap < 2.5:
-                pressure += 0.10
-            elif ab_gap > 8.0:
-                pressure -= 0.08
-
-            if mcts_gap > 0.0:
-                if mcts_gap < 2.0:
-                    pressure += 0.12
-                elif mcts_gap < 4.0:
-                    pressure += 0.05
-                elif mcts_gap > 12.0:
-                    pressure -= 0.05
-
-        if legal_count >= 8:
-            pressure += 0.08
-        elif legal_count <= 2:
-            pressure -= 0.04
-
-        if empty <= 18:
-            pressure -= 0.06
-        elif empty >= 46 and legal_count >= 6:
-            pressure += 0.04
-
-        factor = max(0.88, min(1.28, 1.0 + pressure))
-        adjusted = base_time_limit * factor
-        return max(base_time_limit * 0.85, min(base_time_limit * 1.30, adjusted))
-
-    def get_search_time_profile(self, empty, legal_count, time_limit, is_exact, ponder_has_mcts, ab_gap=0.0, mcts_gap=0.0, mcts_visit_share=0.0):
+    def get_search_time_profile(self, empty, legal_count, time_limit, is_exact, ponder_has_mcts):
         if is_exact:
             return {
                 "use_mcts": False,
@@ -838,52 +828,29 @@ class UltimateOthello(OthelloSearchMixin):
         opening_phase = min(1.0, max(0.0, (float(empty) - 20.0) / 24.0))
         branch_factor = min(1.0, max(0.0, (float(legal_count) - 3.0) / 10.0))
         ponder_bonus = 0.08 if ponder_has_mcts else 0.0
-        runtime_device = get_runtime_device_str()
-        gpu_bonus = 0.06 if runtime_device == "cuda" else 0.0
-        decision_pressure = 0.0
-        if legal_count >= 2:
-            decision_pressure += max(0.0, (2.5 - min(2.5, float(ab_gap))) / 2.5) * 0.55
-            if mcts_gap > 0.0:
-                decision_pressure += max(0.0, (3.0 - min(3.0, float(mcts_gap))) / 3.0) * 0.35
-        decision_pressure = min(1.0, decision_pressure)
-
-        confidence_bias = 0.0
-        if mcts_gap >= ab_gap + 2.0:
-            confidence_bias += min(0.10, (mcts_gap - ab_gap) / 40.0)
-        elif ab_gap >= mcts_gap + 2.0:
-            confidence_bias -= min(0.10, (ab_gap - mcts_gap) / 40.0)
-        confidence_bias += max(-0.08, min(0.08, (mcts_visit_share - 0.5) * 0.25))
-
-        mcts_priority = min(1.0, max(0.0, 0.18 + 0.42 * opening_phase + 0.28 * branch_factor + ponder_bonus + gpu_bonus + confidence_bias))
+        gpu_bonus = 0.06 if DEVICE_STR == "cuda" else 0.0
+        mcts_priority = min(1.0, max(0.0, 0.18 + 0.42 * opening_phase + 0.28 * branch_factor + ponder_bonus + gpu_bonus))
         
-                                       
+        # αβの開始遅延を大幅に短縮してCPUを早く使えるようにする
         if time_limit <= 1.5:
-            ab_delay = time_limit * (0.01 + 0.05 * mcts_priority)                        
-            ab_budget_ratio = 0.60 - 0.08 * mcts_priority             
+            ab_delay = time_limit * (0.01 + 0.05 * mcts_priority)  # 0.05→0.01, 0.21→0.05
+            ab_budget_ratio = 0.60 - 0.08 * mcts_priority  # 0.44→0.60
         elif time_limit <= 5.0:
-            ab_delay = time_limit * (0.005 + 0.02 * mcts_priority)                         
-            ab_budget_ratio = 0.75 - 0.08 * mcts_priority             
+            ab_delay = time_limit * (0.005 + 0.02 * mcts_priority)  # 0.02→0.005, 0.08→0.02
+            ab_budget_ratio = 0.75 - 0.08 * mcts_priority  # 0.60→0.75
         else:
-            ab_delay = time_limit * (0.002 + 0.01 * mcts_priority)                         
-            ab_budget_ratio = 0.85 - 0.06 * mcts_priority             
+            ab_delay = time_limit * (0.002 + 0.01 * mcts_priority)  # 0.01→0.002, 0.05→0.01
+            ab_budget_ratio = 0.85 - 0.06 * mcts_priority  # 0.74→0.85
             
-                     
+        # 終盤はさらに遅延を短縮
         if empty <= 28:
-            ab_delay *= 0.3           
-            ab_budget_ratio = max(ab_budget_ratio, 0.75)             
+            ab_delay *= 0.3  # 0.5→0.3
+            ab_budget_ratio = max(ab_budget_ratio, 0.75)  # 0.68→0.75
         if empty <= 24:
-            ab_delay = 0.0        
-            ab_budget_ratio = max(ab_budget_ratio, 0.90)             
-
-        ab_delay *= max(0.45, 1.0 - 0.45 * decision_pressure)
-        ab_budget_ratio = min(0.96, ab_budget_ratio + 0.12 * decision_pressure)
-
-        if runtime_device != "cuda":
-            mcts_priority *= 0.82
-            ab_delay *= 0.45
-            ab_budget_ratio = min(0.98, max(ab_budget_ratio, 0.82))
-
-        ab_delay = max(0.0, min(time_limit * 0.30, ab_delay))             
+            ab_delay = 0.0  # 即時開始
+            ab_budget_ratio = max(ab_budget_ratio, 0.90)  # 0.82→0.90
+            
+        ab_delay = max(0.0, min(time_limit * 0.30, ab_delay))  # 0.60→0.30
         ab_budget = max(0.15, min(time_limit, time_limit * ab_budget_ratio))
         return {
             "use_mcts": True,
@@ -892,51 +859,47 @@ class UltimateOthello(OthelloSearchMixin):
             "mcts_priority": mcts_priority,
         }
 
-    def adjust_mcts_influence_auto(self, mcts_sim_count, empty, ab_gap=0.0, mcts_gap=0.0, mcts_visit_share=0.0):
+    def adjust_mcts_influence_auto(self, mcts_sim_count, empty):
         if self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'calculate_mcts_influence'):
             try:
                 is_auto = bool(self.auto_time)
                 influence_ratio = cpp_engine.calculate_mcts_influence(int(mcts_sim_count), int(empty), is_auto)
-                base_pct = int(influence_ratio * 100.0)
+                return int(influence_ratio * 100.0)
             except Exception as e:
                 print(f"MCTS influence calculation error: {e}")
-                base_pct = None
-        else:
-            base_pct = None
-
-        if base_pct is None:
-            if self.auto_time:
-                if empty <= 20:
-                    base_pct = min(90, 80)
-                elif empty <= 30:
-                    base_pct = min(90, 70)
-                elif empty <= 40:
-                    base_pct = min(90, 60)
-                else:
-                    base_pct = min(90, 50)
+                pass
+        
+        if self.auto_time:
+            if empty <= 20:
+                return min(90, 80)
+            elif empty <= 30:
+                return min(90, 70)
+            elif empty <= 40:
+                return min(90, 60)
             else:
-                base_pct = self.mcts_influence_pct
-
-        if mcts_gap >= ab_gap + 2.5:
-            base_pct += min(12, int((mcts_gap - ab_gap) * 1.5))
-        elif ab_gap >= mcts_gap + 2.5:
-            base_pct -= min(12, int((ab_gap - mcts_gap) * 1.5))
-
-        if mcts_visit_share >= 0.72:
-            base_pct += 6
-        elif mcts_visit_share <= 0.48 and ab_gap >= 2.0:
-            base_pct -= 5
-
-        return max(10, min(90, int(base_pct)))
+                return min(90, 50)
+        else:
+            return self.mcts_influence_pct
 
     def should_use_opening_book(self, mvs, empty, ab_result=None, mcts_result=None, return_details=False):
-        """動的定石使用判定 - AB/MCTSの偏りと一致度で調整"""
+        """動的定石使用判定 - AB/MCTSの一致度が高い場合だけ定石を使わない"""
         base_rate = float(self.opening_book_rate)
-        adjusted_rate = base_rate
+        if base_rate >= 0.999:
+            details = {"rate": 1.0, "reason": "forced 100%"}
+            return details if return_details else details["rate"]
+        
+        # デフォルトは定石を使う
+        use_book = True
         reasons = []
+        
         ab_best_move = None
+        ab_best_wr = None
+        ab_second_wr = None
         mcts_best_move = None
+        mcts_best_wr = None
+        mcts_second_wr = None
 
+        # AB評価を抽出
         ab_moves = list(ab_result.get("moves", [])) if ab_result else []
         ab_win_rates = list(ab_result.get("win_rates", [])) if ab_result else []
         if len(ab_moves) >= 2 and len(ab_win_rates) >= 2:
@@ -947,14 +910,8 @@ class UltimateOthello(OthelloSearchMixin):
             )
             ab_best_move, ab_best_wr = int(ab_pairs[0][0]), float(ab_pairs[0][1])
             ab_second_wr = float(ab_pairs[1][1])
-            ab_gap = ab_best_wr - ab_second_wr
-            if ab_gap >= 20.0 and ab_best_wr >= 70.0:
-                details = {"rate": 0.0, "reason": f"AB優勢 {ab_gap:.1f}pt"}
-                return details if return_details else details["rate"]
-            if ab_gap >= 12.0:
-                adjusted_rate = min(adjusted_rate, base_rate * 0.5)
-                reasons.append(f"AB優勢 {ab_gap:.1f}pt")
 
+        # MCTS評価を抽出
         mcts_move_win_rates = dict(mcts_result.get("move_win_rates", {})) if mcts_result else {}
         if len(mcts_move_win_rates) >= 2:
             mcts_pairs = sorted(
@@ -964,25 +921,29 @@ class UltimateOthello(OthelloSearchMixin):
             )
             mcts_best_move, mcts_best_wr = mcts_pairs[0]
             mcts_second_wr = float(mcts_pairs[1][1])
-            mcts_gap = mcts_best_wr - mcts_second_wr
-            if mcts_gap >= 18.0 and mcts_best_wr >= 65.0:
-                details = {"rate": 0.0, "reason": f"MCTS優勢 {mcts_gap:.1f}pt"}
-                return details if return_details else details["rate"]
-            if mcts_gap >= 10.0:
-                adjusted_rate = min(adjusted_rate, base_rate * 0.6)
-                reasons.append(f"MCTS優勢 {mcts_gap:.1f}pt")
 
+        # AB/MCTSの強い一致を検出 - 定石を使わない条件
         if ab_best_move is not None and mcts_best_move is not None and ab_best_move == mcts_best_move:
-            adjusted_rate = min(1.0, adjusted_rate + 0.10)
-            reasons.append("AB/MCTS一致")
+            ab_gap = ab_best_wr - ab_second_wr if ab_second_wr is not None else 0.0
+            mcts_gap = mcts_best_wr - mcts_second_wr if mcts_second_wr is not None else 0.0
+            
+            # 両方が強く同じ手を推奨している場合だけ定石を使わない
+            if ab_gap >= 8.0 and ab_best_wr >= 55.0 and mcts_gap >= 6.0 and mcts_best_wr >= 55.0:
+                use_book = False
+                reasons.append(f"AB/MCTS一致_強 (AB:{ab_gap:.1f}pt@{ab_best_wr:.0f}%, MCTS:{mcts_gap:.1f}pt@{mcts_best_wr:.0f}%)")
+            else:
+                reasons.append(f"AB/MCTS一致_弱 (AB:{ab_gap:.1f}pt@{ab_best_wr:.0f}%, MCTS:{mcts_gap:.1f}pt@{mcts_best_wr:.0f}%)")
+
+        adjusted_rate = 1.0 if use_book else 0.0
 
         details = {
             "rate": min(1.0, max(0.0, adjusted_rate)),
-            "reason": " / ".join(reasons) if reasons else "standard",
+            "reason": " / ".join(reasons) if reasons else "standard (AB/MCTS未分析又は不一致)",
         }
         return details if return_details else details["rate"]
 
     def get_book_prior_info(self, aB, oB, legal_moves, dynamic_book_rate):
+        """定石から事前確率情報を取得"""
         legal_set = {int(m) for m in legal_moves}
         prior_map = {}
         primary_move = None
@@ -994,6 +955,7 @@ class UltimateOthello(OthelloSearchMixin):
         if isinstance(self.opening_book, EgaroucidOpeningBook):
             return self.opening_book.get_prior_info(int(aB), int(oB), legal_moves)
 
+        # JSON形式の定石の場合
         for swap in (False, True):
             p, o = (aB, oB) if not swap else (oB, aB)
             for op in range(8):
@@ -1044,65 +1006,18 @@ class UltimateOthello(OthelloSearchMixin):
         return prior_map, primary_move, book_roll_used
 
     def should_start_exact_early(self, aB, oB, empty, legal_count):
-        base_threshold = self.get_exact_base_threshold(empty, legal_count)
-        instant_exact = max(12, base_threshold - 14)
-        early_exact_limit = base_threshold + 3
-        soft_exact_window = base_threshold - 11
-
-        if empty <= instant_exact:
-            return True
-        if empty >= early_exact_limit:
-            return False
-
-        opp_moves = int(self.legal_moves_mask(oB, aB)).bit_count()
-        total_moves = int(legal_count + opp_moves)
-        min_moves = min(int(legal_count), int(opp_moves))
-        occ = int(aB | oB) & int(_FULL_MASK)
-        empty_mask = (~occ) & int(_FULL_MASK)
-        frontier = int(neighbor_union(np.uint64(occ))) & empty_mask
-        frontier_count = frontier.bit_count()
-        region_count, small_regions = self.count_empty_regions(empty_mask)
-        stable_hint = 0
-        if empty <= 24:
-            try:
-                sp = int(compute_strict_stable(np.uint64(aB), np.uint64(oB))) & int(aB)
-                so = int(compute_strict_stable(np.uint64(oB), np.uint64(aB))) & int(oB)
-                stable_hint = abs(sp.bit_count() - so.bit_count())
-            except Exception:
-                stable_hint = 0
-
-        exact_score = 0
-        if total_moves <= 10:
-            exact_score += 2
-        if total_moves <= 7:
-            exact_score += 1
-        if min_moves <= 3:
-            exact_score += 2
-        if min_moves <= 1:
-            exact_score += 1
-        if frontier_count <= 16:
-            exact_score += 1
-        if frontier_count <= 10:
-            exact_score += 1
-        if stable_hint >= 2:
-            exact_score += 1
-        if stable_hint >= 4:
-            exact_score += 1
-        if region_count <= 3:
-            exact_score += 1
-        if small_regions > 0:
-            exact_score += 1
-        if empty <= soft_exact_window:
-            exact_score += 1
-        if empty <= instant_exact:
-            exact_score += 1
-        if empty <= base_threshold - 9:
-            exact_score += 1
-        if frontier_count <= 20:
-            exact_score += 1
-
-        threshold = 3 if empty <= soft_exact_window else (4 if empty <= base_threshold - 7 else 5)
-        return exact_score >= threshold
+        # 自動読み切り開始条件 - より早期に開始
+        if empty <= 12:
+            return True  # 終盤は必ず読み切り（2手早く）
+        
+        # より早い早期読み切り条件
+        if empty <= 26:
+            # 残り26手で合法手6手以下、12手で合法手26以下で開始
+            threshold = int(26 + (empty - 12) * (-2.5))  # empty=26→6, empty=12→26
+            if legal_count <= threshold:
+                return True
+        
+        return False
 
     def update_title(self):
         t = f"GeNeLy - αβ: {max(0.0, min(100.0, self.last_win_rate)):.1f}%"
@@ -1553,7 +1468,7 @@ class UltimateOthello(OthelloSearchMixin):
                 y = mt + (y_max - val) / (y_max - y_min) * (h - mt - mb)
                 canvas.create_oval(x - 2, y - 2, x + 2, y + 2, fill=color, outline=color)
         
-                  
+        # 緑の中点線を追加
         if len(specs) >= 2 and len(history) > 0:
             midpoints = []
             for x, entry in zip(xs, history):
@@ -1564,7 +1479,7 @@ class UltimateOthello(OthelloSearchMixin):
                     y = mt + (y_max - midpoint) / (y_max - y_min) * (h - mt - mb)
                     midpoints.extend([x, y])
             if len(midpoints) >= 4:
-                       
+                # 点線で描画
                 for i in range(0, len(midpoints) - 2, 2):
                     canvas.create_line(midpoints[i], midpoints[i+1], midpoints[i+2], midpoints[i+3], 
                                      fill="#00aa00", width=2, dash=(4, 2))
@@ -1575,7 +1490,7 @@ class UltimateOthello(OthelloSearchMixin):
             canvas.create_text(legend_x + 14, legend_y, text=label, anchor="w", fill="#334155", font=("Arial", 8))
             legend_x += 90
         
-                   
+        # 緑の中点凡例を追加
         if len(specs) >= 2:
             canvas.create_line(legend_x, legend_y, legend_x + 10, legend_y, fill="#00aa00", width=2, dash=(4, 2))
             canvas.create_text(legend_x + 14, legend_y, text=f" ({labels[0]}+{labels[1]}) / 2", 
@@ -1606,22 +1521,22 @@ class UltimateOthello(OthelloSearchMixin):
         """盤面のみ表示モードを切り替え"""
         self.board_only_mode = self.board_only_var.get()
         self.rebuild_layout()
+        # ログ出力は盤面のみモードの場合はコンソールのみ
         mode_text = "盤面のみ表示モード: ON" if self.board_only_mode else "盤面のみ表示モード: OFF"
-                                 
         print(mode_text, flush=True)
         if hasattr(self, 'log_text') and not self.board_only_mode:
             self.call_on_ui_thread(self.append_log_message, mode_text)
 
     def rebuild_layout(self):
         """UIレイアウトを再構築"""
-                      
+        # 現在のウィジェットを破棄
         for widget in self.main_frame.winfo_children():
             widget.destroy()
         
-                         
+        # ウィンドウサイズの最小値を調整
         if self.board_only_mode:
             self.rt.minsize(self.board_size + 40, self.board_size + 40)
-                                  
+            # 盤面のみ表示モード：盤面だけを中央に配置
             self.main_frame.grid_columnconfigure(0, weight=1)
             self.main_frame.grid_rowconfigure(0, weight=1)
             
@@ -1632,7 +1547,7 @@ class UltimateOthello(OthelloSearchMixin):
             self.cv.pack(expand=True)
         else:
             self.rt.minsize(1450, 760)
-                           
+            # 通常モード：3列レイアウト
             self.main_frame.grid_columnconfigure(0, weight=0)
             self.main_frame.grid_columnconfigure(1, weight=1)
             self.main_frame.grid_columnconfigure(2, weight=0)
@@ -1651,11 +1566,11 @@ class UltimateOthello(OthelloSearchMixin):
             self.log_host_frame = tk.Frame(self.main_frame, bg="#eef2f7")
             self.log_host_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 0))
 
-                   
+            # 盤面の配置
             self.cv = tk.Canvas(self.left_frame, width=self.board_size, height=self.board_size, bg=self.bc)
             self.cv.pack()
             
-                     
+            # グラフ類の配置
             tk.Label(self.graphs_frame, text="勝率グラフ", bg="#eef2f7", fg="#0f172a", font=("Yu Gothic UI", 11, "bold")).pack(anchor="w")
             self.win_graph = tk.Canvas(self.graphs_frame, width=self.graph_width, height=self.graph_height, bg="#f8fafc", highlightthickness=1, highlightbackground="#cbd5e1")
             self.win_graph.pack()
@@ -1678,13 +1593,13 @@ class UltimateOthello(OthelloSearchMixin):
             self.connection_graph = tk.Canvas(self.activation_frame, width=250, height=340, bg="#f8fafc", highlightthickness=1, highlightbackground="#cbd5e1")
             self.connection_graph.pack()
         
-                      
+        # イベントバインドを再設定
         self.cv.bind("<Button-1>", self.clk)
         
-                
+        # 盤面を再描画
         self.drw()
         
-                             
+        # グラフを再描画（通常モードの場合のみ）
         if not self.board_only_mode:
             self.redraw_graphs()
 
@@ -1945,14 +1860,14 @@ class UltimateOthello(OthelloSearchMixin):
         self.ponder_sf[0] = 1
         self.tn = -self.tn
         self.drw()
-                           
+        # passボタンを消した後に再度判定
         self.rt.after(50, self.chk)
 
     def ai_r(self, current_game_id):
         try:
             if not self.running or self.game_id != current_game_id: return
             
-                    
+            # 変数を初期化
             mvs = 0
             empty = 64
             
@@ -1965,17 +1880,38 @@ class UltimateOthello(OthelloSearchMixin):
             
             aB, oB = self.B if self.ac == 1 else self.W, self.W if self.ac == 1 else self.B
             
-                   
+            # 手数を計算
             mvs = int((aB | oB).bit_count()) - 4
             empty = 64 - int((aB | oB).bit_count())
             
+            
             book_move = None
             book_roll_used = False
-            ab_result = None
-            mcts_result = None
-            dynamic_book_rate = float(self.opening_book_rate)
-            book_adjust_reason = "standard"
+            prior_map = {}
+            primary_move = None
             
+            # 初期段階では常に定石を使う（search結果後に調整）
+            dynamic_book_rate = 1.0
+            
+            if self.opening_book:
+                valid_moves = self.legal_moves_mask(aB, oB)
+                legal_list = []
+                temp = valid_moves
+                while temp:
+                    bit = temp & -temp
+                    temp ^= bit
+                    legal_list.append((bit - 1).bit_count())
+                
+                prior_map, primary_move, book_roll_used = self.get_book_prior_info(aB, oB, legal_list, dynamic_book_rate)
+                
+                if book_roll_used:
+                    self.log(f"book: found in opening book | primary_move={primary_move} | prior_map={prior_map}")
+                
+                # Use book move (always use during search, adjust after AB/MCTS results)
+                if primary_move is not None:
+                    book_move = primary_move
+                    self.log(f"book: move available primary_move={primary_move}")
+
             empty = 64 - (self.mc() + 4)
             mvs = self.mc()
 
@@ -2079,45 +2015,21 @@ class UltimateOthello(OthelloSearchMixin):
                 self.call_on_ui_thread(self.chk)
                 return
 
-            ab_book_hint = None
-            if lm:
-                ab_book_hint = {
-                    "moves": [int(idx) for idx, _ in lm],
-                    "win_rates": [float(calculate_win_rate(float(score), False)) for _, score in lm],
-                }
-            mcts_book_hint = {"move_win_rates": dict(ponder_mcts_res)} if ponder_mcts_res else None
-            if isinstance(self.opening_book, EgaroucidOpeningBook):
-                dynamic_book_rate = 1.0
-                book_adjust_reason = "Egaroucid book"
-            else:
-                book_adjustment = self.should_use_opening_book(
-                    mvs,
-                    empty,
-                    ab_book_hint,
-                    mcts_book_hint,
-                    return_details=True,
-                )
-                dynamic_book_rate = float(book_adjustment["rate"])
-                book_adjust_reason = str(book_adjustment["reason"])
-            book_prior_map, book_move, book_roll_used = self.get_book_prior_info(aB, oB, rms, dynamic_book_rate)
-            if book_prior_map:
-                for move, prior in book_prior_map.items():
-                    book_policy_bonus = dynamic_book_rate * 0.20 * float(prior)
-                    root_policy_vector[int(move)] += book_policy_bonus
-                    policy_scores[int(move)] = float(policy_scores.get(int(move), 0.0)) + book_policy_bonus
-                if not ponder_entry:
-                    lm.sort(
-                        key=lambda x: -(
-                            x[1]
-                            + 400.0 * policy_scores.get(x[0], 0.0)
-                            + 140.0 * dynamic_book_rate * book_prior_map.get(x[0], 0.0)
-                        )
-                    )
-                    rms = [m[0] for m in lm]
-
             is_exact = self.should_start_exact_early(aB, oB, empty, len(rms))
 
             best_move = -1
+            if book_move is not None:
+                if (valid >> book_move) & 1:
+                    best_move = book_move
+                else:
+                    for idx in rms:
+                        if idx == book_move:
+                            best_move = idx
+                            break
+                    if best_move == -1 and rms:
+                        if mvs == 0:
+                            best_move = rms[0]
+
             if best_move == -1 and mvs == 0 and rms:
                 best_move = rms[0]
 
@@ -2131,22 +2043,11 @@ class UltimateOthello(OthelloSearchMixin):
             use_ab = (not self.use_mcts_only) or is_exact
             
             st_time = time.time()
-            base_time_limit = self.get_auto_time_limit(empty, len(rms), mvs)
-            time_limit = self.adjust_time_limit_for_decision(base_time_limit, empty, len(rms), ab_book_hint, mcts_book_hint)
-            auto_time_str = ""                
+            time_limit = self.get_auto_time_limit(empty, len(rms), mvs)
+            auto_time_str = ""  # 自動調整なので表示しない
             weights_list = self.weights_list
             order_map_list = self.order_map_list
-            pre_metrics = self._extract_confidence_metrics(ab_book_hint, mcts_book_hint)
-            search_profile = self.get_search_time_profile(
-                empty,
-                len(rms),
-                time_limit,
-                is_exact,
-                bool(ponder_mcts_res),
-                pre_metrics["ab_gap"],
-                pre_metrics["mcts_gap"],
-                pre_metrics["mcts_visit_share"],
-            )
+            search_profile = self.get_search_time_profile(empty, len(rms), time_limit, is_exact, bool(ponder_mcts_res))
             use_mcts_enabled = bool(search_profile["use_mcts"])
             current_color = "white" if self.tn == -1 else "black"
             self.log_section(f"{current_color}")
@@ -2159,14 +2060,24 @@ class UltimateOthello(OthelloSearchMixin):
                 f"MCTS={'ON' if use_mcts_enabled else 'OFF'}",
                 f"MCTS influence={'auto%' if self.auto_time else f'{self.mcts_influence_pct}%'}",
                 f"TT={'ON' if self.use_tt_resume else 'OFF'}",
-                f"limit={time_limit:.1f}s",                 
+                f"limit={time_limit:.1f}s",  # 自動調整なので時間のみ表示
             ], [8, 12, 10, 7, 6, 8, 20, 6, 11]))
-            if book_prior_map:
+            if book_move is not None:
                 self.mark_modules_active("BOOK")
                 self.mark_connections_active(("BOARD", "BOOK"), ("BOOK", "BLEND"))
-                self.log(f"book: prior {self.format_move_label(book_move)} | rate={int(dynamic_book_rate * 100)}% ({book_adjust_reason})")
+                self.log(f"book: use {self.format_move_label(book_move)}")
             elif book_roll_used:
-                self.log(f"book: hit but skipped by {int(dynamic_book_rate * 100)}% rule ({book_adjust_reason})")
+                # 動的調整された定石使用率を表示
+                base_rate = int(self.opening_book_rate * 100)
+                dynamic_rate = int(dynamic_book_rate * 100)
+                if dynamic_rate < base_rate:
+                    reason = "evaluation bias detected"
+                elif dynamic_rate > base_rate:
+                    reason = "evaluation consensus"
+                else:
+                    reason = "standard"
+                
+                self.log(f"book: hit but skipped by {dynamic_rate}% rule ({reason})")
             if is_resumed:
                 self.log(f"tt: hit | start depth={start_dp}")
             else:
@@ -2182,8 +2093,6 @@ class UltimateOthello(OthelloSearchMixin):
                         f"ab_budget={search_profile['ab_budget']:.2f}s",
                     ], [32, 18, 19])
                 )
-            if abs(time_limit - base_time_limit) >= 0.5:
-                self.log(f"time: adjusted {base_time_limit:.1f}s -> {time_limit:.1f}s by decision pressure")
             
             def watchdog():
                 nonlocal st_time, time_limit
@@ -2215,7 +2124,7 @@ class UltimateOthello(OthelloSearchMixin):
                     self.log(self.format_log_columns([
                         "mcts: start",
                         f"batch={mcts_batch_size}",
-                        f"limit={time_limit:.1f}s",                 
+                        f"limit={time_limit:.1f}s",  # 自動調整なので時間のみ表示
                     ], [11, 15, 12]))
                     self.mark_modules_active("MCTS", "NN-IN", "TRUNK", "POLICY", "VALUE")
                     self.mark_connections_active(("BOARD", "NN-IN"), ("NN-IN", "TRUNK"), ("TRUNK", "POLICY"), ("TRUNK", "VALUE"), ("POLICY", "MCTS"), ("VALUE", "MCTS"))
@@ -2398,10 +2307,7 @@ class UltimateOthello(OthelloSearchMixin):
                         ab_wr = calculate_win_rate(vals[i], is_exact)
                         combined.append((m, vals[i], ab_wr))
 
-                    if is_exact:
-                        combined.sort(key=lambda x: (x[1], x[2]), reverse=True)
-                    else:
-                        combined.sort(key=lambda x: x[2], reverse=True)
+                    combined.sort(key=lambda x: x[2], reverse=True)
                     curr_ordered = np.array([x[0] for x in combined], dtype=np.int64)
                     for m, v, wr in combined:
                         ab_res[m] = wr
@@ -2545,25 +2451,7 @@ class UltimateOthello(OthelloSearchMixin):
                 if cached_move:
                     self.log(f"exact result cached: {self.format_move_label(cached_move)}")
 
-            actual_ab_hint = None
-            if ab_res:
-                sorted_ab_pairs = sorted(ab_res.items(), key=lambda x: x[1], reverse=True)
-                actual_ab_hint = {
-                    "moves": [int(move) for move, _ in sorted_ab_pairs],
-                    "win_rates": [float(rate) for _, rate in sorted_ab_pairs],
-                }
-            actual_metrics = self._extract_confidence_metrics(
-                actual_ab_hint,
-                {"move_win_rates": dict(mcts_res)} if mcts_res else None,
-                root_visits,
-            )
-            mcts_influence_pct = self.adjust_mcts_influence_auto(
-                mcts_sim_count,
-                empty,
-                actual_metrics["ab_gap"],
-                actual_metrics["mcts_gap"],
-                actual_metrics["mcts_visit_share"],
-            )
+            mcts_influence_pct = self.adjust_mcts_influence_auto(mcts_sim_count, empty)
             mcts_influence = max(0.0, min(1.0, mcts_influence_pct / 100.0))
             
             if self.auto_time and mcts_influence_pct != self.mcts_influence_pct:
@@ -2590,27 +2478,24 @@ class UltimateOthello(OthelloSearchMixin):
                         max_depth_reached,
                         mcts_sim_count,
                         time_limit,
-                        get_runtime_device_str(),
+                        DEVICE_STR,
                     )
                     w_mcts *= mcts_influence
                     w_ab = 1.0 - w_mcts
                     final_score = (score_ab * w_ab) + (score_mcts * w_mcts)
-                    final_score += dynamic_book_rate * book_prior_map.get(m, 0.0) * 2.0
                     blend_details[m] = {
                         "move": int(m),
                         "ab_weight": w_ab,
                         "mcts_weight": w_mcts,
-                        "book_prior": float(book_prior_map.get(m, 0.0)),
                     }
                 else:
                     score_ab = mcts_res.get(m, 50.0)
                     score_mcts = score_ab
-                    final_score = score_mcts + dynamic_book_rate * book_prior_map.get(m, 0.0) * 2.0
+                    final_score = score_mcts
                     blend_details[m] = {
                         "move": int(m),
                         "ab_weight": 0.0,
                         "mcts_weight": 1.0,
-                        "book_prior": float(book_prior_map.get(m, 0.0)),
                     }
                 final_scores.append((m, final_score))
             
@@ -2621,7 +2506,7 @@ class UltimateOthello(OthelloSearchMixin):
                 self.mark_connections_active(("MCTS", "BLEND"))
             if final_scores:
                 self.log("final: " + self.format_top_moves(final_scores, limit=5))
-                                 
+                # 緑でαβとMCTSの中点を表示
                 if use_ab and use_mcts_enabled and not resolved_flag:
                     midpoints = []
                     for m in [move for move, _ in final_scores[:5]]:
@@ -2632,24 +2517,29 @@ class UltimateOthello(OthelloSearchMixin):
                         green_text = "[GREEN]midpoint: " + self.format_top_moves(midpoints, limit=5) + "[/GREEN]"
                         self.log(green_text)
 
-            if best_move != -1 and book_move is not None and final_scores:
-                top_move, top_score = final_scores[0]
-                book_score = next((float(score) for move, score in final_scores if move == best_move), None)
-                if book_score is not None and top_move != best_move:
-                    score_gap = float(top_score) - float(book_score)
-                    if score_gap >= 0.8:
-                        self.log(
-                            f"book safety: override {self.format_move_label(best_move)} -> "
-                            f"{self.format_move_label(top_move)} (gap={score_gap:.1f}pt)"
-                        )
-                        best_move = top_move
-
             if best_move == -1 and final_scores:
                 best_move = final_scores[0][0]
 
+            # AB/MCTSの結果に基づいて定石を使うかどうか判定
+            if book_move is not None and primary_move == book_move:
+                book_use_details = self.should_use_opening_book(
+                    mvs, empty,
+                    ab_result={"moves": list(ab_res.keys()), "win_rates": list(ab_res.values())} if ab_res else None,
+                    mcts_result={"move_win_rates": mcts_res} if mcts_res else None,
+                    return_details=True
+                )
+                book_rate = book_use_details.get("rate", 1.0)
+                book_reason = book_use_details.get("reason", "standard")
+                self.log(f"book: AB/MCTS判定 - book_rate={int(book_rate*100)}% ({book_reason})")
+                
+                if book_rate < 0.999:  # not 100%, so don't use book
+                    self.log(f"book: AB/MCTS一致で強く推奨 - 定石を使わない")
+                    best_move = final_scores[0][0] if final_scores else book_move
+                # else: 定石を使う（変更なし）
+
             if best_move != -1:
-                if book_prior_map.get(best_move, 0.0) > 0.0:
-                    self.log(f"selected with book prior: {self.format_move_label(best_move)}")
+                if book_move is not None and best_move == book_move:
+                    self.log(f"selected by book: {self.format_move_label(best_move)}")
                 elif mvs == 0 and best_move in rms:
                     self.log(f"selected by standard: {self.format_move_label(best_move)}")
             
@@ -2685,7 +2575,7 @@ class UltimateOthello(OthelloSearchMixin):
                 self.last_win_rate = calculate_win_rate(best_eval, is_exact or resolved_flag)
                 graph_ab_wr = self.last_win_rate
             else:
-                                                    
+                # αβが使えない場合でも現在のlast_win_rateをグラフに表示
                 graph_ab_wr = self.last_win_rate if self.last_win_rate is not None else 50.0
 
             if resolved_flag or is_exact:
@@ -2693,7 +2583,7 @@ class UltimateOthello(OthelloSearchMixin):
             else:
                 self.last_mcts_win_rate = best_mcts_wr if (use_mcts_enabled and mcts_res and mcts_reliable) else None
             graph_mcts_wr = self.last_mcts_win_rate if self.last_mcts_win_rate is not None else 50.0
-            if empty <= self.get_exact_base_threshold(empty, len(rms), mvs, time_limit) and self.last_mcts_win_rate is not None:
+            if empty <= self.get_exact_base_threshold() and self.last_mcts_win_rate is not None:
                 if self.last_mcts_win_rate >= 99.999:
                     self.last_win_rate = 100.0
                     graph_ab_wr = 100.0

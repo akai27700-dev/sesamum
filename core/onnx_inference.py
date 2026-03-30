@@ -4,6 +4,7 @@ import onnxruntime as ort
 from typing import List, Tuple, Optional
 
 class ONNXInference:
+    """ONNXモデルを使用した高速推論エンジン"""
     
     def __init__(self, model_path: str, use_gpu: bool = True):
         self.model_path = model_path
@@ -11,108 +12,115 @@ class ONNXInference:
         self.session = None
         self.input_name = None
         self.output_names = None
-        self.active_provider = "CPUExecutionProvider"
-        self._dll_dirs = []
         self._load_model()
-
-    def _prepare_windows_cuda_dlls(self):
-        if os.name != "nt":
-            return
-        candidate_dirs = []
-        venv_site = os.path.abspath(os.path.join(os.path.dirname(self.model_path), "..", ".venv", "Lib", "site-packages"))
-        candidate_dirs.extend([
-            os.path.join(venv_site, "nvidia", "cuda_runtime", "bin"),
-            os.path.join(venv_site, "nvidia", "cublas", "bin"),
-            os.path.join(venv_site, "nvidia", "cuda_nvrtc", "bin"),
-            os.path.join(venv_site, "torch", "lib"),
-        ])
-        for path in candidate_dirs:
-            if os.path.isdir(path):
-                try:
-                    self._dll_dirs.append(os.add_dll_directory(path))
-                except (FileNotFoundError, OSError):
-                    pass
-        if hasattr(ort, "preload_dlls"):
-            try:
-                ort.preload_dlls()
-            except Exception:
-                pass
     
     def _load_model(self):
         """ONNXモデルをロード"""
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"ONNX model not found: {self.model_path}")
-
-        self._prepare_windows_cuda_dlls()
         
-                 
-        available_providers = set(ort.get_available_providers())
-        if self.use_gpu and 'CUDAExecutionProvider' in available_providers:
+        # SessionOptions で詳細設定
+        sess_opts = ort.SessionOptions()
+        sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        sess_opts.intra_op_num_threads = 4  # オプティマイザースレッド数を制限
+        
+        # 実行環境を設定
+        if self.use_gpu:
             providers = [
                 ('CUDAExecutionProvider', {
                     'device_id': 0,
-                    'arena_extend_strategy': 'kSameAsRequested',
-                    'cudnn_conv_algo_search': 'HEURISTIC',
+                    'gpu_mem_limit': 4 * 1024 * 1024 * 1024,  # 4GB に増加
                     'do_copy_in_default_stream': True,
+                    'tunable_op_enable': False,
                 }),
                 'CPUExecutionProvider'
             ]
         else:
             providers = ['CPUExecutionProvider']
-
-                  
-        session_options = ort.SessionOptions()
-        session_options.enable_cpu_mem_arena = True
-        session_options.enable_mem_pattern = True
-        session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        
+        # セッションを作成
         self.session = ort.InferenceSession(
             self.model_path,
             providers=providers,
-            sess_options=session_options
+            sess_options=sess_opts
         )
         
-                 
+        # 入出力名を取得
         self.input_name = self.session.get_inputs()[0].name
         self.output_names = [output.name for output in self.session.get_outputs()]
-        self.active_provider = self.session.get_providers()[0] if self.session.get_providers() else "CPUExecutionProvider"
         
         print(f"ONNX model loaded: {self.model_path}")
         print(f"Providers: {self.session.get_providers()}")
-
-    def get_runtime_device(self) -> str:
-        provider = str(self.active_provider)
-        return "cuda" if "CUDAExecutionProvider" in provider else "cpu"
     
     def infer_batch(self, input_batch: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-
-                       
+        """
+        バッチ推論を実行
+        
+        Args:
+            input_batch: (batch_size, 3, 8, 8) の入力テンソル
+            
+        Returns:
+            (policy, value) のタプル
+            policy: (batch_size, 64) の方策確率
+            value: (batch_size, 1) の価値
+        """
+        # 入力をfloat32に変換
         if input_batch.dtype != np.float32:
             input_batch = input_batch.astype(np.float32)
         
-              
-        outputs = self.session.run(
-            self.output_names,
-            {self.input_name: input_batch}
-        )
+        # 大きなバッチの場合は分割処理
+        max_batch_size = 512
+        if len(input_batch) > max_batch_size:
+            policies = []
+            values = []
+            for i in range(0, len(input_batch), max_batch_size):
+                batch_slice = input_batch[i:i+max_batch_size]
+                policy, value = self.infer_batch(batch_slice)
+                policies.append(policy)
+                values.append(value)
+            return np.vstack(policies), np.vstack(values)
+        
+        # 推論実行
+        try:
+            outputs = self.session.run(
+                self.output_names,
+                {self.input_name: input_batch}
+            )
+        except Exception as e:
+            # ONNX メモリ不足時のエラーハンドリング
+            print(f"ONNX inference error: {e}")
+            raise
         
         policy, value = outputs
         
-                                                  
+        # 方策確率をsoftmaxで正規化（ONNXモデルがsoftmaxしていない場合）
         if policy.max() > 1.0 or policy.min() < 0.0:
-                          
+            # softmax変換が必要
             policy_exp = np.exp(policy - np.max(policy, axis=1, keepdims=True))
             policy = policy_exp / np.sum(policy_exp, axis=1, keepdims=True)
         
         return policy, value
     
     def infer_single(self, p_board: int, o_board: int, turn: int) -> Tuple[np.ndarray, float]:
-
+        """
+        単一局面の推論
+        
+        Args:
+            p_board: プレイヤーのビットボード
+            o_board: 相手のビットボード  
+            turn: 手番 (1 or -1)
+            
+        Returns:
+            (policy, value) のタプル
+            policy: (64,) の方策確率
+            value: 価値
+        """
         from .othello_core import make_input_tensor
         
-                   
+        # 入力テンソルを作成
         tensor_batch = make_input_tensor([(p_board, o_board, turn)])
         
-              
+        # 推論実行
         policy_batch, value_batch = self.infer_batch(tensor_batch)
         
         return policy_batch[0], float(value_batch[0, 0])
@@ -131,22 +139,28 @@ class ONNXInference:
         }
 
 def convert_pytorch_to_onnx(pytorch_model, output_path: str, input_shape: Tuple[int, ...] = (1, 3, 8, 8)):
-
+    """
+    PyTorchモデルをONNXに変換
+    
+    Args:
+        pytorch_model: PyTorchモデル
+        output_path: 出力先ONNXファイルパス
+        input_shape: 入力テンソルの形状
+    """
     import torch
     
     model = pytorch_model.eval()
     
-              
+    # ダミー入力を作成
     dummy_input = torch.randn(input_shape)
     
-                                      
+    # ONNXにエクスポート（opset_versionを18に変更）
     torch.onnx.export(
         model,
         dummy_input,
         output_path,
         export_params=True,
-        dynamo=False,
-        opset_version=18,                       
+        opset_version=18,  # opset_versionを18に変更
         do_constant_folding=True,
         input_names=['input'],
         output_names=['policy', 'value'],
@@ -160,11 +174,17 @@ def convert_pytorch_to_onnx(pytorch_model, output_path: str, input_shape: Tuple[
     print(f"PyTorch model converted to ONNX: {output_path}")
 
 def create_onnx_model_from_pytorch(pytorch_model_path: str, onnx_output_path: str):
-
+    """
+    PyTorchモデルファイルからONNXモデルを作成
+    
+    Args:
+        pytorch_model_path: PyTorchモデルファイルパス
+        onnx_output_path: 出力先ONNXファイルパス
+    """
     import torch
     from .othello_core import OthelloNet
     
-                    
+    # PyTorchモデルをロード
     model = OthelloNet()
     if os.path.exists(pytorch_model_path):
         model.load_state_dict(torch.load(pytorch_model_path, map_location='cpu', weights_only=True))
@@ -172,7 +192,7 @@ def create_onnx_model_from_pytorch(pytorch_model_path: str, onnx_output_path: st
     else:
         print(f"PyTorch model not found: {pytorch_model_path}, using random weights")
     
-             
+    # ONNXに変換
     convert_pytorch_to_onnx(model, onnx_output_path)
     
     return onnx_output_path

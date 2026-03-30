@@ -67,10 +67,10 @@ def get_flip(P, O, idx):
 def evaluate_board(P, O, weights):
     empty = np.int64(64) - count_bits(P | O)
     
-               
+    # 基本評価（簡易版）
     score = np.float64(0.0)
     
-          
+    # 位置評価
     P_tmp = P
     while P_tmp:
         b = P_tmp & (~P_tmp + np.uint64(1))
@@ -87,16 +87,16 @@ def evaluate_board(P, O, weights):
         if idx < len(weights):
             score -= weights[idx]
     
-                 
+    # 着手数による進行度評価
     progress = (64 - empty) / 64.0
-    if empty >= 45:      
+    if empty >= 45:  # 序盤
         stage_weights = weights[64:80] if len(weights) > 80 else weights
-    elif empty >= 15:      
+    elif empty >= 15:  # 中盤
         stage_weights = weights[80:96] if len(weights) > 96 else weights
-    else:      
+    else:  # 終盤
         stage_weights = weights[96:112] if len(weights) > 112 else weights
     
-           
+    # 機動性評価
     mobility = count_bits(get_legal_moves(P, O)) - count_bits(get_legal_moves(O, P))
     if len(stage_weights) > 0:
         score += mobility * stage_weights[0] * 0.1
@@ -115,11 +115,11 @@ def alphabeta(P, O, depth, alpha, beta, weights, passed):
     if depth <= 0:
         return evaluate_board(P, O, weights)
     
-                  
+    # 全合法手を評価してソート
     moves = []
     v_temp = valid
     while v_temp:
-        bit = v_temp & (-v_temp)                     
+        bit = v_temp & (-v_temp)  # 2の補数を使って最下位ビットを抽出
         v_temp ^= bit
         sq_idx = count_bits(bit - np.uint64(1))
         f = get_flip(P, O, sq_idx)
@@ -128,7 +128,7 @@ def alphabeta(P, O, depth, alpha, beta, weights, passed):
         score = evaluate_board(new_P, new_O, weights)
         moves.append((bit, sq_idx, score))
     
-             
+    # スコアでソート
     for i in range(len(moves)):
         for j in range(i + 1, len(moves)):
             if moves[j][2] > moves[i][2]:
@@ -152,11 +152,11 @@ def get_best_move(P, O, weights, depth=10):
     if not valid:
         return -1
     
-                  
+    # 全合法手を評価してソート
     moves = []
     v_temp = valid
     while v_temp:
-        bit = v_temp & (-v_temp)                     
+        bit = v_temp & (-v_temp)  # 2の補数を使って最下位ビットを抽出
         v_temp ^= bit
         sq_idx = count_bits(bit - np.uint64(1))
         f = get_flip(P, O, sq_idx)
@@ -165,7 +165,7 @@ def get_best_move(P, O, weights, depth=10):
         score = evaluate_board(new_P, new_O, weights)
         moves.append((bit, sq_idx, score))
     
-             
+    # スコアでソート
     for i in range(len(moves)):
         for j in range(i + 1, len(moves)):
             if moves[j][2] > moves[i][2]:
@@ -174,7 +174,7 @@ def get_best_move(P, O, weights, depth=10):
     best_move = -1
     best_score = -1e18
     
-    for bit, sq_idx, _ in moves[:min(10, len(moves))]:             
+    for bit, sq_idx, _ in moves[:min(10, len(moves))]:  # 上位10手のみ探索
         f = get_flip(P, O, sq_idx)
         val = -alphabeta(O ^ f, P | bit | f, depth - 1, -1e18, 1e18, weights, False)
         if val > best_score:
@@ -184,29 +184,29 @@ def get_best_move(P, O, weights, depth=10):
     return best_move
 
 def play_game(weights1, weights2, depth=10):
-          
+    # 初期盤面
     B = np.uint64(0x0000000810000000)
     W = np.uint64(0x0000001008000000)
-    turn = 1       
+    turn = 1  # 黒から
     
     while True:
-        if turn == 1:      
+        if turn == 1:  # 黒番
             move = get_best_move(B, W, weights1, depth)
             if move == -1:
-                    
+                # パス
                 if get_legal_moves(W, B) == 0:
-                    break           
+                    break  # 双方パスで終了
                 turn = -1
                 continue
             f = get_flip(B, W, move)
             B = (B | (np.uint64(1) << np.uint64(move)) | f) & _FULL_MASK
             W = (W ^ f) & _FULL_MASK
-        else:      
+        else:  # 白番
             move = get_best_move(W, B, weights2, depth)
             if move == -1:
-                    
+                # パス
                 if get_legal_moves(B, W) == 0:
-                    break           
+                    break  # 双方パスで終了
                 turn = 1
                 continue
             f = get_flip(W, B, move)
@@ -215,13 +215,13 @@ def play_game(weights1, weights2, depth=10):
         
         turn = -turn
     
-           
+    # 石差を計算
     black_stones = count_bits(B)
     white_stones = count_bits(W)
     return black_stones - white_stones
 
 def benchmark_weights():
-                
+    # 重みファイル読み込み
     try:
         with open('weight_first.json', 'r') as f:
             weights1 = np.array(json.load(f), dtype=np.float64)
@@ -235,16 +235,16 @@ def benchmark_weights():
     print(f"Weight_Second: {len(weights2)} parameters")
     print("=" * 50)
     
-        
+    # 対戦
     wins1 = 0
     wins2 = 0
     draws = 0
     
-    for game in range(2):       
+    for game in range(2):  # 2試合
         print(f"\nGame {game + 1}:")
         
-                                              
-                                              
+        # 1試合目: weight_firstが黒、weight_secondが白
+        # 2試合目: weight_secondが黒、weight_firstが白
         if game == 0:
             result = play_game(weights1, weights2, depth=10)
             print(f"  Weight_First (Black) vs Weight_Second (White)")
