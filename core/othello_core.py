@@ -614,10 +614,22 @@ def alphabeta(P, O, mvs, depth, alpha, beta, passed, is_exact, W, order_map, tk_
         return evaluate_board_full(P, O, mvs, W), 1
 
     # Razoring: 浅いノードで明らかに悪い評価値の場合、フルミニマックスをスキップ
-    if depth == np.int64(1) and not is_exact:
+    if depth <= np.int64(3) and not is_exact:
         static_eval = evaluate_board_full(P, O, mvs, W)
-        razor_margin = np.float64(150.0)
+        # 深度に応じてmarginを調整
+        if depth == np.int64(1):
+            razor_margin = np.float64(150.0)
+        elif depth == np.int64(2):
+            razor_margin = np.float64(300.0)
+        else:
+            razor_margin = np.float64(400.0)
         if static_eval + razor_margin < alpha:
+            return static_eval, 1
+
+    # Futility Pruning: 十分に低い評価値は枝刈り
+    if depth <= np.int64(2) and not is_exact:
+        static_eval = evaluate_board_full(P, O, mvs, W)
+        if static_eval + (np.float64(100.0) * np.float64(depth)) < alpha:
             return static_eval, 1
 
     count = count_bits(valid)
@@ -667,9 +679,9 @@ def alphabeta(P, O, mvs, depth, alpha, beta, passed, is_exact, W, order_map, tk_
 
         # Late Move Reduction: 3番目以降の移動で、depth が十分にある場合は浅く調査
         reduced_depth = depth - np.int64(1)
-        if i >= np.int64(3) and depth >= np.int64(3) and not is_exact:
-            # より遅い移動は浅く調査
-            lmr_reduction = np.int64(1) + (i - np.int64(3)) // np.int64(4)
+        if i >= np.int64(2) and depth >= np.int64(3) and not is_exact:
+            # より遅い移動は浅く調査（reduction量を増加）
+            lmr_reduction = np.int64(1) + (i - np.int64(2)) // np.int64(3)
             reduced_depth = depth - lmr_reduction - np.int64(1)
             if reduced_depth < np.int64(1):
                 reduced_depth = np.int64(1)

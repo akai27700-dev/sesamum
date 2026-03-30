@@ -16,6 +16,7 @@ class StartupSettingsDialog:
         self.use_mcts = tk.StringVar(value="on")
         self.use_tt = tk.StringVar(value="on")
         self.mcts_influence = tk.IntVar(value=50)
+        self.book_source = tk.StringVar(value="egaroucid")
         self.book_usage = tk.IntVar(value=50)
         self.time_limit = tk.StringVar(value="5")  # デフォルトを5秒に変更
         self.player_color = tk.StringVar(value="black")
@@ -28,12 +29,16 @@ class StartupSettingsDialog:
         self._add_radio_group(frame, "NN", self.use_nn, [("ON", "on"), ("OFF", "off")])
         self.mcts_influence_scale = self._add_scale_group(frame, "MCTS影響度(0=OFF)", self.mcts_influence, 0, 100)
         self._add_radio_group(frame, "TT再利用", self.use_tt, [("ON", "on"), ("OFF", "off")])
-        self._add_checkbox(frame, "常に思考", self.use_pondering, [("ON", "on"), ("OFF", "off")])
+        self._add_radio_group(frame, "常に思考", self.use_pondering, [("ON", "on"), ("OFF", "off")])
+        self._add_radio_group(frame, "定石ソース", self.book_source, [("JSON", "json"), ("Egaroucid", "egaroucid")])
+        self.book_usage_scale = self._add_scale_group(frame, "定石使用確率(JSONのみ)", self.book_usage, 0, 100)
         self._add_radio_group(frame, "最大思考時間", self.time_limit, [("0.5秒", "0.5"), ("1秒", "1"), ("5秒", "5"), ("10秒", "10"), ("30秒", "30")])
         self._add_radio_group(frame, "プレイヤー", self.player_color, [("黒", "black"), ("白", "white")])
         self.use_nn.trace_add("write", self._toggle_nn_options)
         self.mcts_influence.trace_add("write", self._toggle_nn_options)
+        self.book_source.trace_add("write", self._toggle_book_options)
         self._toggle_nn_options()
+        self._toggle_book_options()
 
         if not cpp_available:
             tk.Label(frame, text="C++エンジンが未ロードのため Python 実装で動作します。", anchor="w", fg="#b71c1c").pack(fill="x", pady=(4, 8))
@@ -75,6 +80,10 @@ class StartupSettingsDialog:
         mcts_pct = self.mcts_influence.get()
         self.mcts_influence_scale.config(state="normal" if nn_on else "disabled")
 
+    def _toggle_book_options(self, *_):
+        book_json = self.book_source.get() == "json"
+        self.book_usage_scale.config(state="normal" if book_json else "disabled")
+
     def on_ok(self):
         nn_enabled = self.use_nn.get() == "on"
         mcts_pct = self.mcts_influence.get()
@@ -86,7 +95,8 @@ class StartupSettingsDialog:
             "use_nn": nn_enabled,
             "use_mcts": nn_enabled and mcts_pct > 0,
             "mcts_influence": mcts_pct if (nn_enabled and mcts_pct > 0) else 0,
-            "book_usage": book_usage_pct,
+            "book_source": self.book_source.get(),
+            "book_usage": book_usage_pct if self.book_source.get() == "json" else 0,
             "use_tt": self.use_tt.get() == "on",
             "time_limit": time_limit,
             "player_color": self.player_color.get(),
