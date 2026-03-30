@@ -97,7 +97,7 @@ class ONNXInference:
         
         policy, value = outputs
         
-        # 方策確率をsoftmaxで正規化（ONNXモデルがsoftmaxしていない場合）
+        # ONNXモデルがsoftmaxしていない場合は方策確率をsoftmaxで正規化
         if policy.max() > 1.0 or policy.min() < 0.0:
             # softmax変換が必要
             policy_exp = np.exp(policy - np.max(policy, axis=1, keepdims=True))

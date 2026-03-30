@@ -15,7 +15,7 @@ class StartupSettingsDialog:
         self.use_nn = tk.StringVar(value="on")
         self.use_mcts = tk.StringVar(value="on")
         self.use_tt = tk.StringVar(value="on")
-        self.mcts_influence = tk.IntVar(value=50)
+        self.search_mode = tk.StringVar(value="hybrid")  # "hybrid", "ab_only", "mcts_only"
         self.book_source = tk.StringVar(value="egaroucid")
         self.book_usage = tk.IntVar(value=50)
         self.time_limit = tk.StringVar(value="5")  # デフォルトを5秒に変更
@@ -27,15 +27,19 @@ class StartupSettingsDialog:
 
         self._add_radio_group(frame, "C++探索", self.use_cpp, [("ON", "on"), ("OFF", "off")], state="normal" if cpp_available else "disabled")
         self._add_radio_group(frame, "NN", self.use_nn, [("ON", "on"), ("OFF", "off")])
-        self.mcts_influence_scale = self._add_scale_group(frame, "MCTS影響度(0=OFF)", self.mcts_influence, 0, 100)
+        self.mcts_influence_scale = self._add_radio_group(frame, "探索モード", self.search_mode, [
+            ("αβ+MCTS", "hybrid"),
+            ("αβのみ", "ab_only"),
+            ("MCTSのみ", "mcts_only")
+        ])
         self._add_radio_group(frame, "TT再利用", self.use_tt, [("ON", "on"), ("OFF", "off")])
         self._add_radio_group(frame, "常に思考", self.use_pondering, [("ON", "on"), ("OFF", "off")])
-        self._add_radio_group(frame, "定石ソース", self.book_source, [("JSON", "json"), ("Egaroucid", "egaroucid")])
+        self._add_radio_group(frame, "定石ソース", self.book_source, [("JSON", "json"), ("Egaroucid", "egaroucid"), ("使用しない", "none")])
         self.book_usage_scale = self._add_scale_group(frame, "定石使用確率(JSONのみ)", self.book_usage, 0, 100)
         self._add_radio_group(frame, "最大思考時間", self.time_limit, [("1秒", "0.5"), ("5秒", "5"), ("10秒", "10"), ("30秒", "30")])
         self._add_radio_group(frame, "プレイヤー", self.player_color, [("黒", "black"), ("白", "white")])
         self.use_nn.trace_add("write", self._toggle_nn_options)
-        self.mcts_influence.trace_add("write", self._toggle_nn_options)
+        self.search_mode.trace_add("write", self._toggle_nn_options)
         self.book_source.trace_add("write", self._toggle_book_options)
         self._toggle_nn_options()
         self._toggle_book_options()
@@ -77,30 +81,46 @@ class StartupSettingsDialog:
 
     def _toggle_nn_options(self, *_):
         nn_on = self.use_nn.get() == "on"
-        mcts_pct = self.mcts_influence.get()
-        self.mcts_influence_scale.config(state="normal" if nn_on else "disabled")
+        mode = self.search_mode.get()
+        # MCTSのみモードはNNが必要
+        if not nn_on and mode == "mcts_only":
+            self.search_mode.set("ab_only")
+        # LabelFrameの子要素（Radiobutton）を無効化
+        for child in self.mcts_influence_scale.winfo_children():
+            if isinstance(child, tk.Radiobutton):
+                child.config(state="normal" if nn_on else "disabled")
 
     def _toggle_book_options(self, *_):
+        book_enabled = self.book_source.get() != "none"
         book_json = self.book_source.get() == "json"
-        self.book_usage_scale.config(state="normal" if book_json else "disabled")
+        self.book_usage_scale.config(state="normal" if (book_enabled and book_json) else "disabled")
 
     def on_ok(self):
         nn_enabled = self.use_nn.get() == "on"
-        mcts_pct = self.mcts_influence.get()
+        mode = self.search_mode.get()
         book_usage_pct = self.book_usage.get()
         time_val = self.time_limit.get()
         time_limit = float(time_val)
+        
+        # search_modeに基づいて設定
+        use_mcts = nn_enabled and mode != "ab_only"
+        use_mcts_only = nn_enabled and mode == "mcts_only"
+        mcts_influence = 0 if mode == "ab_only" else (100 if mode == "mcts_only" else 50)
+        
         self.result = {
             "use_cpp": self.use_cpp.get() == "on" and self.cpp_available,
             "use_nn": nn_enabled,
-            "use_mcts": nn_enabled and mcts_pct > 0,
-            "mcts_influence": mcts_pct if (nn_enabled and mcts_pct > 0) else 0,
+            "use_mcts": use_mcts,
+            "search_mode": mode,
+            "use_mcts_only": use_mcts_only,
+            "mcts_influence": mcts_influence,
             "book_source": self.book_source.get(),
             "book_usage": book_usage_pct if self.book_source.get() == "json" else 0,
+            "use_book": self.book_source.get() != "none",
             "use_tt": self.use_tt.get() == "on",
             "time_limit": time_limit,
             "player_color": self.player_color.get(),
-            "auto_time": True,  # 常に自動調整モード
+            "auto_time": True,
             "auto_mode_type": "normal",
             "use_pondering": self.use_pondering.get(),
         }

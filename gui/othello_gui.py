@@ -422,8 +422,7 @@ class UltimateOthello(OthelloSearchMixin):
         self.board_only_var = tk.BooleanVar(value=False)
         self.use_mcts = tk.BooleanVar(value=True)
         self.use_nn = True
-        self.use_mcts_only = False
-        self.mcts_influence_pct = 50
+        self.search_mode = "hybrid"  # "hybrid", "ab_only", "mcts_only"
         self.light_mode = False
         self.super_light_mode = False
         self.use_cpp_engine = cpp_engine is not None
@@ -445,11 +444,13 @@ class UltimateOthello(OthelloSearchMixin):
             "use_cpp": cpp_engine is not None,
             "use_nn": True,
             "use_mcts": True,
+            "search_mode": "hybrid",
+            "use_mcts_only": False,
             "mcts_influence": 50,
             "use_tt": True,
             "book_usage": 50,
             "time_limit": 10.0,
-            "auto_time": True,  # 常に自動モード
+            "auto_time": True,
             "auto_mode_type": "normal",
             "player_color": "black",
             "use_pondering": True,
@@ -457,22 +458,18 @@ class UltimateOthello(OthelloSearchMixin):
         self.use_cpp_engine = settings["use_cpp"]
         self.use_nn = settings["use_nn"]
         self.use_mcts.set(settings["use_mcts"])
-        self.auto_time = settings.get("auto_time", True)  # デフォルトでTrue
+        self.search_mode = settings.get("search_mode", "hybrid")
+        self.auto_time = settings.get("auto_time", True)
         
-        if self.auto_time:
-            # Start with reasonable base influence for auto mode
-            self.mcts_influence_pct = 40  # Base 40% for auto mode
-        else:
-            self.mcts_influence_pct = int(settings.get("mcts_influence", 50))
-            
-        self.opening_book_rate = int(settings.get("book_usage", 50)) / 100.0
-        self.use_mcts_enabled = bool(settings["use_mcts"]) and (self.auto_time or self.mcts_influence_pct > 0)
-        self.use_mcts_only = self.use_mcts_enabled and not self.auto_time and self.mcts_influence_pct >= 100
-        self.use_tt_resume = settings["use_tt"]
+        # search_modeに基づいて内部状態を設定
+        self.use_mcts_enabled = self.use_nn and self.search_mode != "ab_only"
+        self.use_mcts_only = self.use_nn and self.search_mode == "mcts_only"
+        self.mcts_influence_pct = 0 if self.search_mode == "ab_only" else (100 if self.search_mode == "mcts_only" else 50)
         self.auto_time = settings.get("auto_time", False)
         self.time_limit_sec = settings.get("time_limit", 10.0)  # auto_timeでもユーザー設定を尊重
         self.auto_mode_type = "normal"
         self.use_pondering = settings.get("use_pondering", True)
+        self.use_book = settings.get("use_book", True)
         self.board_only_mode = False  # デフォルトは通常モード
         self.readout_empty_threshold = int(settings.get("readout_empty", 22))
         self.exact_auto = True
@@ -532,7 +529,7 @@ class UltimateOthello(OthelloSearchMixin):
         else:
             self.use_mcts.set(False)
             self.use_mcts_enabled = False
-            self.use_mcts_only = False
+            self.search_mode = "ab_only"
             self.mcts_influence_pct = 0
             self.log("ニューラルネットワークは無効です。")
 
@@ -541,8 +538,9 @@ class UltimateOthello(OthelloSearchMixin):
         npz_path = _EGAROUCID_CACHE_PATH
         egbk3_path = _EGAROUCID_BOOK_PATH
         
-        # Priority: npz cache > egbk3 > skip
-        if os.path.exists(npz_path):
+        if not self.use_book:
+            self.log("定石を使用しません。")
+        elif os.path.exists(npz_path):
             try:
                 self.log(f"npz キャッシュから定石を読み込み中: {npz_path}")
                 # Create EgaroucidOpeningBook and load directly from cache
@@ -585,15 +583,17 @@ class UltimateOthello(OthelloSearchMixin):
                 self.log(f"[ERROR] egbk3 ファイルの読み込み失敗: {e}")
                 self.opening_book = None
         
-        if self.opening_book is None:
+        if self.opening_book is None and not self.use_book:
+            pass  # 定石使用しない設定なのでログを出さない
+        elif self.opening_book is None:
             self.log("[WARN] 定石データが利用できません。定石なしで動作します。")
 
         self.tk_arr = np.zeros(TT_SIZE * 2, dtype=np.uint64)
         self.ti_arr = np.zeros((TT_SIZE * 2, 4), dtype=np.float64)
         self.sf_arr = np.zeros(1, dtype=np.uint8)
-        time_str = f"max {self.time_limit_sec:.0f}s"  # 最大時間として表示
-        mcts_influence_str = "auto%" if self.auto_time else f"{self.mcts_influence_pct}%"
-        self.log(f"探索設定: TT size={TT_SIZE * 2}, C++={'ON' if self.use_cpp_engine else 'OFF'}, NN={'ON' if self.use_nn else 'OFF'}, MCTS={'ON' if self.use_mcts_enabled else 'OFF'}, MCTS influence={mcts_influence_str}, book={int(self.opening_book_rate*100)}%, TT reuse={'ON' if self.use_tt_resume else 'OFF'}, time limit={time_str}, exact solve starts=always-auto, pondering={'ON' if self.use_pondering else 'OFF'}")
+        time_str = f"max {self.time_limit_sec:.0f}s"
+        mode_str = {"hybrid": "αβ+MCTS", "ab_only": "αβのみ", "mcts_only": "MCTSのみ"}.get(self.search_mode, self.search_mode)
+        self.log(f"探索設定: TT size={TT_SIZE * 2}, C++={'ON' if self.use_cpp_engine else 'OFF'}, NN={'ON' if self.use_nn else 'OFF'}, モード={mode_str}, book={int(self.opening_book_rate*100)}%, TT reuse={'ON' if self.use_tt_resume else 'OFF'}, time limit={time_str}, exact solve starts=always-auto, pondering={'ON' if self.use_pondering else 'OFF'}")
 
         self.rt.title(f"GeNeLy")
         self.rt.protocol("WM_DELETE_WINDOW", self.on_close)

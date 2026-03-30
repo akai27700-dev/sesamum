@@ -775,19 +775,14 @@ struct MPCThreshold {
 };
 
 constexpr std::array<MPCThreshold, 4> MPC_THRESHOLDS = {{
-    {12, 2.5, -2.5, 4, 0.95, 0.95},
-    {14, 3.0, -3.0, 5, 0.97, 0.97},
-    {16, 3.5, -3.5, 6, 0.98, 0.98},
-    {18, 4.0, -4.0, 7, 0.99, 0.99}
+    {10, 2.2, -2.2, 4, 0.94, 0.94},  // More aggressive: depth 10 instead of 12
+    {12, 2.8, -2.8, 5, 0.96, 0.96},  // Lower thresholds
+    {14, 3.3, -3.3, 6, 0.97, 0.97},
+    {16, 3.8, -3.8, 7, 0.98, 0.98}
 }};
 
-inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value, std::int8_t& flag);
-inline bool try_iid(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, int& best_move);
-inline bool try_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, bool is_exact, SearchContext& ctx);
-inline bool try_reverse_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double beta, bool is_exact, SearchContext& ctx);
-
 inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value, std::int8_t& flag) {
-    if (is_exact || depth < 12) return false;  // depth >= 12 からのみMPC適用
+    if (is_exact || depth < 10) return false;  // depth >= 10 from MPC (more aggressive)
     
     for (const auto& mpc : MPC_THRESHOLDS) {
         if (depth >= mpc.depth) {
@@ -831,7 +826,7 @@ inline bool try_iid(Bitboard p, Bitboard o, int mvs, int depth, double alpha, do
 }
 
 inline bool try_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, bool is_exact, SearchContext& ctx) {
-    if (is_exact || depth > 2) return false;
+    if (is_exact || depth > 3) return false;  // Extended to depth 3
 
     const Bitboard valid = get_legal_moves_optimized(p, o);
     if ((valid & MASK_CORNER) != 0) return false;
@@ -839,15 +834,16 @@ inline bool try_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, dou
     if (move_count == 0) return false;
 
     double futility_margin = 0.0;
-    if (depth == 1) futility_margin = 48.0;
-    else if (depth == 2) futility_margin = 112.0 + static_cast<double>(move_count) * 4.0;
+    if (depth == 1) futility_margin = 42.0;  // More aggressive (was 48)
+    else if (depth == 2) futility_margin = 98.0 + static_cast<double>(move_count) * 3.5;  // Was 112
+    else if (depth == 3) futility_margin = 156.0 + static_cast<double>(move_count) * 3.0;  // New for depth 3
 
     double static_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
     return static_eval + futility_margin < alpha;
 }
 
 inline bool try_reverse_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double beta, bool is_exact, SearchContext& ctx) {
-    if (is_exact || depth > 2) return false;
+    if (is_exact || depth > 3) return false;  // Extended to depth 3
 
     const Bitboard valid = get_legal_moves_optimized(p, o);
     if ((valid & MASK_CORNER) != 0) return false;
@@ -855,8 +851,9 @@ inline bool try_reverse_futility_pruning(Bitboard p, Bitboard o, int mvs, int de
     if (move_count == 0) return false;
 
     double reverse_margin = 0.0;
-    if (depth == 1) reverse_margin = 56.0;
-    else if (depth == 2) reverse_margin = 128.0 + static_cast<double>(move_count) * 4.0;
+    if (depth == 1) reverse_margin = 48.0;  // More aggressive (was 56)
+    else if (depth == 2) reverse_margin = 112.0 + static_cast<double>(move_count) * 3.5;  // Was 128
+    else if (depth == 3) reverse_margin = 168.0 + static_cast<double>(move_count) * 3.0;  // New for depth 3
 
     double static_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
     return static_eval - reverse_margin > beta;
@@ -1043,15 +1040,16 @@ inline int compute_dynamic_lmr_reduction(
     double score_gap,
     bool nn_enabled
 ) {
-    int reduction = 1 + (move_index >= 4 ? 1 : 0) + (move_index >= 8 ? 1 : 0);
-    reduction += (depth >= 8 ? 1 : 0);
-    if (move_count >= 10) reduction += 1;
+    // More aggressive base reduction
+    int reduction = 1 + (move_index >= 3 ? 1 : 0) + (move_index >= 6 ? 1 : 0) + (move_index >= 10 ? 1 : 0);
+    reduction += (depth >= 6 ? 1 : 0) + (depth >= 10 ? 1 : 0);  // Lower depth thresholds
+    if (move_count >= 8) reduction += 1;  // Lower move count threshold
 
-    if (complexity >= 0.70) reduction -= 1;
-    else if (complexity <= 0.30) reduction += 1;
+    if (complexity >= 0.65) reduction -= 1;  // Higher complexity threshold
+    else if (complexity <= 0.35) reduction += 1;
 
-    if (score_gap <= 24.0) reduction -= 1;
-    else if (score_gap >= 160.0) reduction += 1;
+    if (score_gap <= 32.0) reduction -= 1;  // Higher gap threshold
+    else if (score_gap >= 128.0) reduction += 1;  // Lower gap threshold
 
     if (nn_enabled) reduction -= 1;
     return std::max(0, reduction);
@@ -1060,12 +1058,12 @@ inline int compute_dynamic_lmr_reduction(
 inline std::size_t compute_late_move_pruning_start(int depth, std::size_t move_count, double complexity) {
     std::size_t start = 0;
     if (depth <= 1) start = 2;
-    else if (depth == 2) start = 4;
-    else if (depth == 3) start = 6;
+    else if (depth == 2) start = 3;  // Was 4
+    else if (depth == 3) start = 5;  // Was 6
     else return move_count + 1;
 
-    if (complexity <= 0.30) start += 2;
-    else if (complexity >= 0.65 && start > 1) start -= 1;
+    if (complexity <= 0.35) start += 2;  // Was 0.30
+    else if (complexity >= 0.60 && start > 1) start -= 1;  // Was 0.65
 
     return std::min(move_count + 1, start);
 }
@@ -1127,12 +1125,12 @@ inline double compute_move_order_bonus(const SearchContext& ctx, int mvs, int sq
     return score;
 }
 
-// NNベースの枝刈り - NN評価を使って探索の早期打ち切り
+// NN-based pruning - more aggressive margins
 inline bool try_nn_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value, std::int8_t& flag) {
-    if (is_exact || depth < 8 || !ctx.nn_enabled) return false;
+    if (is_exact || depth < 6 || !ctx.nn_enabled) return false;  // Lower depth threshold from 8 to 6
 
     const double nn_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
-    const double nn_margin = 120.0 + static_cast<double>(depth) * 18.0;
+    const double nn_margin = 108.0 + static_cast<double>(depth) * 16.0;  // More aggressive: was 120 + 18*depth
 
     if (beta < 1e17 && nn_eval >= beta + nn_margin) {
         value = nn_eval;
@@ -1250,21 +1248,21 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
 
     if (!is_exact &&
         !passed &&
-        depth >= 6 &&
+        depth >= 5 &&  // Lower from 6 to 5
         beta < 1e17 &&
-        count_bits(valid) >= 4 &&
+        count_bits(valid) >= 3 &&  // Lower from 4 to 3
         (valid & MASK_CORNER) == 0 &&
-        estimate_search_complexity(p, o, valid) < 0.82 &&
-        get_static_eval() >= beta - (82.0 + static_cast<double>(depth) * 10.0)) {
+        estimate_search_complexity(p, o, valid) < 0.85 &&  // Higher from 0.82
+        get_static_eval() >= beta - (72.0 + static_cast<double>(depth) * 9.0)) {  // More aggressive: was 82 + 10*depth
         Bitboard opp_valid = get_legal_moves_optimized(o, p);
         if (opp_valid) {
-            int nmp_depth = depth - 4 - (depth >= 10 ? 2 : 1);
+            int nmp_depth = depth - 5 - (depth >= 8 ? 2 : 1);  // More aggressive: was -4, now -5
             if (nmp_depth > 0) {
                 auto [nmp_value, nmp_nodes] = alphabeta(o, p, mvs, nmp_depth, -beta, -beta + 1.0, true, is_exact, ctx);
                 nmp_value = -nmp_value;
 
                 if (nmp_value >= beta) {
-                    if (depth >= 8 && nmp_depth - 1 > 0) {
+                    if (depth >= 6 && nmp_depth - 1 > 0) {  // Lower from 8 to 6
                         auto [verify_value, verify_nodes] = alphabeta(o, p, mvs, nmp_depth - 1, -beta, -beta + 1.0, true, is_exact, ctx);
                         verify_value = -verify_value;
                         if (verify_value >= beta) {
