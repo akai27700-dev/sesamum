@@ -434,6 +434,13 @@ class UltimateOthello(OthelloSearchMixin):
         self.exact_cache = {}
         self.mcts_sim_history = []
 
+        # Numba kernelを初期化時に準備
+        if not core._NUMBA_WARMED_UP:
+            print("Numba kernelを準備中です...")
+            warmed = ensure_numba_warmup()
+            if warmed:
+                print("Numba kernelの準備が完了しました。")
+
         self.sp_var = tk.BooleanVar(value=True)
         self.board_only_var = tk.BooleanVar(value=False)
         self.use_mcts = tk.BooleanVar(value=True)
@@ -1911,7 +1918,8 @@ class UltimateOthello(OthelloSearchMixin):
         self.refresh_activation_view()
 
     def clk(self, e):
-        if not self.running or self.tn != self.hc or self.btn_pass: return
+        # 盤面のみ表示モードでもpassボタン操作を許可
+        if not self.running or self.tn != self.hc or (self.btn_pass and not self.board_only_mode): return
         ix = np.uint64((e.y // self.cell_size) * 8 + (e.x // self.cell_size))
         mB, mW = self.B if self.hc == 1 else self.W, self.W if self.hc == 1 else self.B
         if (self.legal_moves_mask(mB, mW) >> int(ix)) & 1:
@@ -1927,7 +1935,11 @@ class UltimateOthello(OthelloSearchMixin):
             self.rt.after(100, self.chk)
 
     def show_pass_btn(self):
-        self.btn_pass = tk.Button(self.left_frame, text="pass", font=("Arial", 12, "bold"), bg="#cfd8dc", fg="#37474f", relief="flat", padx=20, pady=10, command=self.do_pass)
+        # 盤面のみ表示モードでもpassボタンを表示
+        parent_frame = getattr(self, 'left_frame', None) or getattr(self, 'board_frame', None)
+        if not parent_frame or not parent_frame.winfo_exists() or not self.cv.winfo_exists():
+            return
+        self.btn_pass = tk.Button(parent_frame, text="pass", font=("Arial", 12, "bold"), bg="#cfd8dc", fg="#37474f", relief="flat", padx=20, pady=10, command=self.do_pass)
         self.btn_pass.place(in_=self.cv, x=self.board_size // 2, y=self.board_size // 2, anchor="center")
 
     def do_pass(self):
@@ -1953,12 +1965,7 @@ class UltimateOthello(OthelloSearchMixin):
             mvs = 0
             empty = 64
             
-            # 0.5秒以上の時のみNumba準備
-            if not is_quick_mode and not core._NUMBA_WARMED_UP:
-                self.log("Numba kernelを準備中です...")
-                warmed = ensure_numba_warmup()
-                if warmed:
-                    self.log("Numba kernelの準備が完了しました。")
+            # Numba kernelは初期化時に準備済みなのでスキップ
             self.sf_arr[0] = 0
             
             aB, oB = self.B if self.ac == 1 else self.W, self.W if self.ac == 1 else self.B
@@ -2099,6 +2106,11 @@ class UltimateOthello(OthelloSearchMixin):
                 return
 
             is_exact = self.should_start_exact_early(aB, oB, empty, len(rms))
+
+            # exact solve時はponderingを停止（評価を汚染しないため）
+            if is_exact:
+                self.stop_pondering_explicitly()
+                self.log("ponder: stopped for exact solve")
 
             best_move = -1
             if book_move is not None:

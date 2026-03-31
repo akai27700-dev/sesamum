@@ -43,13 +43,16 @@ class OthelloSearchMixin:
         next_opp = (opp_board ^ flip) & _FULL_MASK
         return next_player, next_opp
 
-    def should_stop_pondering(self, current_game_id, ponder_token, ponder_sf):
+    def should_stop_pondering(self, current_game_id, ponder_token, ponder_sf, force_stop=False):
+        if force_stop:
+            return True
+        stop_flag = int(ponder_sf[0]) != 0 if isinstance(ponder_sf, np.ndarray) else bool(ponder_sf[0])
         return (
             (not self.running)
             or self.game_id != current_game_id
             or self.ponder_token != ponder_token
             or self.tn == self.hc  # AIの手番の時だけ停止（相手ターン中は続ける）
-            or bool(ponder_sf[0])
+            or stop_flag
         )
 
     def get_legal_index_list(self, player_board, opp_board):
@@ -170,6 +173,22 @@ class OthelloSearchMixin:
                     entry["mcts_sim_count"] = int(mcts_sim_count if mcts_sim_count is not None else previous_sim_count)
             self.ponder_cache[cache_key] = entry
 
+    def stop_pondering_explicitly(self):
+        """明示的にponderingを停止（exact solve時などに使用）"""
+        with self.ponder_lock:
+            if self.ponder_sf is not None and isinstance(self.ponder_sf, np.ndarray):
+                self.ponder_sf[0] = 1
+        self.ponder_token += 1
+        if self.ponder_mcts_thread and self.ponder_mcts_thread.is_alive():
+            self.ponder_mcts_thread.join(timeout=0.1)
+        if self.ponder_ab_thread and self.ponder_ab_thread.is_alive():
+            self.ponder_ab_thread.join(timeout=0.1)
+        self.ponder_mcts_thread = None
+        self.ponder_ab_thread = None
+        self.ponder_thread = None
+        with self.ponder_lock:
+            self.ponder_active_token = -1
+
     def finish_ponder_worker(self, worker_name, ponder_token):
         with self.ponder_lock:
             if worker_name == "mcts":
@@ -203,6 +222,11 @@ class OthelloSearchMixin:
         self.ponder_sf = np.zeros(1, dtype=np.uint8)
         candidates = self.build_ponder_candidates(self.game_id, token)
         if not candidates:
+            return
+        # 終盤（全候補がis_exact）ではponderingをスキップ
+        all_exact = all(candidate["is_exact"] for candidate in candidates)
+        if all_exact:
+            self.log("ponder: skipped (all candidates are exact)")
             return
         run_ab_worker = self.use_cpp_engine and cpp_engine is not None and ((not self.use_mcts_only) or any(candidate["is_exact"] for candidate in candidates))
         self.ponder_active_token = token
@@ -369,19 +393,27 @@ class OthelloSearchMixin:
                             if bool(status.get("timed_out", False)):
                                 break
                             
-                            # Pondering中の深度ログを出力
+                            # Pondering中の深度ログを出力（間引き）
                             elapsed = time.time() - start_t
-                            nodes = status.get("nodes", 0)
+                            nodes_raw = status.get("nodes", 0)
+                            if isinstance(nodes_raw, list):
+                                nodes_sum = sum(int(n) for n in nodes_raw)
+                            else:
+                                nodes_sum = int(nodes_raw)
                             best_move = curr_ordered[0] if curr_ordered else -1
                             best_val = vals[0] if vals else 0.0
                             best_wr = calculate_win_rate(best_val, candidate["is_exact"])
                             
-                            self.log(f"ponder: αβ[c++] depth={dp:2d}   | best={best_wr:5.1f}%  | time={elapsed:4.1f}s  | nodes={nodes:,}")
-                            if len(curr_ordered) > 1:
-                                moves_str = " | ".join([f"({self.format_move_label(m)}) {calculate_win_rate(vals[i], candidate['is_exact']):5.1f}%" for i, m in enumerate(curr_ordered[:5])])
-                                self.log(f"  moves: {moves_str}")
+                            # 深度2-5は毎回、6以降は3回に1回、10以降は5回に1回
+                            if dp <= 5 or (dp <= 9 and dp % 3 == 0) or (dp >= 10 and dp % 5 == 0):
+                                move_label = self.format_move_label(candidate["move"])
+                                self.log(f"ponder: αβ[c++] depth={dp:2d}   | best={best_wr:5.1f}%  | time={elapsed:4.1f}s  | nodes={nodes_sum:,} | move=({move_label})")
+                                if len(curr_ordered) > 1:
+                                    moves_str = " | ".join([f"({self.format_move_label(m)}) {calculate_win_rate(vals[i], candidate['is_exact']):5.1f}%" for i, m in enumerate(curr_ordered[:5])])
+                                    self.log(f"  moves: {moves_str}")
                                 
-                        except Exception:
+                        except Exception as e:
+                            # エラーはログせずにbreak
                             break
                         combined = []
                         for i, move in enumerate(curr_ordered):
@@ -394,6 +426,7 @@ class OthelloSearchMixin:
                             break
                 round_idx += 1
         except Exception:
+            # 外部例外もログせず
             pass
         finally:
             self.finish_ponder_worker("αβ", ponder_token)
