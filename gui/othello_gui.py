@@ -23,6 +23,8 @@ from gui.othello_gui_search import OthelloSearchMixin
 BASE_DIR = core.BASE_DIR
 BEST_MODEL_PATH = core.BEST_MODEL_PATH
 BLEND_CALIBRATION_LOG_PATH = os.path.join(BASE_DIR, 'data', 'blend_calibration_samples.jsonl')
+WEIGHTS_1_PATH = os.path.join(BASE_DIR, 'data', 'weights_1.json')
+WEIGHTS_2_PATH = os.path.join(BASE_DIR, 'data', 'weights_2.json')
 DEVICE = core.DEVICE
 DEVICE_STR = core.DEVICE_STR
 ENDGAME_SOLVER_AVAILABLE = core.ENDGAME_SOLVER_AVAILABLE
@@ -31,6 +33,9 @@ TT_SIZE = core.TT_SIZE
 USE_WEIGHT = core.USE_WEIGHT
 WEIGHTS_PATH = core.WEIGHTS_PATH
 _FULL_MASK = core._FULL_MASK
+MASK_CORNER = core.MASK_CORNER
+MASK_X = core.MASK_X
+MASK_C = core.MASK_C
 _NN_EXECUTOR = core._NN_EXECUTOR
 blend_search_scores = core.blend_search_scores
 calculate_blend_weights = core.compute_blend_weights
@@ -370,6 +375,30 @@ class UltimateOthello(OthelloSearchMixin):
         self.mcts_sim_history = []
         self.position_history = []
         self.history_view_index = 0
+        # Egaroucid寄せ: ルート手順序づけ用の履歴ヒューリスティック
+        self.history_heuristic = [[0.0 for _ in range(64)] for _ in range(2)]  # [side][move]
+        self.killer_moves_root = [[-1, -1] for _ in range(64)]  # [ply][killer1, killer2]
+        self.side_weight_profiles = None
+        # 自動対戦: 重み比較モード（weights_1 vs weights_2）
+        self.weights_match_active = False
+        self.weights_match_game_index = 0
+        self.weights_match_score = {'w1': 0, 'w2': 0, 'draw': 0}
+        self.weights_match_profiles = None
+        # exact ロック: 一度 exact に入ったら終局まで読み切り継続
+        self.exact_lock_active = False
+        self.log_file_path = os.path.join(BASE_DIR, 'sesamum_log.txt')
+        self._log_file_error_reported = False
+        try:
+            with open(self.log_file_path, 'w', encoding='utf-8') as log_file:
+                log_file.write(f'# Sesamum log started: {time.strftime("%Y-%m-%d %H:%M:%S")}\n')
+        except Exception:
+            # BASE_DIR書き込み不可環境向けフォールバック
+            try:
+                self.log_file_path = os.path.join(os.getcwd(), 'sesamum_log.txt')
+                with open(self.log_file_path, 'w', encoding='utf-8') as log_file:
+                    log_file.write(f'# Sesamum log started: {time.strftime("%Y-%m-%d %H:%M:%S")}\n')
+            except Exception:
+                self.log_file_path = None
         if not core._NUMBA_WARMED_UP:
             print('Numba kernelを準備中です...')
             warmed = ensure_numba_warmup()
@@ -484,6 +513,26 @@ class UltimateOthello(OthelloSearchMixin):
                 self.log('遺伝子ファイルの読み込みに失敗しました。デフォルト重みを使用します。')
         else:
             self.log('遺伝子ファイルが見つからないか無効です。デフォルト重みを使用します。')
+        max_abs_weight = float(np.max(np.abs(self.W_ary))) if self.W_ary.size else 0.0
+        mean_abs_weight = float(np.mean(np.abs(self.W_ary))) if self.W_ary.size else 0.0
+        weight_sum = float(np.sum(self.W_ary)) if self.W_ary.size else 0.0
+        self.log(self.format_log_columns([
+            'weights:',
+            f'len={int(self.W_ary.size)}',
+            f'max_abs={max_abs_weight:.6f}',
+            f'mean_abs={mean_abs_weight:.6f}',
+            f'sum={weight_sum:.6f}',
+        ], [9, 10, 18, 19, 15]))
+        self.log(self.format_log_columns([
+            'weights sample:',
+            f'w0={float(self.W_ary[0]) if self.W_ary.size > 0 else 0.0:.6f}',
+            f'w120={float(self.W_ary[120]) if self.W_ary.size > 120 else 0.0:.6f}',
+            f'w242={float(self.W_ary[242]) if self.W_ary.size > 242 else 0.0:.6f}',
+        ], [16, 17, 20, 17]))
+        self.strict_weight_mode = bool(max_abs_weight <= 1e-9)
+        if self.strict_weight_mode and self.use_cpp_engine:
+            self.log('weight mode: strict (all weights are near zero) -> C++ engine disabled for consistency')
+            self.use_cpp_engine = False
         self.order_map = self.W_ary[0:64]
         self.weights_list = self.W_ary.tolist()
         self.order_map_list = self.order_map.tolist()
@@ -688,14 +737,17 @@ class UltimateOthello(OthelloSearchMixin):
     def get_exact_base_threshold(self):
         if not self.exact_auto:
             return int(self.readout_empty_threshold)
+        # Egaroucid complete0方式: 時間制限に基づくexact開始閾値
         base_time = float(self.time_limit_sec)
+        if base_time <= 0.5:
+            return 28
         if base_time <= 1.0:
-            return 26
+            return 31
         if base_time <= 5.0:
-            return 30
+            return 36
         if base_time <= 10.0:
-            return 32
-        return 34
+            return 40
+        return 42
 
     def get_exact_gap_budget(self, legal_count, time_limit):
         budget = 7
@@ -716,15 +768,18 @@ class UltimateOthello(OthelloSearchMixin):
         return max(3, budget)
 
     def get_endgame_solver_threshold(self, legal_count, time_limit):
+        # Egaroucid complete0方式: 時間制限に基づくendgame solver閾値
         limit = float(time_limit)
-        if limit <= 1.0:
+        if limit <= 0.5:
             threshold = 28
+        elif limit <= 1.0:
+            threshold = 31
         elif limit <= 5.0:
-            threshold = 32
+            threshold = 36
         elif limit <= 10.0:
-            threshold = 33
+            threshold = 40
         else:
-            threshold = 34
+            threshold = 42
         if legal_count <= 6:
             threshold += 2
         elif legal_count <= 10:
@@ -733,7 +788,7 @@ class UltimateOthello(OthelloSearchMixin):
             threshold -= 2
         elif legal_count >= 13:
             threshold -= 1
-        return max(26, min(36, threshold))
+        return max(24, min(48, threshold))
 
     def get_endgame_solver_time_limit_ms(self, empty, legal_count, time_limit):
         base_ms = float(time_limit) * 1000.0
@@ -1025,32 +1080,107 @@ class UltimateOthello(OthelloSearchMixin):
         return (prior_map, primary_move, book_roll_used)
 
     def should_start_exact_early(self, aB, oB, empty, legal_count, start_depth=2, time_limit=None):
+        # Egaroucid方式: empties <= base_threshold なら即座にexact solve
         base_threshold = int(self.get_exact_base_threshold())
-        time_budget = float(self.time_limit_sec if time_limit is None else time_limit)
-        if empty > base_threshold + 7:
-            return False
-        if empty > base_threshold and legal_count >= 14:
-            return False
-        gap_budget = self.get_exact_gap_budget(int(legal_count), time_budget)
-        remaining_gap = max(0, int(empty) - max(2, int(start_depth)))
-        if remaining_gap > gap_budget:
-            return False
-        if self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'should_use_early_exact'):
+        if int(empty) <= base_threshold:
+            return True
+        # base_thresholdより大きいemptiesではC++ヒューリスティックで補助判定
+        if int(empty) <= base_threshold + 7 and self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'should_use_early_exact'):
             try:
-                heuristic_exact = bool(cpp_engine.should_use_early_exact(int(aB), int(oB), int(empty), base_threshold))
-                if heuristic_exact and legal_count >= 15 and remaining_gap >= max(5, gap_budget):
-                    return False
-                return heuristic_exact
+                return bool(cpp_engine.should_use_early_exact(int(aB), int(oB), int(empty), base_threshold))
             except Exception:
                 pass
-        # フォールバック: C++ヒューリスティックが使えない場合のみ簡易判定
-        if empty <= min(24, base_threshold):
-            return True
-        if empty <= base_threshold:
-            threshold = int(max(4, 11 + (base_threshold - empty)))
-            if legal_count <= threshold:
-                return True
         return False
+
+    def get_turn_state(self):
+        current_player = self.B if self.tn == 1 else self.W
+        current_opp = self.W if self.tn == 1 else self.B
+        current_moves = self.legal_moves_mask(current_player, current_opp)
+        if current_moves:
+            return {'current_moves': current_moves, 'must_pass': False, 'game_over': False}
+        next_turn = -self.tn
+        next_player = self.B if next_turn == 1 else self.W
+        next_opp = self.W if next_turn == 1 else self.B
+        next_moves = self.legal_moves_mask(next_player, next_opp)
+        return {'current_moves': 0, 'must_pass': bool(next_moves), 'game_over': not bool(next_moves)}
+
+    def apply_forced_pass_for_search(self):
+        """探索側の責務: pass 状態遷移のみを反映し、UI操作は行わない。"""
+        state = self.get_turn_state()
+        if state['current_moves']:
+            return {'applied': False, 'game_over': state['game_over']}
+        if state['must_pass']:
+            self.tn = -self.tn
+            return {'applied': True, 'game_over': False}
+        return {'applied': False, 'game_over': True}
+
+    def _endgame_ordering_bonus(self, move, aB, oB, mvs):
+        bit = np.uint64(1) << np.uint64(int(move))
+        # corner / X / C の静的重み
+        bonus = 0.0
+        if bit & MASK_CORNER:
+            bonus += 95.0
+        if bit & MASK_X:
+            bonus -= 38.0
+        if bit & MASK_C:
+            bonus -= 14.0
+        # 軽量安定性近似: 自分角保持 + 辺石増加を優遇
+        nP, nO = self.apply_move_pair(aB, oB, int(move))
+        my_corner_now = int((aB & MASK_CORNER).bit_count())
+        my_corner_next = int((nP & MASK_CORNER).bit_count())
+        bonus += float(my_corner_next - my_corner_now) * 45.0
+        edge_mask = np.uint64(0xFF818181818181FF)
+        my_edge_now = int((aB & edge_mask).bit_count())
+        my_edge_next = int((nP & edge_mask).bit_count())
+        bonus += float(my_edge_next - my_edge_now) * 2.2
+        # parity 近似: 4象限の空き偶奇をなるべく崩さない手を優先
+        empty_mask = (~(nP | nO)) & _FULL_MASK
+        q0 = int((empty_mask & np.uint64(0x000000000F0F0F0F)).bit_count()) & 1
+        q1 = int((empty_mask & np.uint64(0x00000000F0F0F0F0)).bit_count()) & 1
+        q2 = int((empty_mask & np.uint64(0x0F0F0F0F00000000)).bit_count()) & 1
+        q3 = int((empty_mask & np.uint64(0xF0F0F0F000000000)).bit_count()) & 1
+        odd_quadrants = q0 + q1 + q2 + q3
+        bonus -= float(odd_quadrants) * 2.0
+        # 相手可動域を削る方向へ
+        opp_mobility = int(self.legal_moves_mask(nO, nP).bit_count())
+        bonus -= float(opp_mobility) * 1.6
+        return bonus
+
+    def _side_to_index(self, turn):
+        return 0 if int(turn) == 1 else 1
+
+    def _root_ordering_bonus(self, move, turn, mvs):
+        side_idx = self._side_to_index(turn)
+        move_idx = int(move)
+        ply_idx = max(0, min(63, int(mvs)))
+        hist = float(self.history_heuristic[side_idx][move_idx])
+        killer_bonus = 0.0
+        killer0, killer1 = self.killer_moves_root[ply_idx]
+        if move_idx == killer0:
+            killer_bonus += 28.0
+        elif move_idx == killer1:
+            killer_bonus += 16.0
+        return hist * 0.08 + killer_bonus
+
+    def _update_root_ordering_memory(self, best_move, second_move, turn, mvs, depth_reached, solved=False):
+        side_idx = self._side_to_index(turn)
+        ply_idx = max(0, min(63, int(mvs)))
+        best = int(best_move)
+        depth_bonus = max(1.0, float(depth_reached))
+        gain = 6.0 + depth_bonus * 2.2
+        if solved:
+            gain *= 1.35
+        self.history_heuristic[side_idx][best] = min(600.0, self.history_heuristic[side_idx][best] + gain)
+        if second_move is not None:
+            second = int(second_move)
+            self.history_heuristic[side_idx][second] = min(600.0, self.history_heuristic[side_idx][second] + gain * 0.35)
+        k0, k1 = self.killer_moves_root[ply_idx]
+        if best != k0:
+            self.killer_moves_root[ply_idx][1] = k0
+            self.killer_moves_root[ply_idx][0] = best
+        # 古いヒューリスティックを緩やかに減衰
+        for idx in range(64):
+            self.history_heuristic[side_idx][idx] *= 0.997
 
     def update_title(self):
         t = f'Sesamum - αβ: {max(0.0, min(100.0, self.last_win_rate)):.1f}%'
@@ -1136,6 +1266,14 @@ class UltimateOthello(OthelloSearchMixin):
     def log(self, message, mirror=True):
         if mirror:
             print(message, flush=True)
+        if self.log_file_path:
+            try:
+                with open(self.log_file_path, 'a', encoding='utf-8') as log_file:
+                    log_file.write(str(message) + '\n')
+            except Exception as e:
+                if not self._log_file_error_reported:
+                    self._log_file_error_reported = True
+                    print(f'log file write error: {e}', flush=True)
         if hasattr(self, 'log_text'):
             self.call_on_ui_thread(self.append_log_message, message)
 
@@ -1478,7 +1616,7 @@ class UltimateOthello(OthelloSearchMixin):
                 val = entry[idx]
                 if val is None:
                     if len(segment_points) >= 4:
-                        canvas.create_line(*segment_points, fill=color, width=2)
+                        canvas.create_line(*segment_points, fill=color, width=2, smooth=True, splinesteps=16)
                     elif len(segment_points) == 2:
                         canvas.create_oval(segment_points[0] - 2, segment_points[1] - 2, segment_points[0] + 2, segment_points[1] + 2, fill=color, outline=color)
                     segment_points = []
@@ -1486,7 +1624,7 @@ class UltimateOthello(OthelloSearchMixin):
                 y = mt + (y_max - val) / (y_max - y_min) * (h - mt - mb)
                 segment_points.extend([x, y])
             if len(segment_points) >= 4:
-                canvas.create_line(*segment_points, fill=color, width=2)
+                canvas.create_line(*segment_points, fill=color, width=2, smooth=True, splinesteps=16)
             elif len(segment_points) == 2:
                 canvas.create_oval(segment_points[0] - 2, segment_points[1] - 2, segment_points[0] + 2, segment_points[1] + 2, fill=color, outline=color)
             for x, entry in zip(xs, history):
@@ -1506,12 +1644,10 @@ class UltimateOthello(OthelloSearchMixin):
                     midpoints.extend([x, y])
                 else:
                     if len(midpoints) >= 4:
-                        for i in range(0, len(midpoints) - 2, 2):
-                            canvas.create_line(midpoints[i], midpoints[i + 1], midpoints[i + 2], midpoints[i + 3], fill='#00aa00', width=2, dash=(4, 2))
+                        canvas.create_line(*midpoints, fill='#00aa00', width=2, dash=(4, 2), smooth=True, splinesteps=16)
                     midpoints = []
             if len(midpoints) >= 4:
-                for i in range(0, len(midpoints) - 2, 2):
-                    canvas.create_line(midpoints[i], midpoints[i + 1], midpoints[i + 2], midpoints[i + 3], fill='#00aa00', width=2, dash=(4, 2))
+                canvas.create_line(*midpoints, fill='#00aa00', width=2, dash=(4, 2), smooth=True, splinesteps=16)
         legend_x = ml
         for color, label in zip([s[1] for s in specs], labels):
             canvas.create_rectangle(legend_x, legend_y - 5, legend_x + 10, legend_y + 5, fill=color, outline=color)
@@ -1571,12 +1707,166 @@ class UltimateOthello(OthelloSearchMixin):
             if self.btn_pass:
                 self.btn_pass.destroy()
                 self.btn_pass = None
+            # 設定どおりの思考時間で、weights_1 vs weights_2 を2試合だけ行う
+            self.start_weights_match()
             self.log('自動対戦モード: ON')
         else:
             self.ponder_sf[0] = 1
+            self.stop_weights_match()
             self.log('自動対戦モード: OFF')
         self.drw()
         self.chk()
+
+    def load_weights_from_file(self, path):
+        try:
+            if not os.path.exists(path):
+                return None
+            with open(path, 'r', encoding='utf-8') as f:
+                raw = json.load(f)
+            arr = np.array([float(x) for x in raw], dtype=np.float64)
+            if arr.size < GENE_LEN:
+                arr = np.array(list(arr) + [0.0] * (GENE_LEN - int(arr.size)), dtype=np.float64)
+            elif arr.size > GENE_LEN:
+                arr = arr[:GENE_LEN]
+            return np.round(arr, 6)
+        except Exception as e:
+            self.log(f'weights load error: {path} ({e})')
+            return None
+
+    def start_weights_match(self):
+        """data/weights_1.json と data/weights_2.json があれば、白黒入替の2試合比較を開始"""
+        w1 = self.load_weights_from_file(WEIGHTS_1_PATH)
+        w2 = self.load_weights_from_file(WEIGHTS_2_PATH)
+        if w1 is None or w2 is None:
+            self.log(f'weights match: skipped (missing {WEIGHTS_1_PATH} or {WEIGHTS_2_PATH})')
+            return False
+        self.weights_match_active = True
+        self.weights_match_game_index = 0
+        self.weights_match_score = {'w1': 0, 'w2': 0, 'draw': 0}
+        self.weights_match_profiles = {'w1': w1, 'w2': w2}
+        self.log(f'weights match: start (2 games, swap colors) | w1={WEIGHTS_1_PATH} | w2={WEIGHTS_2_PATH}')
+        self._setup_weights_match_game()
+        return True
+
+    def stop_weights_match(self):
+        self.weights_match_active = False
+        self.weights_match_profiles = None
+
+    def _setup_weights_match_game(self):
+        if not self.weights_match_active or not self.weights_match_profiles:
+            return
+        # game0: w1 black vs w2 white / game1: w2 black vs w1 white
+        swap = bool(self.weights_match_game_index % 2 == 1)
+        w1 = self.weights_match_profiles['w1']
+        w2 = self.weights_match_profiles['w2']
+        if not swap:
+            black_w, white_w = w1, w2
+            self.log('weights match: game 1/2 | black=w1 white=w2')
+        else:
+            black_w, white_w = w2, w1
+            self.log('weights match: game 2/2 | black=w2 white=w1')
+        self.side_weight_profiles = {1: np.array(black_w, dtype=np.float64), -1: np.array(white_w, dtype=np.float64)}
+        self.ng()
+
+    def _finalize_weights_match_game(self, black_discs, white_discs):
+        if not self.weights_match_active or not self.weights_match_profiles:
+            return
+        swap = bool(self.weights_match_game_index % 2 == 1)
+        if black_discs > white_discs:
+            winner = 'black'
+        elif white_discs > black_discs:
+            winner = 'white'
+        else:
+            winner = 'draw'
+        # w1/w2 へ帰属
+        if winner == 'draw':
+            self.weights_match_score['draw'] += 1
+        else:
+            if not swap:
+                # black=w1, white=w2
+                if winner == 'black':
+                    self.weights_match_score['w1'] += 1
+                else:
+                    self.weights_match_score['w2'] += 1
+            else:
+                # black=w2, white=w1
+                if winner == 'black':
+                    self.weights_match_score['w2'] += 1
+                else:
+                    self.weights_match_score['w1'] += 1
+        self.log(f'weights match: result game {self.weights_match_game_index + 1}/2 | B={black_discs} W={white_discs} | score={self.weights_match_score}')
+        self.weights_match_game_index += 1
+        if self.weights_match_game_index >= 2:
+            # finish
+            w1w = int(self.weights_match_score['w1'])
+            w2w = int(self.weights_match_score['w2'])
+            dr = int(self.weights_match_score['draw'])
+            summary = f'w1 wins={w1w}, w2 wins={w2w}, draw={dr}'
+            self.log(f'weights match: finished | {summary}')
+            try:
+                messagebox.showinfo('weights match result', summary)
+            except Exception:
+                pass
+            self.stop_weights_match()
+            # 自動対戦も停止（チェックボックス連動）
+            try:
+                self.auto_battle_var.set(False)
+            except Exception:
+                pass
+            self.auto_battle = False
+            self.side_weight_profiles = None
+            return
+        self._setup_weights_match_game()
+
+    def apply_weight_profile(self, weights, profile_label='default'):
+        arr = np.array(weights, dtype=np.float64)
+        if arr.size < GENE_LEN:
+            arr = np.array(list(arr) + [0.0] * (GENE_LEN - int(arr.size)), dtype=np.float64)
+        elif arr.size > GENE_LEN:
+            arr = arr[:GENE_LEN]
+        self.W_ary = np.round(arr, 6)
+        self.order_map = self.W_ary[0:64]
+        self.weights_list = self.W_ary.tolist()
+        self.order_map_list = self.order_map.tolist()
+        if self.use_cpp_engine and cpp_engine is not None:
+            try:
+                cpp_engine.set_eval_data(self.W_ary, self.order_map)
+            except Exception as e:
+                self.log(f'weights apply warning ({profile_label}): {e}')
+
+    def _direction_matrix(self, direction_idx):
+        grid = np.zeros((8, 8), dtype=np.float64)
+        for r in range(8):
+            for c in range(8):
+                if direction_idx == 0:      # horizontal
+                    grid[r, c] = (c - 3.5) / 3.5
+                elif direction_idx == 1:    # vertical
+                    grid[r, c] = (r - 3.5) / 3.5
+                elif direction_idx == 2:    # diag \
+                    grid[r, c] = ((r + c) - 7.0) / 7.0
+                else:                       # diag /
+                    grid[r, c] = ((r - c)) / 7.0
+        return grid.reshape(64)
+
+    def create_directional_candidate(self, base_weights, direction_idx):
+        cand = np.array(base_weights, dtype=np.float64)
+        dir_vec = self._direction_matrix(direction_idx)
+        amp_cell = 1.2 + 0.35 * direction_idx
+        amp_feat = 0.18 + 0.03 * direction_idx
+        for st in (0, 80, 160):
+            cand[st:st + 64] += dir_vec * amp_cell
+            feat = cand[st + 64:st + 80]
+            feat[0:4] += amp_feat * np.mean(dir_vec[0:16])
+            feat[4:8] += amp_feat * np.mean(dir_vec[16:32])
+            feat[8:12] += amp_feat * np.mean(dir_vec[32:48])
+            feat[12:16] += amp_feat * np.mean(dir_vec[48:64])
+            cand[st + 64:st + 80] = feat
+        # meta重みはブロック単位で微調整
+        cand[240] = cand[240] * (1.0 + 0.03 * (direction_idx - 1.5))
+        cand[241] = cand[241] * (1.0 + 0.04 * (1.5 - direction_idx))
+        cand[242] = cand[242] * (1.0 + 0.02 * (1 if direction_idx % 2 == 0 else -1))
+        return np.round(cand, 6)
+
 
     def rebuild_layout(self):
         """UIレイアウトを再構築"""
@@ -1653,6 +1943,7 @@ class UltimateOthello(OthelloSearchMixin):
             self.ac = -self.hc
             self.last_win_rate = 50.0
             self.last_mcts_win_rate = None
+            self.exact_lock_active = False
             self.reset_graph_history()
             self.redraw_graphs()
             self.update_title()
@@ -1673,6 +1964,7 @@ class UltimateOthello(OthelloSearchMixin):
         self.reset_position_history()
         self.last_win_rate = 50.0
         self.last_mcts_win_rate = None
+        self.exact_lock_active = False
         self.reset_graph_history()
         self.redraw_graphs()
         self.update_title()
@@ -1951,11 +2243,21 @@ class UltimateOthello(OthelloSearchMixin):
             self.rt.after(100, self.chk)
 
     def show_pass_btn(self):
-        parent_frame = getattr(self, 'left_frame', None) or getattr(self, 'board_frame', None)
-        if not parent_frame or not parent_frame.winfo_exists() or (not self.cv.winfo_exists()):
+        if not hasattr(self, 'cv') or self.cv is None or (not self.cv.winfo_exists()):
             return
-        self.btn_pass = tk.Button(parent_frame, text='pass', font=('Arial', 12, 'bold'), bg='#cfd8dc', fg='#37474f', relief='flat', padx=20, pady=10, command=self.do_pass)
-        self.btn_pass.place(in_=self.cv, x=self.board_size // 2, y=self.board_size // 2, anchor='center')
+        if self.btn_pass and self.btn_pass.winfo_exists():
+            try:
+                self.btn_pass.lift()
+            except Exception:
+                pass
+            return
+        self.btn_pass = tk.Button(self.cv, text='pass', font=('Arial', 12, 'bold'), bg='#cfd8dc', fg='#37474f', relief='flat', padx=20, pady=10, command=self.do_pass)
+        self.cv.update_idletasks()
+        self.btn_pass.place(x=self.board_size // 2, y=self.board_size // 2, anchor='center')
+        try:
+            self.btn_pass.lift()
+        except Exception:
+            pass
 
     def advance_forced_pass_state(self):
         current_player = self.B if self.tn == 1 else self.W
@@ -2001,6 +2303,10 @@ class UltimateOthello(OthelloSearchMixin):
             empty = 64
             self.sf_arr[0] = 0
             acting_side = self.tn if self.auto_battle else self.ac
+            if self.auto_battle and self.weights_match_active and self.side_weight_profiles is not None:
+                active_profile = self.side_weight_profiles.get(int(acting_side))
+                if active_profile is not None:
+                    self.apply_weight_profile(active_profile, profile_label=f'auto_side_{acting_side}')
             aB, oB = (self.B if acting_side == 1 else self.W, self.W if acting_side == 1 else self.B)
             mvs = int((aB | oB).bit_count()) - 4
             empty = 64 - int((aB | oB).bit_count())
@@ -2008,14 +2314,15 @@ class UltimateOthello(OthelloSearchMixin):
             initial_legal_count = int(initial_legal_mask.bit_count())
             if initial_legal_count == 0:
                 self.log('search: no legal moves -> pass')
-                self.advance_forced_pass_state()
-                self.call_on_ui_thread(self.resolve_forced_pass)
+                pass_result = self.apply_forced_pass_for_search()
+                if pass_result.get('applied', False):
+                    self.call_on_ui_thread(self.resolve_forced_pass)
                 follow_up_handled = True
                 return
             initial_time_limit = self.get_auto_time_limit(empty, initial_legal_count, mvs)
             solver_threshold = self.get_endgame_solver_threshold(initial_legal_count, initial_time_limit)
             solver_time_limit_ms = self.get_endgame_solver_time_limit_ms(empty, initial_legal_count, initial_time_limit)
-            if empty <= solver_threshold and ENDGAME_SOLVER_AVAILABLE and (not is_quick_mode):
+            if empty <= solver_threshold and ENDGAME_SOLVER_AVAILABLE:
                 self.log(f'endgame: C++ solver activated (empties={empty})')
                 start_time = time.time()
                 try:
@@ -2028,10 +2335,12 @@ class UltimateOthello(OthelloSearchMixin):
                         best_move_idx = int(status.get('best_move', -1))
                         completed_depth = int(status.get('completed_depth', 0))
                         fully_solved = bool(status.get('fully_solved', False))
+                        solved_score = int(status.get('score', 0))
                     else:
                         best_move_idx = get_endgame_best_move(int(self.B), int(self.W), current_player, empty, int(solver_time_limit_ms))
                         fully_solved = (best_move_idx >= 0) or (best_move_idx == -1)  # -1も有効な結果（pass）
                         completed_depth = empty if fully_solved else 0
+                        solved_score = 0
                     if fully_solved and best_move_idx >= 0:
                         # 通常の手を指す場合
                         if self.tn == 1:
@@ -2041,6 +2350,11 @@ class UltimateOthello(OthelloSearchMixin):
                         elapsed = time.time() - start_time
                         move_label = self.format_move_label(best_move_idx)
                         self.log(f'endgame: exact solved in {elapsed:.2f}s | depth={completed_depth}/{empty} | best move=({move_label})')
+                        try:
+                            wr = float(calculate_win_rate(float(solved_score), True))
+                        except Exception:
+                            wr = 50.0
+                        self.call_on_ui_thread(self.update_gui_from_ai, wr, {int(best_move_idx): 100.0}, current_game_id)
                         self.tn = -self.tn
                         self.drw()
                         self.rt.after(100, self.chk)
@@ -2050,6 +2364,11 @@ class UltimateOthello(OthelloSearchMixin):
                         # passの場合
                         elapsed = time.time() - start_time
                         self.log(f'endgame: exact solved in {elapsed:.2f}s | depth={completed_depth}/{empty} | pass')
+                        try:
+                            wr = float(calculate_win_rate(float(solved_score), True))
+                        except Exception:
+                            wr = 50.0
+                        self.call_on_ui_thread(self.update_gui_from_ai, wr, {}, current_game_id)
                         self.advance_forced_pass_state()
                         self.call_on_ui_thread(self.resolve_forced_pass, 100, False)
                         follow_up_handled = True
@@ -2145,11 +2464,15 @@ class UltimateOthello(OthelloSearchMixin):
                 lm.sort(key=lambda x: -(x[1] + 400.0 * policy_scores.get(x[0], 0.0)))
             else:
                 lm.sort(key=lambda x: -x[1])
+            lm.sort(key=lambda x: -(x[1] + self._root_ordering_bonus(int(x[0]), self.tn, mvs)))
+            if empty <= 20 and lm:
+                lm.sort(key=lambda x: -(x[1] + self._endgame_ordering_bonus(int(x[0]), aB, oB, mvs)))
             rms = [m[0] for m in lm]
             if not rms:
                 self.log('search: no legal moves -> pass')
-                self.advance_forced_pass_state()
-                self.call_on_ui_thread(self.resolve_forced_pass)
+                pass_result = self.apply_forced_pass_for_search()
+                if pass_result.get('applied', False):
+                    self.call_on_ui_thread(self.resolve_forced_pass)
                 follow_up_handled = True
                 return
             ponder_key = self.make_state_key(aB, oB, self.tn)
@@ -2184,11 +2507,22 @@ class UltimateOthello(OthelloSearchMixin):
                 self.call_on_ui_thread(self.chk)
                 return
             time_limit = self.get_auto_time_limit(empty, len(rms), mvs)
-            is_exact = self.should_start_exact_early(aB, oB, empty, len(rms), start_dp, time_limit)
+            is_exact = bool(self.exact_lock_active) or self.should_start_exact_early(aB, oB, empty, len(rms), start_dp, time_limit)
+            # Egaroucid方式: exact突入時はstart_dpをempties付近に設定（浅いdepthの無駄なイテレーションを回避）
+            if is_exact and not is_resumed:
+                presearch_offset = 6 if time_limit >= 5.0 else 4 if time_limit >= 1.0 else 2
+                start_dp = max(start_dp, max(2, int(empty) - presearch_offset))
             start_dp = self.clamp_search_depth(start_dp, empty, is_exact)
             if is_exact:
                 self.stop_pondering_explicitly()
                 self.log('ponder: stopped for exact solve')
+                self.exact_lock_active = True
+                # exact突入直後は結果が返るまで勝率を保持（50%への見かけの巻き戻り防止）
+                try:
+                    hold_wr = float(self.last_win_rate) if self.last_win_rate is not None else 50.0
+                except Exception:
+                    hold_wr = 50.0
+                self.call_on_ui_thread(self.update_gui_from_ai, hold_wr, {}, current_game_id)
             best_move = -1
             if book_move is not None:
                 if valid >> book_move & 1:
@@ -2364,8 +2698,10 @@ class UltimateOthello(OthelloSearchMixin):
                 # MCTS枝刈りが有効な場合は残り時間をAB探索に使用
                 if self.use_mcts_enabled and self.mcts_pruning_enabled:
                     ab_time_limit = self.ab_pruning_time
-                    ab_deadline = ai_start_time + ab_time_limit
-                    self.log(self.format_log_columns(['ab: pruning mode', f'time={ab_time_limit:.1f}s'], [16, 12]))
+                    remaining_after_delay = max(0.0, actual_time_limit - (time.time() - ai_start_time))
+                    effective_ab_time = max(0.05, min(float(ab_time_limit), remaining_after_delay))
+                    ab_deadline = time.time() + effective_ab_time
+                    self.log(self.format_log_columns(['ab: pruning mode', f'time={effective_ab_time:.1f}s'], [16, 12]))
                 else:
                     ab_deadline = None if is_exact or search_profile['ab_budget'] is None else ai_start_time + float(search_profile['ab_budget'])
                 self.log(self.format_log_columns(['ab: start', f'depth={max(start_dp, 2)}'], [9, 10]))
@@ -2421,7 +2757,7 @@ class UltimateOthello(OthelloSearchMixin):
                         es = [math.exp(max(-20.0, (c - mx) / 10.0)) for _, _, c in combined]
                         se = sum(es) if es else 1.0
                         probs_map = {m: e / se * 100.0 for (m, _, _), e in zip(combined, es)}
-                        pr_str = '[*]' if is_resumed else '[]'
+                        pr_str = '[*]' if depth_exact or is_resumed else '[]'
                         el = time.time() - ai_start_time
                         ds = combined[:5]
                         move_summary = self.format_top_moves([(r[0], r[2]) for r in ds], limit=5)
@@ -2430,8 +2766,8 @@ class UltimateOthello(OthelloSearchMixin):
                         if is_exact:
                             self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
                         completed_depth = dp
-                        if depth_exact or abs(combined[0][1]) > 5000:
-                            resolved_flag = bool(depth_exact or abs(combined[0][1]) > 5000)
+                        if depth_exact:
+                            resolved_flag = True
                             if not use_mcts_enabled:
                                 self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
                                 time.sleep(0.1)
@@ -2475,7 +2811,7 @@ class UltimateOthello(OthelloSearchMixin):
                     es = [math.exp(max(-20.0, (c - mx) / 10.0)) for _, _, c in combined]
                     se = sum(es) if es else 1.0
                     probs_map = {m: e / se * 100.0 for (m, _, _), e in zip(combined, es)}
-                    pr_str = '[*]' if is_resumed else '[]'
+                    pr_str = '[*]' if depth_exact or is_resumed else '[]'
                     el = time.time() - ai_start_time
                     ds = combined[:5]
                     move_summary = self.format_top_moves([(r[0], r[2]) for r in ds], limit=5)
@@ -2484,8 +2820,8 @@ class UltimateOthello(OthelloSearchMixin):
                     if is_exact:
                         self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
                     completed_depth = dp
-                    if depth_exact or abs(combined[0][1]) > 5000:
-                        resolved_flag = bool(depth_exact or abs(combined[0][1]) > 5000)
+                    if depth_exact:
+                        resolved_flag = True
                         if not use_mcts_enabled:
                             self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
                             time.sleep(0.1)
@@ -2624,6 +2960,8 @@ class UltimateOthello(OthelloSearchMixin):
                     self.log(f'selected by standard: {self.format_move_label(best_move)}')
             if best_move == -1:
                 return
+            second_move = final_scores[1][0] if len(final_scores) >= 2 else None
+            self._update_root_ordering_memory(best_move, second_move, self.tn, mvs, max_depth_reached, solved=bool(resolved_flag or is_exact))
             self.log(f'move: {self.format_move_label(best_move)}')
             blend_info = blend_details.get(best_move, {'move': int(best_move), 'ab_weight': 1.0, 'mcts_weight': 0.0})
             blend_info = dict(blend_info)
@@ -2638,7 +2976,17 @@ class UltimateOthello(OthelloSearchMixin):
                 self.last_win_rate = calculate_win_rate(best_eval, is_exact or resolved_flag)
                 graph_ab_wr = self.last_win_rate
             elif use_ab:
-                graph_ab_wr = self.last_win_rate if self.last_win_rate is not None else 50.0
+                ab_wr_fallback = ab_res.get(best_move)
+                if ab_wr_fallback is not None:
+                    self.last_win_rate = float(ab_wr_fallback)
+                    graph_ab_wr = self.last_win_rate
+                else:
+                    score_fallback = next((float(sc) for move, sc in final_scores if move == best_move), None)
+                    if score_fallback is not None:
+                        self.last_win_rate = score_fallback
+                        graph_ab_wr = self.last_win_rate
+                    else:
+                        graph_ab_wr = self.last_win_rate
             if resolved_flag or is_exact:
                 self.last_mcts_win_rate = None
             else:
@@ -2702,6 +3050,9 @@ class UltimateOthello(OthelloSearchMixin):
                     msg = 'white wins'
                 else:
                     msg = 'draw'
+                if self.weights_match_active:
+                    self._finalize_weights_match_game(b, w)
+                    return
             else:
                 msg = 'win' if self.hc == 1 and b > w or (self.hc == -1 and w > b) else 'lose' if self.hc == 1 and b < w or (self.hc == -1 and w < b) else 'draw'
                 ai_discs = b if self.ac == 1 else w
@@ -2712,13 +3063,14 @@ class UltimateOthello(OthelloSearchMixin):
                 self.game_over_shown = True
                 messagebox.showinfo('finish', f'Black: {b}  White: {w}\n{msg}')
             return
-        current_moves = self.legal_moves_mask(self.B if self.tn == 1 else self.W, self.W if self.tn == 1 else self.B)
-        if not current_moves:
+        turn_state = self.get_turn_state()
+        if not turn_state['current_moves']:
             if self.auto_battle:
                 self.resolve_forced_pass()
             elif self.tn == self.hc and not self.auto_battle:
                 # 人間の手番で、かつAI対戦モードでない場合のみパスボタンを表示
-                self.show_pass_btn()
+                self.drw()
+                self.rt.after(0, self.show_pass_btn)
             else:
                 self.resolve_forced_pass()
             return

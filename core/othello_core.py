@@ -1,4 +1,4 @@
-﻿import os, time, math
+import os, time, math
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 import numpy as np
 from numba import njit as _numba_njit, set_num_threads
@@ -67,7 +67,7 @@ import os
 import multiprocessing
 
 def get_optimal_thread_count():
-    """PCスペックに応じた最適なスレッド数を返す（少コア環境を考慮）"""
+    """PCスペックに応じた最適なスレッド数を返す（Egaroucid寄せ）"""
     import wmi
     import psutil
     
@@ -84,32 +84,20 @@ def get_optimal_thread_count():
         physical_cores = psutil.cpu_count(logical=False) or cpu_count // 2
         logical_cores = cpu_count
     
-    # CPU性能に応じた最適なスレッド数設定
-    if logical_cores <= 4:
-        # 4コア以下では全コアを使用
-        optimal = logical_cores
-        print(f"Low core CPU detected: {physical_cores} physical cores, {logical_cores} logical cores")
-    elif logical_cores <= 8:
-        # 8コア以下では論理コア数まで使用
-        optimal = logical_cores
-    elif logical_cores <= 16:
-        # 9-16コア：論理コア数を最大限活用
-        optimal = logical_cores
-        print(f"Mid-range CPU detected: {physical_cores} physical cores, {logical_cores} logical cores")
-    else:
-        # ハイパフォーマンスCPU（16コア以上）：論理コア数を最大限活用
-        # Intel Core Ultra 7 265KFなどの最新CPUでは全論理コアを使用
-        optimal = logical_cores
-        print(f"High-performance CPU detected: {physical_cores} physical cores, {logical_cores} logical cores")
-    
-    # 最小でも2スレッド（4コア以下環境では1スレッドでも可）
+    # Egaroucid寄せ: 基本は論理コア数、ただし上限を設ける（GUI想定=32）
+    thread_cap = 32
+    cap_override = os.environ.get('SESAMUM_THREAD_CAP')
+    if cap_override:
+        try:
+            thread_cap = max(1, int(cap_override))
+        except ValueError:
+            thread_cap = 32
+    optimal = min(int(logical_cores), int(thread_cap))
+    # 低コア環境の下限
     if logical_cores <= 4:
         optimal = max(1, optimal)
     else:
         optimal = max(4, optimal)
-    
-    # 最大でも論理コア数
-    optimal = min(optimal, logical_cores)
     
     print(f"CPU: {physical_cores} physical cores, {logical_cores} logical cores, using {optimal} threads")
     return optimal
@@ -141,7 +129,7 @@ if cpp_engine is not None and hasattr(cpp_engine, 'set_openmp_threads'):
 # 動的なスレッド数でThreadPoolExecutorを初期化
 def create_nn_executor():
     """最適なワーカー数でNN推論用ThreadPoolExecutorを作成（高性能CPU向けに最適化）"""
-    # 高性能CPUではより多くのワーカーを使用
+    # Egaroucid寄せ: 使いすぎを抑えつつ並列性は確保
     if optimal_threads <= 2:
         optimal_workers = 1  # 1-2コアでは1ワーカー
     elif optimal_threads <= 4:
@@ -151,8 +139,8 @@ def create_nn_executor():
     elif optimal_threads <= 16:
         optimal_workers = optimal_threads // 2 + 2  # 9-16コア：半分+2ワーカー
     else:
-        # ハイパフォーマンスCPU：最大16ワーカーまで使用
-        optimal_workers = min(16, optimal_threads // 2 + 4)
+        # 上限を抑える（GUI用途）
+        optimal_workers = min(12, optimal_threads // 2 + 2)
     
     print(f"ThreadPoolExecutor: using {optimal_workers} workers for {optimal_threads} threads")
     return ThreadPoolExecutor(max_workers=optimal_workers)
@@ -342,16 +330,13 @@ def make_board_perfect_seed():
 inital_weights = make_board_perfect_seed()
 
 def calculate_win_rate(ev, ie=False):
-    if ie: 
-        # exact solveでも控えめな勝率計算にする
-        if ev > 1000:
-            return 95.0 + min(5.0, (ev - 1000) / 1000.0)  # 最大100%まで
-        elif ev > 0:
-            return 50.0 + min(45.0, ev / 22.22)  # ev=1000で95%
-        elif ev < -1000:
-            return 5.0 - min(5.0, (-ev - 1000) / 1000.0)  # 最小0%まで
-        else:
-            return 50.0 + max(-45.0, ev / 22.22)  # ev=-1000で5%
+    if ie:
+        # Egaroucid寄せ: exactは勝敗確定値として扱う
+        if ev > 0:
+            return 100.0
+        if ev < 0:
+            return 0.0
+        return 50.0
     return 100.0 / (1.0 + math.exp(-max(-4000.0, min(4000.0, ev)) / 400.0))
 
 def compute_blend_weights(
@@ -674,6 +659,11 @@ def _evaluate_board_full_python(P, O, mvs, W):
     # stageによって重み変える
     st = np.int64(0) if mvs <= np.int64(15) else (np.int64(80) if mvs <= np.int64(45) else np.int64(160))
     wp, we, sc = W[st:st+np.int64(64)], W[st+np.int64(64):st+np.int64(80)], np.float64(0.0)
+    # meta scales (Egaroucid寄せ + strict weight実験向け)
+    # 240: mobility/parity, 241: corner-x/c pattern, 242: stable bonus
+    meta_mob = W[np.int64(240)] if W.shape[0] > np.int64(240) else np.float64(1.0)
+    meta_shape = W[np.int64(241)] if W.shape[0] > np.int64(241) else np.float64(1.0)
+    meta_stable = W[np.int64(242)] if W.shape[0] > np.int64(242) else np.float64(1.0)
     tp, to = P, O
     while tp:
         ix, t = np.int64(0), lsb(tp)
@@ -687,20 +677,20 @@ def _evaluate_board_full_python(P, O, mvs, W):
     emp = ~(P | O) & _FULL_MASK; np_, no = neighbor_union(P), neighbor_union(O)
     sp, so = compute_strict_stable(P, O), compute_strict_stable(O, P); occ = P | O
     m_mult = np.float64(2.5) if np.int64(20) <= mvs <= np.int64(45) else np.float64(1.0)
-    sc += np.float64(lm - lo) * m_mult * np.float64(4.0)
+    sc += np.float64(lm - lo) * m_mult * np.float64(4.0) * meta_mob
     # パリティ
-    if (np.int64(64) - mvs) % np.int64(2) == np.int64(0): sc += np.float64(10.0)
-    else: sc -= np.float64(10.0)
+    if (np.int64(64) - mvs) % np.int64(2) == np.int64(0): sc += np.float64(10.0) * meta_mob
+    else: sc -= np.float64(10.0) * meta_mob
     # コーナーとXマスク
     c1, x1, cc1 = np.uint64(0x1), np.uint64(0x200), np.uint64(0x102)
     c2, x2, cc2 = np.uint64(0x80), np.uint64(0x4000), np.uint64(0x8040)
     c3, x3, cc3 = np.uint64(0x100000000000000), np.uint64(0x20000000000000), np.uint64(0x201000000000000)
     c4, x4, cc4 = np.uint64(0x8000000000000000), np.uint64(0x400000000000000), np.uint64(0x4080000000000000)
-    sc += eval_xc(P, O, c1, x1, cc1)
-    sc += eval_xc(P, O, c2, x2, cc2)
-    sc += eval_xc(P, O, c3, x3, cc3)
-    sc += eval_xc(P, O, c4, x4, cc4)
-    if mvs >= np.int64(30): sc += np.float64(count_bits(sp & P) - count_bits(so & O)) * np.float64(25.0)
+    sc += eval_xc(P, O, c1, x1, cc1) * meta_shape
+    sc += eval_xc(P, O, c2, x2, cc2) * meta_shape
+    sc += eval_xc(P, O, c3, x3, cc3) * meta_shape
+    sc += eval_xc(P, O, c4, x4, cc4) * meta_shape
+    if mvs >= np.int64(30): sc += np.float64(count_bits(sp & P) - count_bits(so & O)) * np.float64(25.0) * meta_stable
     sc += (np.float64(lm - lo) / np.float64(20.0)) * we[np.int64(0)]
     sc += (np.float64(count_bits(emp & np_) - count_bits(emp & no)) / np.float64(64.0)) * we[np.int64(1)]
     sc += np.float64(count_bits(sp & P) - count_bits(so & O)) * we[np.int64(2)]

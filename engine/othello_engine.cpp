@@ -2379,14 +2379,15 @@ public:
                     }
                     ab_result.total_nodes += layer_nodes;
                     ab_result.completed_depth = depth;
-                    emit_ab_progress(ab_progress, depth, std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count(), layer_nodes, ab_result);
-                    if (is_exact || (!ab_result.values.empty() && std::abs(ab_result.values.front()) > 5000.0)) {
+                    if (is_exact) {
                         ab_result.resolved = true;
+                        emit_ab_progress(ab_progress, depth, std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count(), layer_nodes, ab_result);
                         if (!use_mcts && stop_ptr != nullptr) {
                             stop_ptr[0] = 1;
                         }
                         break;
                     }
+                    emit_ab_progress(ab_progress, depth, std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count(), layer_nodes, ab_result);
                 }
                 result.ab = ab_result;
             });
@@ -2470,6 +2471,7 @@ private:
             payload["values"] = ab_result.values;
             payload["win_rates"] = ab_result.win_rates;
             payload["best_wr"] = ab_result.win_rates.front();
+            payload["resolved"] = ab_result.resolved;
             ab_progress(payload);
         } catch (const py::error_already_set&) {
         }
@@ -2639,7 +2641,7 @@ bool should_use_early_exact(Bitboard p, Bitboard o, int empties, int base_thresh
     const Bitboard empty_mask = (~occ) & FULL_MASK;
     const int frontier = count_bits(neighbor_union(occ) & empty_mask);
     int stable_hint = 0;
-    if (empties <= 26) {
+    if (empties <= 34) {
         const Bitboard sp = compute_strict_stable(p, o);
         const Bitboard so = compute_strict_stable(o, p);
         stable_hint = std::abs(count_bits(sp & p) - count_bits(so & o));
@@ -2661,7 +2663,8 @@ bool should_use_early_exact(Bitboard p, Bitboard o, int empties, int base_thresh
     if (region_count <= 3) exact_score += 1;
     if (small_regions > 0) exact_score += 1;
     if (empties <= base_threshold + 3) exact_score += 1;
-    return exact_score >= (empties <= base_threshold + 3 ? 5 : 8);
+    if (empties <= base_threshold + 5) exact_score += 1;
+    return exact_score >= (empties <= base_threshold + 3 ? 5 : empties <= base_threshold + 5 ? 6 : 7);
 }
 
 void clear_tt() {

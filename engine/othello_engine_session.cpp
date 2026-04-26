@@ -733,14 +733,15 @@ SearchSessionResult SearchSession::run(Bitboard p,
                 }
                 ab_result.total_nodes += layer_nodes;
                 ab_result.completed_depth = depth;
-                emit_ab_progress(ab_progress, depth, std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count(), layer_nodes, ab_result);
-                if (depth_exact || (!ab_result.values.empty() && std::abs(ab_result.values.front()) > 5000.0)) {
+                if (depth_exact) {
                     ab_result.resolved = true;
+                    emit_ab_progress(ab_progress, depth, std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count(), layer_nodes, ab_result);
                     if (!use_mcts && stop_ptr != nullptr) {
                         stop_ptr[0] = 1;
                     }
                     break;
                 }
+                emit_ab_progress(ab_progress, depth, std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count(), layer_nodes, ab_result);
             }
             result.ab = ab_result;
         });
@@ -805,6 +806,7 @@ void SearchSession::emit_ab_progress(const py::function& ab_progress, int depth,
         payload["values"] = ab_result.values;
         payload["win_rates"] = ab_result.win_rates;
         payload["best_wr"] = ab_result.win_rates.front();
+        payload["resolved"] = ab_result.resolved;
         ab_progress(payload);
     } catch (const py::error_already_set&) {
     }

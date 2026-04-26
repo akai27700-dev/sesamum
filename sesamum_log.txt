@@ -1,0 +1,2018 @@
+# Sesamum log started: 2026-04-27 01:21:33
+C:\Users\Owner\Desktop\GeNeLy_Dev\Sesamum\data\best_weights.json
+遺伝子ファイルを読み込みました。遺伝子長: 243
+weights:  | len=243    | max_abs=72.513000  | mean_abs=19.126000  | sum=380.612000 
+weights sample:  | w0=32.638000      | w120=28.069000       | w242=1.467000    
+C++ 評価データを転送しました。
+C:\Users\Owner\Desktop\GeNeLy_Dev\Sesamum\data\model_best.pth | device=cuda
+ニューラルネットワークのウォームアップが完了しました。
+npz キャッシュから定石を読み込み中: C:\Users\Owner\Desktop\GeNeLy_Dev\Sesamum\data\opening_book_egbk3_cache.npz
+[OK] Egaroucid npz キャッシュ読み込み完了: 局面数 1302175
+探索設定: TT size=2097152, C++=ON, NN=ON, モード=αβ+MCTS, book=100%, TT reuse=ON, time limit=max 5s, exact solve starts=always-auto, pondering=ON
+book: found in opening book | primary_move=29 | prior_map={29: 0.5, 45: 0.5}
+book: move available primary_move=29
+ply=1    | empties=59   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.4s 
+book: use (4,6)
+tt: miss | start depth=2
+legal moves=3
+scheduler: mcts_priority=0.46    | ab_delay=0.02s     | ab_budget=3.10s    
+mcts: start | batch=16384     | limit=3.8s  
+ab: start | depth=2   
+[]αβ[c++] depth= 2    | best= 48.0%  | time= 0.2s  | nodes=19      
+  moves: (6,6) 48.0% | (4,6) 47.8% | (6,4) 47.5%
+[]αβ[c++] depth= 3    | best= 47.3%  | time= 0.2s  | nodes=50      
+  moves: (6,6) 47.3% | (4,6) 47.1% | (6,4) 45.8%
+[]αβ[c++] depth= 4    | best= 49.2%  | time= 0.2s  | nodes=252     
+  moves: (6,6) 49.2% | (4,6) 48.3% | (6,4) 47.6%
+[]αβ[c++] depth= 5    | best= 48.1%  | time= 0.3s  | nodes=398     
+  moves: (6,6) 48.1% | (4,6) 47.3% | (6,4) 47.1%
+[]αβ[c++] depth= 6    | best= 49.1%  | time= 0.3s  | nodes=2301    
+  moves: (6,6) 49.1% | (4,6) 48.8% | (6,4) 48.5%
+[]αβ[c++] depth= 7    | best= 48.4%  | time= 0.3s  | nodes=7587    
+  moves: (6,6) 48.4% | (6,4) 47.6% | (4,6) 47.3%
+[]αβ[c++] depth= 8    | best= 49.9%  | time= 0.3s  | nodes=27315   
+  moves: (6,6) 49.9% | (6,4) 49.0% | (4,6) 49.0%
+[]αβ[c++] depth= 9    | best= 48.3%  | time= 0.3s  | nodes=34325   
+  moves: (6,6) 48.3% | (4,6) 47.5% | (6,4) 47.0%
+[]αβ[c++] depth=10    | best= 49.6%  | time= 0.3s  | nodes=111596  
+  moves: (6,6) 49.6% | (4,6) 49.0% | (6,4) 48.6%
+[]αβ[c++] depth=11    | best= 48.2%  | time= 0.5s  | nodes=460922  
+  moves: (6,6) 48.2% | (4,6) 47.8% | (6,4) 47.4%
+[]αβ[c++] depth=12    | best= 50.4%  | time= 0.8s  | nodes=1378560 
+  moves: (6,6) 50.4% | (6,4) 49.1% | (4,6) 49.0%
+[]αβ[c++] depth=13    | best= 48.8%  | time= 0.9s  | nodes=478572  
+  moves: (6,6) 48.8% | (4,6) 48.1% | (6,4) 47.9%
+[]αβ[c++] depth=14    | best= 50.3%  | time= 1.7s  | nodes=3289377 
+  moves: (6,6) 50.3% | (6,4) 49.0% | (4,6) 48.2%
+[]αβ[c++] depth=15    | best= 49.6%  | time= 2.8s  | nodes=3919436 
+  moves: (6,6) 49.6% | (4,6) 48.3% | (6,4) 47.9%
+ab: done | completed=15    | attempted=16   
+mcts: done | sims=32768     | nn_batches=3     | best=65.5% 
+mcts: root visits | (6,6)=30330 | (4,6)=1912 | (6,4)=526
+mcts: dynamic influence adjusted from 50% to 45% based on 32768 sims
+final: (6,6) 54.8% | (4,6) 43.4% | (6,4) 40.0%
+[GREEN]midpoint: (6,6) 57.5% | (4,6) 40.9% | (6,4) 36.0%[/GREEN]
+book: AB/MCTS evaluation - book_rate=100% (forced 100%)
+selected by book: (4,6)
+move: (4,6)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 47.2%  | time= 0.0s  | nodes=32 | move=((3,5))
+  moves: ((2,4))  47.2% | ((2,6))  47.6% | ((6,4))  48.6% | ((6,6))  47.0%
+ponder: αβ[c++] depth= 3   | best= 47.4%  | time= 0.0s  | nodes=79 | move=((3,5))
+  moves: ((6,4))  47.4% | ((2,6))  47.0% | ((2,4))  46.4% | ((6,6))  47.8%
+ponder: αβ[c++] depth= 4   | best= 48.8%  | time= 0.0s  | nodes=290 | move=((3,5))
+  moves: ((6,6))  48.8% | ((6,4))  49.1% | ((2,6))  48.0% | ((2,4))  47.5%
+ponder: αβ[c++] depth= 5   | best= 47.6%  | time= 0.0s  | nodes=1,164 | move=((3,5))
+  moves: ((6,4))  47.6% | ((6,6))  47.8% | ((2,6))  47.8% | ((2,4))  47.2%
+ponder: αβ[c++] depth= 6   | best= 49.3%  | time= 0.0s  | nodes=5,797 | move=((3,5))
+  moves: ((6,6))  49.3% | ((2,6))  49.0% | ((6,4))  49.3% | ((2,4))  48.8%
+ponder: αβ[c++] depth= 9   | best= 48.0%  | time= 0.1s  | nodes=100,541 | move=((3,5))
+  moves: ((6,6))  48.0% | ((2,6))  47.3% | ((2,4))  47.8% | ((6,4))  47.5%
+ponder: αβ[c++] depth=10   | best= 49.7%  | time= 0.1s  | nodes=408,795 | move=((3,5))
+  moves: ((6,6))  49.7% | ((2,4))  48.6% | ((6,4))  48.4% | ((2,6))  48.9%
+ponder: αβ[c++] depth= 2   | best= 47.8%  | time= 0.0s  | nodes=13 | move=((3,6))
+  moves: ((2,6))  47.8% | ((6,4))  47.3% | ((6,6))  49.0%
+ponder: αβ[c++] depth= 3   | best= 49.0%  | time= 0.0s  | nodes=17 | move=((3,6))
+  moves: ((6,6))  49.0% | ((2,6))  47.3% | ((6,4))  47.3%
+ponder: αβ[c++] depth= 4   | best= 49.0%  | time= 0.0s  | nodes=24 | move=((3,6))
+  moves: ((6,6))  49.0% | ((2,6))  48.0% | ((6,4))  47.3%
+ponder: αβ[c++] depth= 5   | best= 49.0%  | time= 0.0s  | nodes=51 | move=((3,6))
+  moves: ((6,6))  49.0% | ((2,6))  47.3% | ((6,4))  47.3%
+ponder: αβ[c++] depth= 6   | best= 49.0%  | time= 0.0s  | nodes=151 | move=((3,6))
+  moves: ((6,6))  49.0% | ((2,6))  48.0% | ((6,4))  47.3%
+ponder: αβ[c++] depth= 9   | best= 49.0%  | time= 0.0s  | nodes=6,187 | move=((3,6))
+  moves: ((6,6))  49.0% | ((2,6))  48.0% | ((6,4))  47.3%
+ponder: αβ[c++] depth=10   | best= 49.0%  | time= 0.0s  | nodes=23,524 | move=((3,6))
+  moves: ((6,6))  49.0% | ((2,6))  48.0% | ((6,4))  47.3%
+ponder: αβ[c++] depth= 2   | best= 49.1%  | time= 0.0s  | nodes=10 | move=((3,3))
+  moves: ((4,3))  49.1% | ((6,3))  48.8% | ((6,4))  48.0% | ((7,5))  48.9%
+ponder: αβ[c++] depth= 3   | best= 49.1%  | time= 0.0s  | nodes=53 | move=((3,3))
+  moves: ((4,3))  49.1% | ((7,5))  47.8% | ((6,3))  48.8% | ((6,4))  48.0%
+ponder: αβ[c++] depth= 4   | best= 49.1%  | time= 0.0s  | nodes=114 | move=((3,3))
+  moves: ((4,3))  49.1% | ((6,3))  48.8% | ((6,4))  48.0% | ((7,5))  48.8%
+ponder: αβ[c++] depth= 5   | best= 49.1%  | time= 0.0s  | nodes=325 | move=((3,3))
+  moves: ((4,3))  49.1% | ((6,3))  48.8% | ((7,5))  48.2% | ((6,4))  48.0%
+ponder: αβ[c++] depth= 6   | best= 49.1%  | time= 0.0s  | nodes=798 | move=((3,3))
+  moves: ((4,3))  49.1% | ((6,3))  48.8% | ((7,5))  48.2% | ((6,4))  48.0%
+ponder: αβ[c++] depth= 9   | best= 49.1%  | time= 0.0s  | nodes=37,933 | move=((3,3))
+  moves: ((4,3))  49.1% | ((6,3))  48.8% | ((7,5))  47.7% | ((6,4))  48.0%
+ponder: αβ[c++] depth=10   | best= 49.1%  | time= 0.1s  | nodes=86,935 | move=((3,3))
+  moves: ((4,3))  49.1% | ((6,3))  48.8% | ((6,4))  48.0% | ((7,5))  48.6%
+book: found in opening book | primary_move=43 | prior_map={43: 1.0}
+book: move available primary_move=43
+Ponder hit: reused cached ordering. cached depth=12, start depth=15
+ply=3    | empties=57   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.4s 
+book: use (6,4)
+tt: hit | start depth=15
+legal moves=4
+scheduler: mcts_priority=0.58    | ab_delay=0.03s     | ab_budget=3.47s    
+mcts: ponder cache hit | sims=8192     
+mcts: start | batch=16384     | limit=4.3s  
+ab: start | depth=15  
+[*]αβ[c++] depth=15   | best= 49.2%  | time= 1.7s  | nodes=9715659 
+  moves: (6,6) 49.2% | (2,4) 48.6% | (6,4) 48.3% | (2,6) 47.6%
+ab: done | completed=15    | attempted=16   
+mcts: done | sims=49152     | nn_batches=4     | best=65.3% 
+mcts: root visits | (6,4)=46481 | (6,6)=1946 | (2,4)=452 | (2,6)=273
+mcts: merged ponder cache | sims=57344    
+mcts: root visits | (6,4)=53614 | (6,6)=2663 | (2,4)=678 | (2,6)=389
+final: (6,4) 54.1% | (6,6) 39.5% | (2,6) 36.7% | (2,4) 34.1%
+[GREEN]midpoint: (6,4) 56.2% | (6,6) 36.7% | (2,6) 32.9% | (2,4) 29.8%[/GREEN]
+book: AB/MCTS evaluation - book_rate=100% (forced 100%)
+selected by book: (6,4)
+move: (6,4)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 46.9%  | time= 0.0s  | nodes=54 | move=((6,3))
+  moves: ((2,4))  46.9% | ((2,5))  46.3% | ((2,6))  47.2% | ((5,3))  47.0% | ((7,3))  47.8%
+ponder: αβ[c++] depth= 3   | best= 48.4%  | time= 0.0s  | nodes=157 | move=((6,3))
+  moves: ((7,4))  48.4% | ((7,3))  47.6% | ((2,6))  46.3% | ((5,3))  44.7% | ((2,4))  46.8%
+ponder: αβ[c++] depth= 4   | best= 48.4%  | time= 0.0s  | nodes=545 | move=((6,3))
+  moves: ((7,4))  48.4% | ((7,3))  47.9% | ((2,4))  48.0% | ((2,6))  47.8% | ((7,5))  46.0%
+ponder: αβ[c++] depth= 5   | best= 48.4%  | time= 0.0s  | nodes=1,454 | move=((6,3))
+  moves: ((7,4))  48.4% | ((2,4))  47.2% | ((7,3))  46.7% | ((2,6))  47.3% | ((5,3))  45.4%
+ponder: αβ[c++] depth= 6   | best= 48.4%  | time= 0.0s  | nodes=4,821 | move=((6,3))
+  moves: ((7,4))  48.4% | ((2,6))  47.8% | ((2,4))  48.0% | ((2,5))  46.6% | ((7,3))  47.4%
+ponder: αβ[c++] depth= 9   | best= 48.4%  | time= 0.1s  | nodes=220,349 | move=((6,3))
+  moves: ((7,4))  48.4% | ((2,4))  47.2% | ((7,3))  46.4% | ((2,6))  47.8% | ((5,3))  46.3%
+ponder: αβ[c++] depth=10   | best= 48.4%  | time= 0.1s  | nodes=512,649 | move=((6,3))
+  moves: ((7,4))  48.4% | ((2,6))  47.8% | ((2,4))  48.6% | ((2,5))  48.3% | ((7,3))  48.5%
+ponder: αβ[c++] depth= 2   | best= 48.6%  | time= 0.0s  | nodes=62 | move=((4,3))
+  moves: ((2,4))  48.6% | ((2,5))  47.3% | ((3,3))  48.3% | ((3,4))  50.1% | ((4,2))  50.4%
+ponder: αβ[c++] depth= 3   | best= 48.1%  | time= 0.0s  | nodes=211 | move=((4,3))
+  moves: ((4,2))  48.1% | ((3,4))  46.6% | ((6,6))  47.3% | ((2,4))  48.6% | ((5,3))  47.3%
+ponder: αβ[c++] depth= 4   | best= 48.6%  | time= 0.0s  | nodes=976 | move=((4,3))
+  moves: ((2,4))  48.6% | ((3,3))  49.8% | ((4,2))  49.3% | ((5,3))  48.4% | ((6,6))  49.3%
+ponder: αβ[c++] depth= 5   | best= 48.1%  | time= 0.0s  | nodes=2,773 | move=((4,3))
+  moves: ((3,3))  48.1% | ((6,6))  48.7% | ((4,2))  47.8% | ((3,4))  47.2% | ((2,4))  48.6%
+ponder: αβ[c++] depth= 6   | best= 49.4%  | time= 0.0s  | nodes=11,242 | move=((4,3))
+  moves: ((6,6))  49.4% | ((2,4))  48.6% | ((5,3))  48.4% | ((3,3))  49.4% | ((4,2))  48.8%
+ponder: αβ[c++] depth= 9   | best= 49.0%  | time= 0.1s  | nodes=273,398 | move=((4,3))
+  moves: ((6,6))  49.0% | ((3,3))  48.5% | ((4,2))  46.9% | ((2,5))  47.0% | ((2,4))  48.6%
+ponder: αβ[c++] depth=10   | best= 50.7%  | time= 0.2s  | nodes=918,188 | move=((4,3))
+  moves: ((6,6))  50.7% | ((2,4))  48.6% | ((3,3))  49.0% | ((3,4))  48.7% | ((5,3))  48.4%
+Ponder hit: reused cached ordering. cached depth=11, start depth=15
+ply=5    | empties=55   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.0s 
+tt: hit | start depth=15
+legal moves=7
+scheduler: mcts_priority=0.55    | ab_delay=0.03s     | ab_budget=3.13s    
+mcts: start | batch=16384     | limit=3.9s  
+ab: start | depth=15  
+[*]αβ[c++] depth=15   | best= 48.6%  | time= 3.0s  | nodes=11175400
+  moves: (2,4) 48.6% | (7,4) 48.6% | (5,3) 48.2% | (7,3) 47.8% | (2,5) 47.6%
+ab: done | completed=15    | attempted=16   
+mcts: done | sims=49152     | nn_batches=4     | best=66.5% 
+mcts: root visits | (7,4)=37786 | (5,3)=11215 | (2,5)=43 | (7,5)=38 | (2,6)=37
+mcts: dynamic influence adjusted from 50% to 45% based on 49152 sims
+final: (7,4) 54.5% | (5,3) 47.3% | (2,5) 42.7% | (2,4) 41.2% | (7,3) 40.7%
+[GREEN]midpoint: (7,4) 57.6% | (5,3) 46.7% | (2,5) 36.0% | (2,4) 31.6% | (7,3) 31.3%[/GREEN]
+move: (7,4)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 47.3%  | time= 0.0s  | nodes=104 | move=((4,3))
+  moves: ((2,4))  47.3% | ((2,5))  46.5% | ((3,3))  47.3% | ((3,4))  47.4% | ((4,2))  49.3%
+ponder: αβ[c++] depth= 3   | best= 46.9%  | time= 0.0s  | nodes=296 | move=((4,3))
+  moves: ((4,2))  46.9% | ((6,6))  48.6% | ((5,3))  46.0% | ((3,4))  47.4% | ((2,4))  46.0%
+ponder: αβ[c++] depth= 4   | best= 48.6%  | time= 0.0s  | nodes=1,515 | move=((4,3))
+  moves: ((6,6))  48.6% | ((3,4))  48.5% | ((4,2))  48.5% | ((5,6))  46.6% | ((3,3))  47.9%
+ponder: αβ[c++] depth= 5   | best= 48.6%  | time= 0.0s  | nodes=4,783 | move=((4,3))
+  moves: ((6,6))  48.6% | ((3,4))  46.2% | ((4,2))  46.6% | ((6,2))  45.7% | ((5,3))  46.1%
+ponder: αβ[c++] depth= 6   | best= 48.6%  | time= 0.0s  | nodes=18,615 | move=((4,3))
+  moves: ((6,6))  48.6% | ((4,2))  47.8% | ((5,2))  48.3% | ((3,3))  48.0% | ((3,4))  48.0%
+ponder: αβ[c++] depth= 9   | best= 48.6%  | time= 0.1s  | nodes=772,954 | move=((4,3))
+  moves: ((6,6))  48.6% | ((3,4))  46.8% | ((5,3))  47.3% | ((6,2))  45.5% | ((5,2))  47.9%
+ponder: αβ[c++] depth=10   | best= 48.6%  | time= 0.2s  | nodes=932,562 | move=((4,3))
+  moves: ((6,6))  48.6% | ((5,2))  48.4% | ((5,3))  47.2% | ((2,5))  47.4% | ((3,4))  49.7%
+ponder: αβ[c++] depth= 2   | best= 47.2%  | time= 0.0s  | nodes=142 | move=((5,3))
+  moves: ((2,4))  47.2% | ((2,5))  48.6% | ((3,3))  47.6% | ((3,4))  47.8% | ((3,6))  48.9%
+ponder: αβ[c++] depth= 3   | best= 47.9%  | time= 0.0s  | nodes=553 | move=((5,3))
+  moves: ((4,3))  47.9% | ((3,6))  48.9% | ((2,5))  45.9% | ((6,6))  45.8% | ((5,2))  44.3%
+ponder: αβ[c++] depth= 4   | best= 48.9%  | time= 0.0s  | nodes=3,161 | move=((5,3))
+  moves: ((3,6))  48.9% | ((4,3))  48.1% | ((3,3))  48.1% | ((3,4))  47.8% | ((7,5))  47.7%
+ponder: αβ[c++] depth= 5   | best= 48.9%  | time= 0.0s  | nodes=13,484 | move=((5,3))
+  moves: ((3,6))  48.9% | ((6,2))  47.1% | ((4,3))  47.8% | ((3,3))  46.8% | ((3,4))  45.7%
+ponder: αβ[c++] depth= 6   | best= 48.9%  | time= 0.0s  | nodes=54,903 | move=((5,3))
+  moves: ((3,6))  48.9% | ((4,3))  48.9% | ((6,2))  47.5% | ((3,3))  47.2% | ((6,6))  47.5%
+ponder: αβ[c++] depth= 9   | best= 47.9%  | time= 0.2s  | nodes=1,430,012 | move=((5,3))
+  moves: ((3,6))  47.9% | ((5,2))  47.2% | ((4,3))  47.1% | ((3,3))  47.9% | ((6,6))  48.3%
+ponder: αβ[c++] depth=10   | best=100.0%  | time= 0.2s  | nodes=14 | move=((5,3))
+  moves: ((6,6)) 100.0% | ((3,6)) 100.0% | ((3,3)) 100.0% | ((3,4)) 100.0% | ((7,5)) 100.0%
+ponder: αβ[c++] depth= 2   | best= 49.3%  | time= 0.0s  | nodes=104 | move=((4,7))
+  moves: ((2,5))  49.3% | ((2,6))  49.3% | ((3,6))  48.9% | ((3,7))  49.8% | ((4,8))  50.0%
+ponder: αβ[c++] depth= 3   | best= 48.0%  | time= 0.0s  | nodes=612 | move=((4,7))
+  moves: ((4,8))  48.0% | ((3,7))  48.3% | ((2,6))  47.7% | ((2,5))  48.2% | ((6,6))  48.1%
+ponder: αβ[c++] depth= 4   | best= 50.5%  | time= 0.0s  | nodes=2,695 | move=((4,7))
+  moves: ((3,6))  50.5% | ((3,7))  50.3% | ((2,5))  48.9% | ((6,6))  48.8% | ((4,8))  49.5%
+ponder: αβ[c++] depth= 5   | best= 48.7%  | time= 0.0s  | nodes=11,624 | move=((4,7))
+  moves: ((3,6))  48.7% | ((3,7))  47.9% | ((2,6))  48.1% | ((4,8))  48.1% | ((2,5))  47.6%
+ponder: αβ[c++] depth= 6   | best= 50.0%  | time= 0.0s  | nodes=39,454 | move=((4,7))
+  moves: ((3,6))  50.0% | ((4,8))  49.0% | ((2,6))  49.8% | ((5,2))  49.4% | ((3,7))  48.4%
+ponder: αβ[c++] depth= 9   | best= 47.7%  | time= 0.2s  | nodes=1,260,802 | move=((4,7))
+  moves: ((2,6))  47.7% | ((3,6))  48.1% | ((6,6))  48.4% | ((5,2))  48.1% | ((4,8))  47.7%
+ply=7    | empties=53   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
+tt: hit | start depth=14
+legal moves=10
+scheduler: mcts_priority=0.61    | ab_delay=0.03s     | ab_budget=2.79s    
+mcts: start | batch=16384     | limit=3.4s  
+ab: start | depth=14  
+[*]αβ[c++] depth=14   | best= 49.1%  | time= 2.4s  | nodes=16936133
+  moves: (2,4) 49.1% | (3,6) 49.1% | (2,6) 48.9% | (2,5) 47.6% | (6,6) 47.4%
+ab: done | completed=14    | attempted=15   
+mcts: done | sims=32768     | nn_batches=3     | best=70.3% 
+mcts: root visits | (3,6)=18549 | (6,6)=6546 | (7,5)=3648 | (7,6)=1990 | (6,2)=777
+mcts: dynamic influence adjusted from 50% to 45% based on 32768 sims
+final: (3,6) 56.4% | (6,6) 50.4% | (7,5) 49.8% | (6,2) 48.2% | (8,4) 47.7%
+[GREEN]midpoint: (3,6) 59.7% | (6,6) 52.2% | (7,5) 51.8% | (6,2) 49.0% | (8,4) 49.2%[/GREEN]
+move: (3,6)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 47.3%  | time= 0.0s  | nodes=89 | move=((3,4))
+  moves: ((2,3))  47.3% | ((2,4))  45.9% | ((2,5))  45.4% | ((3,3))  50.3% | ((4,3))  46.8%
+ponder: αβ[c++] depth= 3   | best= 47.1%  | time= 0.0s  | nodes=381 | move=((3,4))
+  moves: ((3,3))  47.1% | ((5,3))  46.0% | ((2,3))  45.3% | ((4,3))  44.9% | ((7,3))  45.4%
+ponder: αβ[c++] depth= 4   | best= 50.5%  | time= 0.0s  | nodes=1,325 | move=((3,4))
+  moves: ((3,3))  50.5% | ((7,2))  46.3% | ((5,3))  47.4% | ((2,4))  46.0% | ((7,3))  48.3%
+ponder: αβ[c++] depth= 5   | best= 48.3%  | time= 0.0s  | nodes=5,809 | move=((3,4))
+  moves: ((3,3))  48.3% | ((4,3))  45.2% | ((7,3))  47.0% | ((2,3))  46.0% | ((5,3))  47.2%
+ponder: αβ[c++] depth= 6   | best= 49.4%  | time= 0.0s  | nodes=21,662 | move=((3,4))
+  moves: ((3,3))  49.4% | ((5,3))  47.0% | ((7,3))  49.4% | ((2,3))  47.9% | ((7,5))  47.0%
+ponder: αβ[c++] depth= 9   | best= 49.7%  | time= 0.1s  | nodes=326,851 | move=((3,4))
+  moves: ((3,3))  49.7% | ((7,3))  47.1% | ((4,3))  46.2% | ((2,3))  45.4% | ((5,3))  45.6%
+ponder: αβ[c++] depth=10   | best= 50.9%  | time= 0.2s  | nodes=991,904 | move=((3,4))
+  moves: ((3,3))  50.9% | ((7,3))  48.6% | ((4,3))  47.5% | ((7,5))  45.8% | ((5,3))  46.3%
+ponder: αβ[c++] depth= 2   | best= 49.8%  | time= 0.0s  | nodes=66 | move=((2,7))
+  moves: ((2,4))  49.8% | ((2,5))  48.8% | ((2,6))  52.4% | ((5,3))  47.8% | ((6,2))  48.9%
+ponder: αβ[c++] depth= 3   | best= 51.6%  | time= 0.0s  | nodes=221 | move=((2,7))
+  moves: ((2,6))  51.6% | ((2,4))  47.0% | ((6,2))  46.9% | ((6,6))  47.7% | ((2,5))  47.8%
+ponder: αβ[c++] depth= 4   | best= 51.6%  | time= 0.0s  | nodes=1,140 | move=((2,7))
+  moves: ((2,6))  51.6% | ((2,5))  50.7% | ((6,6))  50.0% | ((8,4))  48.7% | ((2,4))  48.5%
+ponder: αβ[c++] depth= 5   | best= 49.6%  | time= 0.0s  | nodes=5,097 | move=((2,7))
+  moves: ((2,6))  49.6% | ((2,5))  49.4% | ((6,2))  47.5% | ((6,6))  48.7% | ((7,5))  47.3%
+ponder: αβ[c++] depth= 6   | best= 51.2%  | time= 0.0s  | nodes=20,344 | move=((2,7))
+  moves: ((2,6))  51.2% | ((2,5))  49.8% | ((6,6))  50.4% | ((2,4))  48.8% | ((8,4))  48.0%
+ponder: αβ[c++] depth= 9   | best= 51.5%  | time= 0.1s  | nodes=466,496 | move=((2,7))
+  moves: ((2,6))  51.5% | ((2,5))  49.2% | ((6,6))  48.9% | ((2,4))  49.8% | ((8,4))  47.5%
+ponder: αβ[c++] depth=10   | best= 51.7%  | time= 0.2s  | nodes=540,470 | move=((2,7))
+  moves: ((2,6))  51.7% | ((2,4))  50.3% | ((2,5))  49.4% | ((6,6))  50.2% | ((6,2))  47.6%
+ponder: αβ[c++] depth= 2   | best= 48.3%  | time= 0.0s  | nodes=100 | move=((4,3))
+  moves: ((2,4))  48.3% | ((2,5))  48.9% | ((2,6))  48.4% | ((3,4))  49.3% | ((4,2))  50.4%
+ponder: αβ[c++] depth= 3   | best= 49.4%  | time= 0.0s  | nodes=349 | move=((4,3))
+  moves: ((4,2))  49.4% | ((8,4))  48.0% | ((6,6))  48.0% | ((6,2))  47.7% | ((3,4))  48.3%
+ponder: αβ[c++] depth= 4   | best= 49.1%  | time= 0.0s  | nodes=2,189 | move=((4,3))
+  moves: ((4,2))  49.1% | ((5,3))  50.8% | ((3,4))  50.5% | ((6,6))  48.0% | ((8,4))  48.8%
+ponder: αβ[c++] depth= 5   | best= 48.7%  | time= 0.0s  | nodes=8,649 | move=((4,3))
+  moves: ((5,3))  48.7% | ((3,4))  48.8% | ((2,6))  48.2% | ((2,5))  47.7% | ((2,4))  49.2%
+ponder: αβ[c++] depth= 6   | best= 50.1%  | time= 0.0s  | nodes=31,701 | move=((4,3))
+  moves: ((2,4))  50.1% | ((3,4))  51.0% | ((5,3))  50.0% | ((2,6))  49.6% | ((4,2))  49.1%
+ponder: αβ[c++] depth= 9   | best= 49.4%  | time= 0.1s  | nodes=623,903 | move=((4,3))
+  moves: ((3,4))  49.4% | ((2,4))  47.8% | ((5,3))  48.0% | ((6,6))  47.9% | ((2,5))  47.8%
+ponder: αβ[c++] depth=10   | best= 50.4%  | time= 0.2s  | nodes=1,051,087 | move=((4,3))
+  moves: ((3,4))  50.4% | ((5,3))  48.7% | ((6,6))  48.4% | ((2,4))  48.0% | ((2,5))  47.7%
+Ponder hit: reused cached ordering. cached depth=11, start depth=13
+ply=9    | empties=51   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
+tt: hit | start depth=13
+legal moves=9
+scheduler: mcts_priority=0.69    | ab_delay=0.03s     | ab_budget=2.76s    
+mcts: ponder cache hit | sims=8192     
+mcts: start | batch=16384     | limit=3.4s  
+ab: start | depth=13  
+[*]αβ[c++] depth=13   | best= 49.6%  | time= 1.5s  | nodes=10038681
+  moves: (3,3) 49.6% | (7,3) 49.0% | (4,3) 48.3% | (5,3) 48.0% | (2,5) 47.2%
+ab: done | completed=13    | attempted=14   
+mcts: done | sims=32768     | nn_batches=3     | best=71.5% 
+mcts: root visits | (2,5)=10782 | (5,3)=8754 | (2,4)=3708 | (7,5)=3448 | (4,3)=3276
+mcts: merged ponder cache | sims=40960    
+mcts: root visits | (2,5)=13360 | (5,3)=10937 | (2,4)=4632 | (7,5)=4273 | (4,3)=4160
+mcts: dynamic influence adjusted from 50% to 45% based on 40960 sims
+final: (2,5) 55.4% | (5,3) 54.5% | (7,5) 52.0% | (2,4) 51.2% | (3,3) 50.2%
+[GREEN]midpoint: (2,5) 59.2% | (5,3) 57.8% | (7,5) 54.9% | (2,4) 54.2% | (3,3) 50.5%[/GREEN]
+move: (2,5)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 43.2%  | time= 0.0s  | nodes=46 | move=((3,7))
+  moves: ((2,3))  43.2% | ((2,7))  42.9% | ((4,3))  44.4% | ((4,7))  48.0% | ((7,2))  42.8%
+ponder: αβ[c++] depth= 3   | best= 48.0%  | time= 0.0s  | nodes=263 | move=((3,7))
+  moves: ((4,7))  48.0% | ((4,3))  42.0% | ((2,3))  43.0% | ((2,7))  40.5% | ((7,2))  42.7%
+ponder: αβ[c++] depth= 4   | best= 48.0%  | time= 0.0s  | nodes=736 | move=((3,7))
+  moves: ((4,7))  48.0% | ((2,3))  44.6% | ((7,2))  43.5% | ((4,3))  43.5% | ((2,7))  41.7%
+ponder: αβ[c++] depth= 5   | best= 48.0%  | time= 0.0s  | nodes=4,019 | move=((3,7))
+  moves: ((4,7))  48.0% | ((2,3))  42.1% | ((7,2))  41.9% | ((4,3))  41.7% | ((7,5))  39.8%
+ponder: αβ[c++] depth= 6   | best= 48.0%  | time= 0.0s  | nodes=17,267 | move=((3,7))
+  moves: ((4,7))  48.0% | ((2,3))  44.2% | ((7,2))  40.5% | ((4,3))  41.8% | ((7,5))  40.2%
+ponder: αβ[c++] depth= 9   | best= 48.0%  | time= 0.2s  | nodes=488,319 | move=((3,7))
+  moves: ((4,7))  48.0% | ((2,3))  45.6% | ((4,3))  45.4% | ((7,2))  41.7% | ((7,5))  43.0%
+ponder: αβ[c++] depth=10   | best= 48.0%  | time= 0.2s  | nodes=11,833 | move=((3,7))
+  moves: ((4,7))  48.0% | ((2,3)) 100.0% | ((4,3)) 100.0% | ((7,5)) 100.0% | ((7,2))  44.5%
+ponder: αβ[c++] depth= 2   | best= 44.8%  | time= 0.0s  | nodes=52 | move=((1,5))
+  moves: ((1,4))  44.8% | ((2,4))  43.2% | ((3,3))  47.4% | ((4,3))  46.5% | ((7,2))  44.4%
+ponder: αβ[c++] depth= 3   | best= 47.6%  | time= 0.0s  | nodes=226 | move=((1,5))
+  moves: ((3,3))  47.6% | ((7,3))  45.7% | ((4,3))  46.1% | ((1,4))  44.8% | ((7,2))  44.2%
+ponder: αβ[c++] depth= 4   | best= 47.6%  | time= 0.0s  | nodes=782 | move=((1,5))
+  moves: ((3,3))  47.6% | ((4,3))  48.2% | ((7,3))  47.1% | ((1,4))  44.8% | ((2,4))  44.1%
+ponder: αβ[c++] depth= 5   | best= 45.3%  | time= 0.0s  | nodes=2,494 | move=((1,5))
+  moves: ((4,3))  45.3% | ((3,3))  47.6% | ((7,3))  45.0% | ((7,2))  43.8% | ((1,4))  44.8%
+ponder: αβ[c++] depth= 6   | best= 47.6%  | time= 0.0s  | nodes=8,427 | move=((1,5))
+  moves: ((3,3))  47.6% | ((4,3))  46.1% | ((7,3))  45.1% | ((1,4))  44.8% | ((7,2))  43.3%
+ponder: αβ[c++] depth= 9   | best= 47.6%  | time= 0.1s  | nodes=164,428 | move=((1,5))
+  moves: ((3,3))  47.6% | ((7,3))  47.2% | ((4,3))  47.0% | ((1,4))  44.8% | ((2,4))  44.6%
+ponder: αβ[c++] depth=10   | best= 48.6%  | time= 0.2s  | nodes=667,042 | move=((1,5))
+  moves: ((3,3))  48.6% | ((7,3))  47.8% | ((4,3))  48.1% | ((1,4))  44.8% | ((2,4))  44.2%
+ponder: αβ[c++] depth= 2   | best= 46.3%  | time= 0.0s  | nodes=77 | move=((5,6))
+  moves: ((3,3))  46.3% | ((4,3))  46.5% | ((5,3))  45.0% | ((6,6))  45.1% | ((7,2))  44.4%
+ponder: αβ[c++] depth= 3   | best= 45.8%  | time= 0.0s  | nodes=412 | move=((5,6))
+  moves: ((4,3))  45.8% | ((3,3))  46.4% | ((7,3))  44.2% | ((7,5))  43.8% | ((6,6))  45.5%
+ponder: αβ[c++] depth= 4   | best= 47.5%  | time= 0.0s  | nodes=1,372 | move=((5,6))
+  moves: ((3,3))  47.5% | ((4,3))  46.5% | ((6,6))  46.2% | ((7,2))  45.5% | ((7,3))  46.0%
+ponder: αβ[c++] depth= 5   | best= 46.6%  | time= 0.0s  | nodes=7,949 | move=((5,6))
+  moves: ((3,3))  46.6% | ((7,5))  44.1% | ((4,3))  46.5% | ((6,6))  44.6% | ((7,3))  44.2%
+ponder: αβ[c++] depth= 6   | best= 47.4%  | time= 0.0s  | nodes=26,940 | move=((5,6))
+  moves: ((3,3))  47.4% | ((4,3))  46.5% | ((5,3))  44.5% | ((6,6))  46.9% | ((7,3))  46.9%
+ponder: αβ[c++] depth= 9   | best= 47.9%  | time= 0.1s  | nodes=399,005 | move=((5,6))
+  moves: ((6,6))  47.9% | ((3,3))  48.0% | ((7,3))  46.5% | ((4,3))  46.7% | ((7,5))  44.5%
+ponder: αβ[c++] depth=10   | best= 48.8%  | time= 0.2s  | nodes=1,026,633 | move=((5,6))
+  moves: ((3,3))  48.8% | ((6,6))  48.5% | ((4,3))  47.5% | ((5,3))  46.8% | ((7,3))  47.3%
+Ponder hit: reused cached ordering. cached depth=12, start depth=13
+ply=11   | empties=49   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.0s 
+tt: hit | start depth=13
+legal moves=6
+scheduler: mcts_priority=0.53    | ab_delay=0.02s     | ab_budget=3.14s    
+mcts: start | batch=16384     | limit=3.9s  
+ab: start | depth=13  
+[*]αβ[c++] depth=13   | best= 48.8%  | time= 0.6s  | nodes=4357834 
+  moves: (3,3) 48.8% | (7,3) 47.7% | (4,3) 46.9% | (2,4) 44.5% | (1,4) 44.0%
+ab: done | completed=13    | attempted=14   
+mcts: done | sims=49152     | nn_batches=4     | best=91.4% 
+mcts: root visits | (2,4)=37431 | (4,3)=7526 | (3,3)=2805 | (7,3)=1146 | (1,4)=187
+mcts: dynamic influence adjusted from 50% to 55% based on 49152 sims
+final: (2,4) 64.7% | (3,3) 57.0% | (4,3) 56.2% | (7,3) 53.9% | (1,4) 51.9%
+[GREEN]midpoint: (2,4) 68.0% | (3,3) 58.9% | (4,3) 58.4% | (7,3) 55.5% | (1,4) 55.2%[/GREEN]
+move: (2,4)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 42.2%  | time= 0.0s  | nodes=16 | move=((3,7))
+  moves: ((2,6))  42.2% | ((5,7))  43.6% | ((8,4))  45.0%
+ponder: αβ[c++] depth= 3   | best= 45.0%  | time= 0.0s  | nodes=33 | move=((3,7))
+  moves: ((8,4))  45.0% | ((5,7))  43.8% | ((2,6))  42.2%
+ponder: αβ[c++] depth= 4   | best= 45.0%  | time= 0.0s  | nodes=115 | move=((3,7))
+  moves: ((8,4))  45.0% | ((5,7))  43.0% | ((2,6))  42.2%
+ponder: αβ[c++] depth= 5   | best= 45.0%  | time= 0.0s  | nodes=193 | move=((3,7))
+  moves: ((8,4))  45.0% | ((5,7))  43.3% | ((2,6))  42.2%
+ponder: αβ[c++] depth= 6   | best= 45.0%  | time= 0.0s  | nodes=1,626 | move=((3,7))
+  moves: ((8,4))  45.0% | ((5,7))  44.3% | ((2,6))  42.2%
+ponder: αβ[c++] depth= 9   | best= 44.7%  | time= 0.1s  | nodes=78,816 | move=((3,7))
+  moves: ((5,7))  44.7% | ((8,4))  45.0% | ((2,6))  42.8%
+ponder: αβ[c++] depth=10   | best= 45.0%  | time= 0.1s  | nodes=203,585 | move=((3,7))
+  moves: ((8,4))  45.0% | ((5,7))  45.3% | ((2,6))  43.8%
+ponder: αβ[c++] depth= 2   | best= 43.6%  | time= 0.0s  | nodes=101 | move=((2,6))
+  moves: ((1,4))  43.6% | ((1,6))  43.5% | ((2,7))  40.7% | ((3,3))  47.7% | ((4,3))  44.3%
+ponder: αβ[c++] depth= 3   | best= 45.4%  | time= 0.0s  | nodes=360 | move=((2,6))
+  moves: ((3,3))  45.4% | ((8,4))  45.9% | ((4,3))  40.0% | ((7,3))  39.6% | ((1,4))  41.6%
+ponder: αβ[c++] depth= 4   | best= 47.3%  | time= 0.0s  | nodes=2,096 | move=((2,6))
+  moves: ((8,4))  47.3% | ((3,3))  44.9% | ((1,6))  46.2% | ((1,4))  43.3% | ((7,2))  41.7%
+ponder: αβ[c++] depth= 5   | best= 46.9%  | time= 0.0s  | nodes=5,046 | move=((2,6))
+  moves: ((8,4))  46.9% | ((1,6))  45.6% | ((3,3))  44.2% | ((1,4))  42.5% | ((7,3))  44.5%
+ponder: αβ[c++] depth= 6   | best= 46.5%  | time= 0.0s  | nodes=21,991 | move=((2,6))
+  moves: ((8,4))  46.5% | ((1,6))  46.9% | ((7,3))  44.8% | ((3,3))  46.4% | ((4,3))  44.1%
+ponder: αβ[c++] depth= 9   | best= 46.9%  | time= 0.1s  | nodes=412,332 | move=((2,6))
+  moves: ((3,3))  46.9% | ((4,3))  46.1% | ((8,4))  44.9% | ((1,6))  45.6% | ((1,4))  44.6%
+ponder: αβ[c++] depth=10   | best= 47.5%  | time= 0.2s  | nodes=928,961 | move=((2,6))
+  moves: ((3,3))  47.5% | ((7,3))  47.2% | ((4,3))  46.9% | ((1,6))  45.9% | ((8,4))  44.7%
+ponder: αβ[c++] depth= 2   | best= 41.9%  | time= 0.0s  | nodes=65 | move=((4,7))
+  moves: ((2,6))  41.9% | ((3,3))  43.0% | ((3,7))  42.7% | ((5,3))  44.5% | ((5,7))  43.6%
+ponder: αβ[c++] depth= 3   | best= 45.2%  | time= 0.0s  | nodes=160 | move=((4,7))
+  moves: ((8,4))  45.2% | ((5,3))  42.5% | ((5,7))  42.8% | ((7,5))  43.3% | ((3,3))  42.8%
+ponder: αβ[c++] depth= 4   | best= 45.2%  | time= 0.0s  | nodes=638 | move=((4,7))
+  moves: ((8,4))  45.2% | ((7,5))  42.0% | ((5,7))  43.1% | ((3,3))  42.0% | ((5,3))  42.6%
+ponder: αβ[c++] depth= 5   | best= 45.3%  | time= 0.0s  | nodes=2,551 | move=((4,7))
+  moves: ((8,4))  45.3% | ((5,7))  43.5% | ((5,3))  41.8% | ((3,3))  43.2% | ((7,5))  42.6%
+ponder: αβ[c++] depth= 6   | best= 44.9%  | time= 0.0s  | nodes=9,179 | move=((4,7))
+  moves: ((8,4))  44.9% | ((5,7))  43.9% | ((3,3))  42.1% | ((7,5))  42.6% | ((5,3))  43.4%
+ponder: αβ[c++] depth= 9   | best= 46.1%  | time= 0.1s  | nodes=192,695 | move=((4,7))
+  moves: ((5,3))  46.1% | ((8,4))  46.0% | ((3,3))  45.4% | ((3,7))  45.2% | ((7,5))  43.4%
+ponder: αβ[c++] depth=10   | best= 46.3%  | time= 0.1s  | nodes=510,096 | move=((4,7))
+  moves: ((5,3))  46.3% | ((8,4))  45.8% | ((3,3))  47.5% | ((3,7))  44.6% | ((5,7))  45.5%
+ply=13   | empties=47   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.0s 
+tt: hit | start depth=13
+legal moves=7
+scheduler: mcts_priority=0.55    | ab_delay=0.03s     | ab_budget=3.15s    
+mcts: start | batch=16384     | limit=3.9s  
+ab: start | depth=13  
+[*]αβ[c++] depth=13   | best= 48.2%  | time= 1.7s  | nodes=10804632
+  moves: (4,3) 48.2% | (3,3) 47.4% | (1,3) 47.4% | (5,3) 46.9% | (7,3) 46.3%
+ab: done | completed=13    | attempted=14   
+mcts: done | sims=49152     | nn_batches=4     | best=79.9% 
+mcts: root visits | (4,3)=19354 | (5,3)=13857 | (3,3)=11902 | (7,5)=2631 | (1,3)=1208
+mcts: dynamic influence adjusted from 50% to 55% based on 49152 sims
+final: (4,3) 61.8% | (3,3) 59.4% | (5,3) 59.1% | (1,3) 55.6% | (7,5) 54.8%
+[GREEN]midpoint: (4,3) 64.0% | (3,3) 61.5% | (5,3) 61.3% | (1,3) 57.6% | (7,5) 57.0%[/GREEN]
+move: (4,3)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 48.0%  | time= 0.0s  | nodes=77 | move=((3,7))
+  moves: ((1,6))  48.0% | ((2,3))  41.7% | ((2,6))  45.6% | ((2,7))  41.0% | ((4,7))  40.8%
+ponder: αβ[c++] depth= 3   | best= 48.0%  | time= 0.0s  | nodes=272 | move=((3,7))
+  moves: ((1,6))  48.0% | ((8,4))  46.8% | ((2,6))  45.4% | ((6,6))  43.0% | ((7,6))  41.1%
+ponder: αβ[c++] depth= 4   | best= 48.0%  | time= 0.0s  | nodes=1,171 | move=((3,7))
+  moves: ((1,6))  48.0% | ((8,4))  46.8% | ((2,6))  48.0% | ((6,6))  45.4% | ((7,6))  43.1%
+ponder: αβ[c++] depth= 5   | best= 46.2%  | time= 0.0s  | nodes=3,257 | move=((3,7))
+  moves: ((2,6))  46.2% | ((1,6))  48.0% | ((8,4))  46.8% | ((6,6))  46.8% | ((7,6))  43.9%
+ponder: αβ[c++] depth= 6   | best= 48.0%  | time= 0.0s  | nodes=9,625 | move=((3,7))
+  moves: ((1,6))  48.0% | ((6,6))  46.4% | ((8,4))  46.8% | ((2,6))  47.2% | ((7,6))  43.1%
+ponder: αβ[c++] depth= 9   | best= 47.7%  | time= 0.1s  | nodes=231,281 | move=((3,7))
+  moves: ((6,6))  47.7% | ((2,6))  47.8% | ((1,6))  48.0% | ((8,4))  46.8% | ((4,7))  44.8%
+ponder: αβ[c++] depth=10   | best= 48.0%  | time= 0.1s  | nodes=538,184 | move=((3,7))
+  moves: ((1,6))  48.0% | ((2,6))  48.5% | ((6,6))  48.4% | ((8,4))  46.8% | ((7,5))  46.8%
+ponder: αβ[c++] depth= 2   | best= 47.3%  | time= 0.0s  | nodes=106 | move=((3,3))
+  moves: ((1,3))  47.3% | ((1,6))  49.0% | ((2,3))  48.9% | ((3,2))  48.6% | ((5,3))  48.4%
+ponder: αβ[c++] depth= 3   | best= 48.0%  | time= 0.0s  | nodes=285 | move=((3,3))
+  moves: ((1,6))  48.0% | ((2,3))  46.8% | ((3,2))  46.7% | ((5,3))  48.5% | ((1,3))  47.7%
+ponder: αβ[c++] depth= 4   | best= 48.2%  | time= 0.0s  | nodes=1,072 | move=((3,3))
+  moves: ((5,3))  48.2% | ((1,6))  46.9% | ((1,3))  47.7% | ((2,3))  46.9% | ((3,2))  47.6%
+ponder: αβ[c++] depth= 5   | best= 47.6%  | time= 0.0s  | nodes=4,135 | move=((3,3))
+  moves: ((5,3))  47.6% | ((1,3))  49.9% | ((3,2))  46.1% | ((7,3))  46.3% | ((1,6))  47.9%
+ponder: αβ[c++] depth= 6   | best= 48.7%  | time= 0.0s  | nodes=17,460 | move=((3,3))
+  moves: ((1,3))  48.7% | ((1,6))  48.7% | ((2,3))  49.0% | ((5,3))  48.8% | ((7,3))  47.1%
+ponder: αβ[c++] depth= 9   | best= 48.6%  | time= 0.1s  | nodes=449,444 | move=((3,3))
+  moves: ((2,3))  48.6% | ((3,2))  47.9% | ((5,3))  49.0% | ((1,6))  47.6% | ((1,3))  48.4%
+ponder: αβ[c++] depth=10   | best= 50.0%  | time= 0.2s  | nodes=943,496 | move=((3,3))
+  moves: ((5,3))  50.0% | ((2,3))  50.1% | ((1,3))  49.5% | ((7,3))  48.5% | ((3,2))  48.0%
+ponder: αβ[c++] depth= 2   | best= 42.3%  | time= 0.0s  | nodes=101 | move=((5,6))
+  moves: ((1,3))  42.3% | ((1,6))  48.8% | ((3,3))  47.7% | ((6,6))  45.3% | ((7,2))  44.9%
+ponder: αβ[c++] depth= 3   | best= 48.8%  | time= 0.0s  | nodes=423 | move=((5,6))
+  moves: ((1,6))  48.8% | ((7,3))  47.1% | ((3,3))  47.1% | ((8,4))  48.0% | ((7,6))  44.7%
+ponder: αβ[c++] depth= 4   | best= 48.8%  | time= 0.0s  | nodes=1,449 | move=((5,6))
+  moves: ((1,6))  48.8% | ((8,4))  45.6% | ((7,3))  46.7% | ((3,3))  46.1% | ((6,6))  48.0%
+ponder: αβ[c++] depth= 5   | best= 48.8%  | time= 0.0s  | nodes=4,861 | move=((5,6))
+  moves: ((1,6))  48.8% | ((6,6))  48.5% | ((7,3))  47.0% | ((3,3))  46.2% | ((1,3))  47.9%
+ponder: αβ[c++] depth= 6   | best= 48.8%  | time= 0.0s  | nodes=14,980 | move=((5,6))
+  moves: ((1,6))  48.8% | ((6,6))  48.8% | ((1,3))  48.9% | ((7,3))  48.5% | ((8,4))  47.8%
+ponder: αβ[c++] depth= 9   | best= 48.8%  | time= 0.1s  | nodes=312,389 | move=((5,6))
+  moves: ((1,6))  48.8% | ((6,6))  48.8% | ((3,3))  48.1% | ((7,3))  48.0% | ((1,3))  48.8%
+ponder: αβ[c++] depth=10   | best= 48.3%  | time= 0.2s  | nodes=973,390 | move=((5,6))
+  moves: ((1,6))  48.3% | ((1,3))  48.9% | ((6,6))  50.0% | ((3,3))  48.9% | ((7,3))  48.8%
+Ponder hit: reused cached ordering. cached depth=13, start depth=14
+ply=15   | empties=45   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
+tt: hit | start depth=14
+legal moves=10
+scheduler: mcts_priority=0.71    | ab_delay=0.03s     | ab_budget=2.76s    
+mcts: ponder cache hit | sims=8192     
+mcts: start | batch=16384     | limit=3.4s  
+ab: start | depth=14  
+ab: done | completed=13    | attempted=14   
+mcts: done | sims=32768     | nn_batches=3     | best=87.2% 
+mcts: root visits | (6,6)=19663 | (2,6)=8200 | (2,3)=2960 | (4,7)=1148 | (1,6)=379
+mcts: merged ponder cache | sims=40960    
+mcts: root visits | (6,6)=24578 | (2,6)=10242 | (2,3)=3703 | (4,7)=1439 | (1,6)=474
+mcts: dynamic influence adjusted from 50% to 55% based on 40960 sims
+final: (6,6) 66.3% | (2,6) 61.6% | (2,3) 59.1% | (4,7) 58.0% | (1,6) 57.6%
+move: (6,6)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 39.9%  | time= 0.0s  | nodes=58 | move=((5,6))
+  moves: ((1,6))  39.9% | ((2,6))  46.8% | ((4,7))  44.2% | ((6,2))  46.8% | ((7,6))  43.5%
+ponder: αβ[c++] depth= 3   | best= 47.3%  | time= 0.0s  | nodes=224 | move=((5,6))
+  moves: ((8,4))  47.3% | ((6,2))  45.7% | ((2,6))  47.2% | ((4,7))  43.2% | ((7,6))  45.4%
+ponder: αβ[c++] depth= 4   | best= 47.3%  | time= 0.0s  | nodes=587 | move=((5,6))
+  moves: ((8,4))  47.3% | ((2,6))  48.5% | ((6,2))  45.7% | ((7,6))  42.4% | ((4,7))  46.0%
+ponder: αβ[c++] depth= 5   | best= 45.4%  | time= 0.0s  | nodes=2,354 | move=((5,6))
+  moves: ((2,6))  45.4% | ((8,4))  47.3% | ((1,6))  47.1% | ((4,7))  46.1% | ((6,2))  47.1%
+ponder: αβ[c++] depth= 6   | best= 47.3%  | time= 0.0s  | nodes=6,722 | move=((5,6))
+  moves: ((8,4))  47.3% | ((6,2))  45.4% | ((1,6))  47.1% | ((4,7))  47.3% | ((2,6))  46.5%
+ponder: αβ[c++] depth= 9   | best= 47.5%  | time= 0.1s  | nodes=306,560 | move=((5,6))
+  moves: ((2,6))  47.5% | ((1,6))  47.4% | ((8,4))  47.3% | ((7,6))  46.6% | ((6,2))  46.2%
+ponder: αβ[c++] depth=10   | best= 48.4%  | time= 0.2s  | nodes=722,709 | move=((5,6))
+  moves: ((2,6))  48.4% | ((1,6))  48.1% | ((8,4))  47.3% | ((4,7))  48.0% | ((7,6))  47.6%
+ponder: αβ[c++] depth= 2   | best= 37.6%  | time= 0.0s  | nodes=40 | move=((4,2))
+  moves: ((2,8))  37.6% | ((3,3))  43.6% | ((5,3))  47.1% | ((6,2))  44.5% | ((7,3))  42.9%
+ponder: αβ[c++] depth= 3   | best= 47.5%  | time= 0.0s  | nodes=144 | move=((4,2))
+  moves: ((5,3))  47.5% | ((6,2))  44.4% | ((3,3))  46.0% | ((7,3))  43.5% | ((7,5))  41.3%
+ponder: αβ[c++] depth= 4   | best= 49.3%  | time= 0.0s  | nodes=468 | move=((4,2))
+  moves: ((5,3))  49.3% | ((3,3))  48.1% | ((6,2))  44.2% | ((7,3))  42.6% | ((2,8))  45.5%
+ponder: αβ[c++] depth= 5   | best= 49.7%  | time= 0.0s  | nodes=1,979 | move=((4,2))
+  moves: ((5,3))  49.7% | ((3,3))  47.4% | ((2,8))  46.5% | ((6,2))  46.7% | ((7,5))  43.3%
+ponder: αβ[c++] depth= 6   | best= 49.8%  | time= 0.0s  | nodes=5,755 | move=((4,2))
+  moves: ((5,3))  49.8% | ((3,3))  49.2% | ((6,2))  46.7% | ((2,8))  48.7% | ((7,3))  44.9%
+ponder: αβ[c++] depth= 9   | best= 50.1%  | time= 0.1s  | nodes=144,842 | move=((4,2))
+  moves: ((5,3))  50.1% | ((3,3))  49.4% | ((2,8))  48.4% | ((6,2))  46.4% | ((7,3))  44.7%
+ponder: αβ[c++] depth=10   | best= 51.3%  | time= 0.2s  | nodes=619,176 | move=((4,2))
+  moves: ((5,3))  51.3% | ((3,3))  50.2% | ((2,8))  48.6% | ((7,5))  48.0% | ((6,2))  48.6%
+ponder: αβ[c++] depth= 2   | best= 49.1%  | time= 0.0s  | nodes=114 | move=((5,3))
+  moves: ((1,6))  49.1% | ((2,3))  41.9% | ((2,7))  39.6% | ((2,8))  45.9% | ((3,3))  42.1%
+ponder: αβ[c++] depth= 3   | best= 49.1%  | time= 0.0s  | nodes=433 | move=((5,3))
+  moves: ((1,6))  49.1% | ((5,2))  45.8% | ((2,8))  45.9% | ((7,3))  45.5% | ((6,2))  44.7%
+ponder: αβ[c++] depth= 4   | best= 49.1%  | time= 0.0s  | nodes=1,779 | move=((5,3))
+  moves: ((1,6))  49.1% | ((2,8))  45.9% | ((5,2))  46.7% | ((7,3))  46.0% | ((6,2))  43.8%
+ponder: αβ[c++] depth= 5   | best= 49.1%  | time= 0.0s  | nodes=3,652 | move=((5,3))
+  moves: ((1,6))  49.1% | ((5,2))  46.0% | ((7,3))  46.6% | ((2,8))  45.9% | ((2,3))  42.0%
+ponder: αβ[c++] depth= 6   | best= 49.1%  | time= 0.0s  | nodes=17,506 | move=((5,3))
+  moves: ((1,6))  49.1% | ((7,3))  46.2% | ((5,2))  47.8% | ((2,8))  45.9% | ((3,3))  46.3%
+ponder: αβ[c++] depth= 9   | best= 49.1%  | time= 0.1s  | nodes=529,273 | move=((5,3))
+  moves: ((1,6))  49.1% | ((7,3))  48.2% | ((5,2))  46.2% | ((3,3))  46.6% | ((7,6))  44.9%
+ponder: αβ[c++] depth=10   | best= 49.1%  | time= 0.2s  | nodes=954,954 | move=((5,3))
+  moves: ((1,6))  49.1% | ((7,3))  48.6% | ((3,3))  50.1% | ((5,2))  46.8% | ((2,8))  45.9%
+Ponder hit: reused cached ordering. cached depth=12, start depth=13
+ply=17   | empties=43   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.5s 
+tt: hit | start depth=13
+legal moves=6
+scheduler: mcts_priority=0.61    | ab_delay=0.03s     | ab_budget=3.49s    
+mcts: ponder cache hit | sims=8192     
+mcts: start | batch=16384     | limit=4.3s  
+ab: start | depth=13  
+[*]αβ[c++] depth=13   | best= 49.2%  | time= 2.0s  | nodes=5714311 
+  moves: (2,6) 49.2% | (1,6) 48.1% | (4,7) 48.0% | (7,6) 47.6% | (8,4) 47.3%
+ab: done | completed=13    | attempted=14   
+mcts: done | sims=49152     | nn_batches=4     | best=94.9% 
+mcts: root visits | (4,7)=41721 | (2,6)=5306 | (7,6)=1226 | (1,6)=816 | (8,4)=75
+mcts: merged ponder cache | sims=57344    
+mcts: root visits | (4,7)=48643 | (2,6)=6202 | (7,6)=1441 | (1,6)=961 | (8,4)=88
+mcts: dynamic influence adjusted from 50% to 60% based on 57344 sims
+final: (4,7) 69.9% | (2,6) 59.5% | (1,6) 56.6% | (7,6) 56.3% | (8,4) 53.6%
+[GREEN]midpoint: (4,7) 71.4% | (2,6) 60.6% | (1,6) 57.9% | (7,6) 57.7% | (8,4) 56.0%[/GREEN]
+move: (4,7)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 44.9%  | time= 0.0s  | nodes=180 | move=((3,3))
+  moves: ((1,3))  44.9% | ((1,6))  40.4% | ((2,2))  42.7% | ((2,3))  43.9% | ((2,6))  38.5%
+ponder: αβ[c++] depth= 3   | best= 42.2%  | time= 0.0s  | nodes=675 | move=((3,3))
+  moves: ((6,2))  42.2% | ((1,3))  47.9% | ((7,6))  41.0% | ((2,3))  43.1% | ((7,3))  43.6%
+ponder: αβ[c++] depth= 4   | best= 47.9%  | time= 0.0s  | nodes=3,355 | move=((3,3))
+  moves: ((1,3))  47.9% | ((7,3))  45.2% | ((2,3))  46.7% | ((1,6))  46.8% | ((2,2))  42.7%
+ponder: αβ[c++] depth= 5   | best= 47.9%  | time= 0.0s  | nodes=8,848 | move=((3,3))
+  moves: ((1,3))  47.9% | ((1,6))  46.8% | ((2,3))  45.8% | ((7,3))  44.7% | ((6,2))  45.1%
+ponder: αβ[c++] depth= 6   | best= 47.9%  | time= 0.0s  | nodes=27,316 | move=((3,3))
+  moves: ((1,3))  47.9% | ((1,6))  46.4% | ((2,3))  47.1% | ((6,2))  46.1% | ((7,3))  45.9%
+ponder: αβ[c++] depth= 9   | best= 47.9%  | time= 0.2s  | nodes=647,460 | move=((3,3))
+  moves: ((1,3))  47.9% | ((7,3))  46.8% | ((2,3))  47.6% | ((6,2))  46.9% | ((6,7))  43.9%
+ponder: αβ[c++] depth=10   | best= 47.9%  | time= 0.2s  | nodes=40,797 | move=((3,3))
+  moves: ((1,3))  47.9% | ((2,3)) 100.0% | ((6,2)) 100.0% | ((7,3)) 100.0% | ((1,6)) 100.0%
+ponder: αβ[c++] depth= 2   | best= 43.2%  | time= 0.0s  | nodes=192 | move=((5,3))
+  moves: ((1,3))  43.2% | ((1,6))  41.0% | ((2,3))  39.8% | ((2,6))  39.7% | ((2,7))  36.6%
+ponder: αβ[c++] depth= 3   | best= 45.7%  | time= 0.0s  | nodes=772 | move=((5,3))
+  moves: ((3,3))  45.7% | ((7,3))  45.4% | ((7,6))  44.1% | ((6,2))  46.0% | ((1,3))  45.7%
+ponder: αβ[c++] depth= 4   | best= 46.7%  | time= 0.0s  | nodes=3,264 | move=((5,3))
+  moves: ((6,2))  46.7% | ((3,3))  48.0% | ((1,3))  46.6% | ((7,3))  47.1% | ((7,6))  45.1%
+ponder: αβ[c++] depth= 5   | best= 47.3%  | time= 0.0s  | nodes=9,763 | move=((5,3))
+  moves: ((3,3))  47.3% | ((7,3))  46.6% | ((6,2))  44.4% | ((1,3))  47.6% | ((1,6))  45.5%
+ponder: αβ[c++] depth= 6   | best= 47.5%  | time= 0.0s  | nodes=41,996 | move=((5,3))
+  moves: ((1,3))  47.5% | ((3,3))  47.5% | ((7,3))  48.1% | ((1,6))  47.1% | ((7,6))  44.9%
+ponder: αβ[c++] depth= 9   | best= 48.4%  | time= 0.1s  | nodes=811,386 | move=((5,3))
+  moves: ((3,3))  48.4% | ((1,3))  48.6% | ((7,3))  48.0% | ((1,6))  47.0% | ((6,2))  46.6%
+ponder: αβ[c++] depth=10   | best= 49.2%  | time= 0.2s  | nodes=677,770 | move=((5,3))
+  moves: ((1,3))  49.2% | ((3,3)) 100.0% | ((7,3))  49.2% | ((2,3))  48.5% | ((1,6))  49.2%
+ponder: αβ[c++] depth= 2   | best= 49.1%  | time= 0.0s  | nodes=144 | move=((5,2))
+  moves: ((1,3))  49.1% | ((2,3))  41.8% | ((2,6))  46.6% | ((2,7))  37.9% | ((2,8))  36.5%
+ponder: αβ[c++] depth= 3   | best= 46.2%  | time= 0.0s  | nodes=663 | move=((5,2))
+  moves: ((6,2))  46.2% | ((1,3))  47.5% | ((2,6))  45.9% | ((8,4))  45.2% | ((4,2))  44.9%
+ponder: αβ[c++] depth= 4   | best= 50.6%  | time= 0.0s  | nodes=2,530 | move=((5,2))
+  moves: ((1,3))  50.6% | ((6,2))  49.5% | ((2,6))  47.0% | ((8,4))  43.9% | ((4,2))  44.3%
+ponder: αβ[c++] depth= 5   | best= 48.1%  | time= 0.0s  | nodes=8,684 | move=((5,2))
+  moves: ((1,3))  48.1% | ((6,2))  47.8% | ((2,6))  45.9% | ((7,3))  47.5% | ((4,2))  44.2%
+ponder: αβ[c++] depth= 6   | best= 49.6%  | time= 0.0s  | nodes=32,528 | move=((5,2))
+  moves: ((1,3))  49.6% | ((6,2))  48.0% | ((7,3))  49.7% | ((2,6))  47.4% | ((6,7))  47.2%
+ponder: αβ[c++] depth= 9   | best= 49.3%  | time= 0.1s  | nodes=609,986 | move=((5,2))
+  moves: ((7,3))  49.3% | ((1,3))  51.0% | ((2,3))  48.7% | ((6,2))  46.9% | ((2,6))  47.3%
+ponder: αβ[c++] depth=10   | best= 51.4%  | time= 0.2s  | nodes=803,235 | move=((5,2))
+  moves: ((1,3))  51.4% | ((7,3))  51.5% | ((2,3))  49.8% | ((4,2))  49.4% | ((7,5)) 100.0%
+ply=19   | empties=41   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
+tt: hit | start depth=12
+legal moves=14
+scheduler: mcts_priority=0.64    | ab_delay=0.03s     | ab_budget=2.83s    
+mcts: start | batch=16384     | limit=3.5s  
+ab: start | depth=12  
+[*]αβ[c++] depth=12   | best= 48.9%  | time= 1.4s  | nodes=12296638
+  moves: (1,3) 48.9% | (2,3) 48.8% | (6,7) 48.3% | (7,6) 47.8% | (6,2) 47.4%
+[*]αβ[c++] depth=13   | best= 48.6%  | time= 2.5s  | nodes=6113336 
+  moves: (2,3) 48.6% | (1,3) 48.4% | (6,7) 48.3% | (7,5) 47.4% | (6,2) 47.4%
+ab: done | completed=13    | attempted=14   
+mcts: done | sims=32768     | nn_batches=3     | best=82.8% 
+mcts: root visits | (7,5)=14321 | (2,6)=9652 | (6,7)=3815 | (1,3)=2072 | (7,3)=1614
+mcts: dynamic influence adjusted from 50% to 55% based on 32768 sims
+final: (7,5) 61.9% | (2,6) 58.2% | (6,7) 58.1% | (1,3) 57.5% | (2,3) 57.1%
+[GREEN]midpoint: (7,5) 65.1% | (2,6) 61.6% | (6,7) 60.6% | (1,3) 59.9% | (2,3) 59.5%[/GREEN]
+move: (7,5)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 44.0%  | time= 0.0s  | nodes=76 | move=((4,2))
+  moves: ((2,6))  44.0% | ((2,8))  39.4% | ((3,2))  42.2% | ((3,3))  42.7% | ((5,3))  44.9%
+ponder: αβ[c++] depth= 3   | best= 43.3%  | time= 0.0s  | nodes=384 | move=((4,2))
+  moves: ((5,3))  43.3% | ((2,6))  48.0% | ((3,3))  42.9% | ((5,7))  40.5% | ((3,2))  41.3%
+ponder: αβ[c++] depth= 4   | best= 48.6%  | time= 0.0s  | nodes=1,638 | move=((4,2))
+  moves: ((2,6))  48.6% | ((5,3))  45.0% | ((3,3))  44.1% | ((2,8))  42.6% | ((6,2))  43.4%
+ponder: αβ[c++] depth= 5   | best= 47.6%  | time= 0.0s  | nodes=3,941 | move=((4,2))
+  moves: ((2,6))  47.6% | ((5,3))  43.5% | ((3,2))  45.7% | ((3,3))  44.5% | ((6,2))  45.3%
+ponder: αβ[c++] depth= 6   | best= 49.2%  | time= 0.0s  | nodes=15,602 | move=((4,2))
+  moves: ((2,6))  49.2% | ((3,2))  45.6% | ((6,2))  46.5% | ((2,8))  46.5% | ((3,3))  46.6%
+ponder: αβ[c++] depth= 9   | best= 47.3%  | time= 0.1s  | nodes=332,830 | move=((4,2))
+  moves: ((5,7))  47.3% | ((5,3))  48.8% | ((2,6))  47.9% | ((6,2))  47.3% | ((2,8))  43.7%
+ponder: αβ[c++] depth=10   | best= 48.7%  | time= 0.2s  | nodes=726,932 | move=((4,2))
+  moves: ((5,3))  48.7% | ((2,6))  48.1% | ((6,2))  47.9% | ((5,7))  47.7% | ((3,3))  46.9%
+ponder: αβ[c++] depth= 2   | best= 46.5%  | time= 0.0s  | nodes=95 | move=((8,5))
+  moves: ((1,3))  46.5% | ((1,6))  42.3% | ((2,6))  43.5% | ((2,8))  38.8% | ((4,8))  41.2%
+ponder: αβ[c++] depth= 3   | best= 47.0%  | time= 0.0s  | nodes=285 | move=((8,5))
+  moves: ((7,6))  47.0% | ((7,3))  47.4% | ((1,3))  46.5% | ((6,2))  44.2% | ((8,4))  42.4%
+ponder: αβ[c++] depth= 4   | best= 47.4%  | time= 0.0s  | nodes=1,406 | move=((8,5))
+  moves: ((7,3))  47.4% | ((7,6))  47.5% | ((1,3))  46.5% | ((6,2))  45.7% | ((1,6))  46.5%
+ponder: αβ[c++] depth= 5   | best= 46.9%  | time= 0.0s  | nodes=3,796 | move=((8,5))
+  moves: ((7,6))  46.9% | ((7,3))  47.4% | ((1,6))  46.8% | ((1,3))  46.5% | ((6,2))  45.8%
+ponder: αβ[c++] depth= 6   | best= 47.4%  | time= 0.0s  | nodes=10,079 | move=((8,5))
+  moves: ((7,3))  47.4% | ((7,6))  47.7% | ((1,6))  46.0% | ((1,3))  46.5% | ((6,2))  45.3%
+ponder: αβ[c++] depth= 9   | best= 47.4%  | time= 0.1s  | nodes=179,316 | move=((8,5))
+  moves: ((7,3))  47.4% | ((7,6))  47.4% | ((6,2))  45.7% | ((1,3))  46.5% | ((1,6))  46.6%
+ponder: αβ[c++] depth=10   | best= 47.4%  | time= 0.1s  | nodes=418,803 | move=((8,5))
+  moves: ((7,3))  47.4% | ((7,6))  46.6% | ((1,6))  46.6% | ((1,3))  46.5% | ((6,2))  46.4%
+ponder: αβ[c++] depth= 2   | best= 42.6%  | time= 0.0s  | nodes=203 | move=((6,7))
+  moves: ((1,3))  42.6% | ((1,6))  42.1% | ((2,3))  40.7% | ((2,6))  45.7% | ((2,7))  39.6%
+ponder: αβ[c++] depth= 3   | best= 48.2%  | time= 0.0s  | nodes=1,386 | move=((6,7))
+  moves: ((7,6))  48.2% | ((8,4))  44.9% | ((5,3))  44.7% | ((5,7))  44.7% | ((2,6))  46.4%
+ponder: αβ[c++] depth= 4   | best= 50.6%  | time= 0.0s  | nodes=4,737 | move=((6,7))
+  moves: ((7,6))  50.6% | ((2,6))  48.0% | ((1,3))  51.6% | ((4,8))  48.1% | ((8,4))  45.7%
+ponder: αβ[c++] depth= 5   | best= 52.0%  | time= 0.0s  | nodes=14,341 | move=((6,7))
+  moves: ((1,3))  52.0% | ((7,6))  48.4% | ((5,3))  47.3% | ((1,6))  50.8% | ((4,8))  43.4%
+ponder: αβ[c++] depth= 6   | best= 51.3%  | time= 0.0s  | nodes=49,594 | move=((6,7))
+  moves: ((1,3))  51.3% | ((1,6))  49.3% | ((7,6))  49.4% | ((5,3))  48.2% | ((5,7))  48.0%
+ponder: αβ[c++] depth= 9   | best= 50.5%  | time= 0.2s  | nodes=1,018,812 | move=((6,7))
+  moves: ((7,6))  50.5% | ((1,3))  49.9% | ((1,6))  49.9% | ((5,3))  49.8% | ((4,8))  48.2%
+ponder: αβ[c++] depth=10   | best=100.0%  | time= 0.2s  | nodes=15 | move=((6,7))
+  moves: ((7,6)) 100.0% | ((1,3)) 100.0% | ((1,6)) 100.0% | ((5,3)) 100.0% | ((5,7)) 100.0%
+Ponder hit: reused cached ordering. cached depth=13, start depth=14
+ply=21   | empties=39   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.5s 
+tt: hit | start depth=14
+legal moves=8
+scheduler: mcts_priority=0.61    | ab_delay=0.03s     | ab_budget=3.50s    
+mcts: ponder cache hit | sims=8192     
+mcts: start | batch=16384     | limit=4.3s  
+ab: start | depth=14  
+[*]αβ[c++] depth=14   | best= 49.7%  | time= 1.4s  | nodes=6038831 
+  moves: (5,7) 49.7% | (5,3) 49.3% | (2,6) 49.2% | (6,2) 49.1% | (3,2) 48.4%
+[*]αβ[c++] depth=15   | best= 49.8%  | time= 3.2s  | nodes=8943124 
+  moves: (6,2) 49.8% | (5,7) 49.4% | (5,3) 49.2% | (2,6) 48.8% | (3,2) 48.4%
+ab: done | completed=15    | attempted=16   
+mcts: done | sims=49152     | nn_batches=4     | best=94.2% 
+mcts: root visits | (5,7)=39841 | (2,6)=6050 | (5,3)=2259 | (3,3)=463 | (7,3)=444
+mcts: merged ponder cache | sims=57344    
+mcts: root visits | (5,7)=46477 | (2,6)=7063 | (5,3)=2635 | (3,3)=541 | (7,3)=518
+mcts: dynamic influence adjusted from 50% to 70% based on 57344 sims
+final: (5,7) 72.0% | (2,6) 60.7% | (5,3) 59.8% | (3,3) 57.3% | (7,3) 57.1%
+[GREEN]midpoint: (5,7) 71.8% | (2,6) 61.1% | (5,3) 60.2% | (3,3) 58.5% | (7,3) 58.0%[/GREEN]
+move: (5,7)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 43.6%  | time= 0.0s  | nodes=70 | move=((5,8))
+  moves: ((2,6))  43.6% | ((3,2))  41.3% | ((3,3))  42.6% | ((4,8))  41.0% | ((5,3))  38.2%
+ponder: αβ[c++] depth= 3   | best= 47.3%  | time= 0.0s  | nodes=351 | move=((5,8))
+  moves: ((2,6))  47.3% | ((6,2))  39.7% | ((3,3))  41.9% | ((3,2))  40.4% | ((4,8))  40.1%
+ponder: αβ[c++] depth= 4   | best= 47.3%  | time= 0.0s  | nodes=1,173 | move=((5,8))
+  moves: ((2,6))  47.3% | ((3,3))  45.5% | ((3,2))  43.5% | ((4,8))  43.5% | ((6,2))  42.4%
+ponder: αβ[c++] depth= 5   | best= 47.7%  | time= 0.0s  | nodes=3,235 | move=((5,8))
+  moves: ((2,6))  47.7% | ((3,3))  41.1% | ((3,2))  44.7% | ((4,8))  43.5% | ((6,2))  42.3%
+ponder: αβ[c++] depth= 6   | best= 49.8%  | time= 0.0s  | nodes=12,725 | move=((5,8))
+  moves: ((2,6))  49.8% | ((3,2))  44.2% | ((4,8))  43.5% | ((6,2))  46.8% | ((5,3))  45.0%
+ponder: αβ[c++] depth= 9   | best= 49.3%  | time= 0.1s  | nodes=231,424 | move=((5,8))
+  moves: ((2,6))  49.3% | ((3,3))  47.5% | ((5,3))  47.3% | ((6,2))  45.0% | ((3,2))  48.1%
+ponder: αβ[c++] depth=10   | best= 50.6%  | time= 0.1s  | nodes=365,729 | move=((5,8))
+  moves: ((2,6))  50.6% | ((3,2))  47.0% | ((3,3))  48.6% | ((5,3))  48.7% | ((6,2))  46.9%
+ponder: αβ[c++] depth= 2   | best= 46.5%  | time= 0.0s  | nodes=75 | move=((8,5))
+  moves: ((1,3))  46.5% | ((2,3))  40.8% | ((2,6))  44.0% | ((2,7))  32.6% | ((3,3))  42.6%
+ponder: αβ[c++] depth= 3   | best= 49.0%  | time= 0.0s  | nodes=448 | move=((8,5))
+  moves: ((8,4))  49.0% | ((1,3))  49.3% | ((5,3))  42.4% | ((2,6))  48.2% | ((3,3))  42.4%
+ponder: αβ[c++] depth= 4   | best= 49.3%  | time= 0.0s  | nodes=1,173 | move=((8,5))
+  moves: ((1,3))  49.3% | ((8,4))  49.0% | ((2,6))  45.4% | ((6,2))  43.4% | ((2,3))  44.8%
+ponder: αβ[c++] depth= 5   | best= 49.6%  | time= 0.0s  | nodes=3,891 | move=((8,5))
+  moves: ((1,3))  49.6% | ((8,4))  49.0% | ((2,6))  44.7% | ((3,3))  46.3% | ((5,3))  46.5%
+ponder: αβ[c++] depth= 6   | best= 49.3%  | time= 0.0s  | nodes=12,036 | move=((8,5))
+  moves: ((1,3))  49.3% | ((8,4))  49.0% | ((5,3))  47.6% | ((3,3))  47.7% | ((2,3))  46.1%
+ponder: αβ[c++] depth= 9   | best= 49.3%  | time= 0.1s  | nodes=193,435 | move=((8,5))
+  moves: ((1,3))  49.3% | ((5,3))  46.6% | ((8,4))  49.0% | ((3,3))  47.7% | ((6,2))  46.0%
+ponder: αβ[c++] depth=10   | best= 50.3%  | time= 0.1s  | nodes=428,261 | move=((8,5))
+  moves: ((1,3))  50.3% | ((8,4))  49.0% | ((2,3))  49.2% | ((3,3))  48.1% | ((5,3))  50.0%
+ponder: αβ[c++] depth= 2   | best= 43.2%  | time= 0.0s  | nodes=49 | move=((6,7))
+  moves: ((2,8))  43.2% | ((3,3))  40.3% | ((4,8))  49.5% | ((5,3))  42.9% | ((5,8))  45.9%
+ponder: αβ[c++] depth= 3   | best= 49.5%  | time= 0.0s  | nodes=164 | move=((6,7))
+  moves: ((4,8))  49.5% | ((5,8))  43.6% | ((2,8))  44.6% | ((5,3))  43.8% | ((3,3))  39.2%
+ponder: αβ[c++] depth= 4   | best= 49.5%  | time= 0.0s  | nodes=706 | move=((6,7))
+  moves: ((4,8))  49.5% | ((2,8))  45.9% | ((5,3))  47.6% | ((5,8))  50.8% | ((7,3))  41.2%
+ponder: αβ[c++] depth= 5   | best= 46.1%  | time= 0.0s  | nodes=1,315 | move=((6,7))
+  moves: ((5,8))  46.1% | ((4,8))  49.5% | ((5,3))  46.6% | ((2,8))  45.5% | ((7,3))  42.4%
+ponder: αβ[c++] depth= 6   | best= 49.5%  | time= 0.0s  | nodes=4,306 | move=((6,7))
+  moves: ((4,8))  49.5% | ((5,3))  50.9% | ((5,8))  52.4% | ((2,8))  48.9% | ((7,3))  47.3%
+ponder: αβ[c++] depth= 9   | best= 50.9%  | time= 0.0s  | nodes=93,981 | move=((6,7))
+  moves: ((5,8))  50.9% | ((4,8))  51.1% | ((7,3))  49.8% | ((5,3))  50.6% | ((3,3))  49.0%
+ponder: αβ[c++] depth=10   | best= 49.4%  | time= 0.1s  | nodes=258,964 | move=((6,7))
+  moves: ((4,8))  49.4% | ((5,8))  53.7% | ((5,3))  51.6% | ((7,3))  53.1% | ((3,3))  51.9%
+ply=23   | empties=37   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.0s 
+tt: hit | start depth=14
+legal moves=10
+scheduler: mcts_priority=0.53    | ab_delay=0.02s     | ab_budget=3.13s    
+mcts: start | batch=16384     | limit=3.9s  
+ab: start | depth=14  
+[*]αβ[c++] depth=14   | best= 48.6%  | time= 2.7s  | nodes=13290452
+  moves: (6,2) 48.6% | (2,6) 48.5% | (5,3) 48.2% | (3,3) 48.0% | (3,2) 46.7%
+ab: done | completed=14    | attempted=15   
+mcts: done | sims=49152     | nn_batches=4     | best=90.0% 
+mcts: root visits | (2,6)=33048 | (5,3)=6789 | (3,3)=2715 | (4,8)=2527 | (5,8)=1653
+mcts: dynamic influence adjusted from 50% to 65% based on 49152 sims
+final: (2,6) 67.0% | (5,3) 59.3% | (3,3) 57.9% | (6,2) 57.1% | (5,8) 55.7%
+[GREEN]midpoint: (2,6) 69.3% | (5,3) 61.1% | (3,3) 59.7% | (6,2) 59.3% | (5,8) 57.8%[/GREEN]
+move: (2,6)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 44.7%  | time= 0.0s  | nodes=122 | move=((6,7))
+  moves: ((1,3))  44.7% | ((2,3))  36.2% | ((2,8))  41.0% | ((3,3))  43.4% | ((4,1))  43.7%
+ponder: αβ[c++] depth= 3   | best= 46.6%  | time= 0.0s  | nodes=299 | move=((6,7))
+  moves: ((5,3))  46.6% | ((7,6))  47.8% | ((1,3))  47.0% | ((4,1))  42.2% | ((3,3))  46.6%
+ponder: αβ[c++] depth= 4   | best= 47.8%  | time= 0.0s  | nodes=987 | move=((6,7))
+  moves: ((7,6))  47.8% | ((1,3))  46.2% | ((3,3))  44.8% | ((5,3))  50.9% | ((4,1))  43.7%
+ponder: αβ[c++] depth= 5   | best= 46.1%  | time= 0.0s  | nodes=2,786 | move=((6,7))
+  moves: ((5,3))  46.1% | ((7,6))  47.8% | ((1,3))  47.8% | ((3,3))  44.2% | ((4,1))  41.8%
+ponder: αβ[c++] depth= 6   | best= 47.8%  | time= 0.0s  | nodes=10,161 | move=((6,7))
+  moves: ((7,6))  47.8% | ((1,3))  48.1% | ((5,3))  47.7% | ((3,3))  46.5% | ((4,1))  42.7%
+ponder: αβ[c++] depth= 9   | best= 47.8%  | time= 0.1s  | nodes=178,628 | move=((6,7))
+  moves: ((1,3))  47.8% | ((7,6))  47.8% | ((5,3))  45.3% | ((3,3))  46.8% | ((5,8))  41.2%
+ponder: αβ[c++] depth=10   | best= 47.8%  | time= 0.1s  | nodes=461,507 | move=((6,7))
+  moves: ((1,3))  47.8% | ((7,6))  47.8% | ((3,3))  46.7% | ((5,3))  46.7% | ((4,1))  43.1%
+ponder: αβ[c++] depth= 2   | best= 50.3%  | time= 0.0s  | nodes=76 | move=((8,5))
+  moves: ((1,3))  50.3% | ((2,3))  42.7% | ((2,8))  22.1% | ((3,3))  47.6% | ((4,1))  48.1%
+ponder: αβ[c++] depth= 3   | best= 50.3%  | time= 0.0s  | nodes=279 | move=((8,5))
+  moves: ((1,3))  50.3% | ((5,3))  49.5% | ((4,1))  47.8% | ((6,2))  48.0% | ((3,3))  44.5%
+ponder: αβ[c++] depth= 4   | best= 50.3%  | time= 0.0s  | nodes=1,132 | move=((8,5))
+  moves: ((1,3))  50.3% | ((5,3))  49.3% | ((7,3))  51.5% | ((6,2))  48.0% | ((4,1))  49.8%
+ponder: αβ[c++] depth= 5   | best= 49.3%  | time= 0.0s  | nodes=3,621 | move=((8,5))
+  moves: ((7,3))  49.3% | ((8,4))  49.8% | ((1,3))  50.3% | ((4,1))  50.2% | ((5,3))  50.5%
+ponder: αβ[c++] depth= 6   | best= 48.6%  | time= 0.0s  | nodes=13,417 | move=((8,5))
+  moves: ((5,3))  48.6% | ((1,3))  52.5% | ((4,1))  50.9% | ((8,4))  50.3% | ((7,3))  50.8%
+ponder: αβ[c++] depth= 9   | best= 50.2%  | time= 0.1s  | nodes=180,392 | move=((8,5))
+  moves: ((4,1))  50.2% | ((1,3))  50.9% | ((5,3))  49.0% | ((3,3))  49.3% | ((8,4))  48.7%
+ponder: αβ[c++] depth=10   | best= 52.1%  | time= 0.1s  | nodes=527,603 | move=((8,5))
+  moves: ((1,3))  52.1% | ((4,1))  50.6% | ((3,3))  49.1% | ((5,3))  48.5% | ((8,4))  49.0%
+ponder: αβ[c++] depth= 2   | best= 44.8%  | time= 0.0s  | nodes=159 | move=((7,7))
+  moves: ((1,3))  44.8% | ((2,3))  40.4% | ((2,8))  37.2% | ((3,2))  46.1% | ((3,3))  47.3%
+ponder: αβ[c++] depth= 3   | best= 50.4%  | time= 0.0s  | nodes=510 | move=((7,7))
+  moves: ((5,3))  50.4% | ((6,7))  53.4% | ((4,1))  44.3% | ((3,3))  48.2% | ((3,2))  43.5%
+ponder: αβ[c++] depth= 4   | best= 53.9%  | time= 0.0s  | nodes=1,933 | move=((7,7))
+  moves: ((6,7))  53.9% | ((5,3))  51.8% | ((3,3))  51.1% | ((7,6))  49.3% | ((1,3))  49.8%
+ponder: αβ[c++] depth= 5   | best= 54.9%  | time= 0.0s  | nodes=8,423 | move=((7,7))
+  moves: ((6,7))  54.9% | ((5,3))  58.9% | ((3,3))  57.1% | ((1,3))  54.0% | ((7,6))  50.9%
+ponder: αβ[c++] depth= 6   | best= 56.9%  | time= 0.0s  | nodes=12,638 | move=((7,7))
+  moves: ((5,3))  56.9% | ((3,3))  54.5% | ((6,7))  56.1% | ((1,3))  50.5% | ((3,2))  51.9%
+ponder: αβ[c++] depth= 9   | best= 58.4%  | time= 0.1s  | nodes=303,246 | move=((7,7))
+  moves: ((1,3))  58.4% | ((3,3))  56.9% | ((5,3))  59.4% | ((4,1))  59.0% | ((6,7))  59.8%
+ponder: αβ[c++] depth=10   | best= 61.9%  | time= 0.2s  | nodes=504,334 | move=((7,7))
+  moves: ((6,7))  61.9% | ((5,3))  60.6% | ((4,1))  59.5% | ((7,6))  58.2% | ((1,3))  61.9%
+ply=25   | empties=35   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
+tt: hit | start depth=14
+legal moves=16
+scheduler: mcts_priority=0.57    | ab_delay=0.02s     | ab_budget=2.85s    
+mcts: start | batch=16384     | limit=3.5s  
+ab: start | depth=14  
+ponder: αβ[c++] depth=15   | best= 48.6%  | time= 3.1s  | nodes=7,606,956 | move=((6,7))
+  moves: ((7,6))  48.6% | ((1,3))  46.0% | ((3,3))  46.3% | ((5,3))  46.5% | ((7,3))  43.2%
+[*]αβ[c++] depth=14   | best= 49.6%  | time= 1.7s  | nodes=9921644 
+  moves: (5,3) 49.6% | (7,3) 49.4% | (6,7) 48.4% | (1,3) 48.3% | (3,3) 47.3%
+ab: done | completed=14    | attempted=15   
+mcts: done | sims=32768     | nn_batches=3     | best=84.9% 
+mcts: root visits | (3,3)=16349 | (6,7)=7292 | (7,6)=4909 | (1,3)=1294 | (7,7)=1169
+mcts: dynamic influence adjusted from 50% to 65% based on 32768 sims
+final: (3,3) 63.1% | (6,7) 59.9% | (5,3) 58.0% | (7,6) 57.5% | (1,3) 57.3%
+[GREEN]midpoint: (3,3) 66.1% | (6,7) 62.5% | (5,3) 60.1% | (7,6) 60.3% | (1,3) 59.5%[/GREEN]
+move: (3,3)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 52.4%  | time= 0.0s  | nodes=137 | move=((3,2))
+  moves: ((1,3))  52.4% | ((2,1))  37.7% | ((2,2))  44.2% | ((2,3))  49.9% | ((2,8))  43.8%
+ponder: αβ[c++] depth= 3   | best= 52.4%  | time= 0.0s  | nodes=612 | move=((3,2))
+  moves: ((1,3))  52.4% | ((2,3))  46.4% | ((4,1))  46.2% | ((5,3))  43.3% | ((8,5))  42.0%
+ponder: αβ[c++] depth= 4   | best= 52.4%  | time= 0.0s  | nodes=1,965 | move=((3,2))
+  moves: ((1,3))  52.4% | ((2,3))  49.1% | ((4,1))  46.5% | ((7,3))  47.3% | ((6,7))  46.5%
+ponder: αβ[c++] depth= 5   | best= 52.4%  | time= 0.0s  | nodes=6,027 | move=((3,2))
+  moves: ((1,3))  52.4% | ((2,3))  45.4% | ((5,8))  46.4% | ((7,3))  46.9% | ((8,5))  47.3%
+ponder: αβ[c++] depth= 6   | best= 52.4%  | time= 0.0s  | nodes=18,095 | move=((3,2))
+  moves: ((1,3))  52.4% | ((8,5))  48.9% | ((5,3))  51.6% | ((7,3))  49.5% | ((5,8))  47.7%
+ponder: αβ[c++] depth= 9   | best= 52.4%  | time= 0.1s  | nodes=353,373 | move=((3,2))
+  moves: ((1,3))  52.4% | ((5,3))  52.4% | ((7,3))  47.8% | ((8,5))  48.9% | ((6,7))  47.7%
+ponder: αβ[c++] depth=10   | best= 51.3%  | time= 0.2s  | nodes=953,221 | move=((3,2))
+  moves: ((5,3))  51.3% | ((1,3))  52.4% | ((8,5))  48.9% | ((4,1))  48.2% | ((7,3))  49.0%
+ponder: αβ[c++] depth= 2   | best= 46.7%  | time= 0.0s  | nodes=111 | move=((1,6))
+  moves: ((1,3))  46.7% | ((1,7))  44.0% | ((2,8))  44.8% | ((3,2))  44.4% | ((4,1))  46.2%
+ponder: αβ[c++] depth= 3   | best= 48.1%  | time= 0.0s  | nodes=513 | move=((1,6))
+  moves: ((6,7))  48.1% | ((5,8))  46.3% | ((4,8))  48.5% | ((5,3))  45.2% | ((1,3))  46.6%
+ponder: αβ[c++] depth= 4   | best= 48.5%  | time= 0.0s  | nodes=1,521 | move=((1,6))
+  moves: ((4,8))  48.5% | ((6,7))  48.3% | ((1,3))  49.3% | ((5,8))  45.6% | ((4,1))  46.2%
+ponder: αβ[c++] depth= 5   | best= 49.3%  | time= 0.0s  | nodes=5,449 | move=((1,6))
+  moves: ((1,3))  49.3% | ((4,8))  48.5% | ((5,3))  48.1% | ((6,7))  44.1% | ((5,1))  44.7%
+ponder: αβ[c++] depth= 6   | best= 49.3%  | time= 0.0s  | nodes=15,985 | move=((1,6))
+  moves: ((1,3))  49.3% | ((4,8))  48.5% | ((5,3))  48.5% | ((4,1))  46.2% | ((6,2))  45.9%
+ponder: αβ[c++] depth= 9   | best= 49.3%  | time= 0.1s  | nodes=321,001 | move=((1,6))
+  moves: ((1,3))  49.3% | ((5,3))  49.6% | ((4,8))  48.5% | ((5,2))  44.5% | ((4,1))  46.2%
+ponder: αβ[c++] depth=10   | best= 49.3%  | time= 0.2s  | nodes=772,783 | move=((1,6))
+  moves: ((5,3))  49.3% | ((1,3))  49.3% | ((4,8))  48.5% | ((4,1))  46.2% | ((6,2))  44.0%
+ponder: αβ[c++] depth= 2   | best= 49.0%  | time= 0.0s  | nodes=136 | move=((2,2))
+  moves: ((1,3))  49.0% | ((1,6))  55.4% | ((2,3))  43.2% | ((2,8))  44.1% | ((3,2))  51.8%
+ponder: αβ[c++] depth= 3   | best= 63.0%  | time= 0.0s  | nodes=541 | move=((2,2))
+  moves: ((5,3))  63.0% | ((6,7))  63.3% | ((1,6))  56.4% | ((4,1))  59.0% | ((7,3))  60.9%
+ponder: αβ[c++] depth= 4   | best= 62.2%  | time= 0.0s  | nodes=1,148 | move=((2,2))
+  moves: ((6,7))  62.2% | ((5,3))  58.2% | ((7,3))  51.8% | ((4,1))  52.2% | ((1,6))  57.5%
+ponder: αβ[c++] depth= 5   | best= 66.6%  | time= 0.0s  | nodes=4,979 | move=((2,2))
+  moves: ((6,7))  66.6% | ((5,3))  64.4% | ((1,6))  59.6% | ((1,3))  57.8% | ((7,6))  65.3%
+ponder: αβ[c++] depth= 6   | best= 61.0%  | time= 0.0s  | nodes=10,295 | move=((2,2))
+  moves: ((6,7))  61.0% | ((7,6))  55.7% | ((5,3))  56.9% | ((1,6))  56.8% | ((7,3))  55.2%
+ponder: αβ[c++] depth= 9   | best= 69.9%  | time= 0.1s  | nodes=283,728 | move=((2,2))
+  moves: ((6,7))  69.9% | ((1,3))  67.8% | ((5,3))  67.9% | ((7,3))  66.4% | ((7,6))  69.2%
+ponder: αβ[c++] depth=10   | best= 72.4%  | time= 0.1s  | nodes=499,772 | move=((2,2))
+  moves: ((6,7))  72.4% | ((7,6))  63.9% | ((1,6))  74.0% | ((5,3))  70.6% | ((1,3))  69.9%
+Ponder hit: reused cached ordering. cached depth=12, start depth=14
+ply=27   | empties=33   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
+tt: hit | start depth=14
+legal moves=15
+scheduler: mcts_priority=0.54    | ab_delay=0.02s     | ab_budget=2.83s    
+mcts: start | batch=16384     | limit=3.5s  
+ab: start | depth=14  
+[*]αβ[c++] depth=14   | best= 52.0%  | time= 1.6s  | nodes=7804058 
+  moves: (5,3) 52.0% | (1,3) 50.4% | (4,8) 49.0% | (5,1) 46.8% | (7,3) 45.3%
+[*]αβ[c++] depth=15   | best= 51.1%  | time= 2.8s  | nodes=7610707 
+  moves: (1,3) 51.1% | (5,3) 50.5% | (4,8) 50.5% | (4,1) 46.2% | (7,3) 46.0%
+ab: done | completed=15    | attempted=16   
+mcts: done | sims=32768     | nn_batches=3     | best=98.9% 
+mcts: root visits | (5,3)=31612 | (3,2)=377 | (5,2)=357 | (4,8)=122 | (6,7)=82
+mcts: dynamic influence adjusted from 50% to 65% based on 32768 sims
+final: (5,3) 70.0% | (4,8) 56.5% | (1,3) 54.6% | (5,2) 53.7% | (3,2) 53.4%
+[GREEN]midpoint: (5,3) 74.7% | (4,8) 60.2% | (1,3) 60.5% | (5,2) 57.4% | (3,2) 57.2%[/GREEN]
+move: (5,3)
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 45.2%  | time= 0.0s  | nodes=74 | move=((5,2))
+  moves: ((1,3))  45.2% | ((1,7))  10.7% | ((3,2))  48.1% | ((4,1))  46.3% | ((4,8))  52.0%
+ponder: αβ[c++] depth= 3   | best= 52.0%  | time= 0.0s  | nodes=294 | move=((5,2))
+  moves: ((4,8))  52.0% | ((3,2))  48.0% | ((8,5))  43.9% | ((4,1))  43.9% | ((7,3))  46.3%
+ponder: αβ[c++] depth= 4   | best= 52.0%  | time= 0.0s  | nodes=860 | move=((5,2))
+  moves: ((4,8))  52.0% | ((1,3))  49.7% | ((3,2))  51.2% | ((7,3))  52.6% | ((6,7))  49.2%
+ponder: αβ[c++] depth= 5   | best= 50.8%  | time= 0.0s  | nodes=3,274 | move=((5,2))
+  moves: ((7,3))  50.8% | ((4,8))  52.0% | ((3,2))  51.8% | ((4,1))  45.3% | ((1,3))  54.3%
+ponder: αβ[c++] depth= 6   | best= 49.4%  | time= 0.0s  | nodes=8,194 | move=((5,2))
+  moves: ((1,3))  49.4% | ((4,8))  52.0% | ((3,2))  52.0% | ((7,3))  49.1% | ((6,7))  51.4%
+ponder: αβ[c++] depth= 9   | best= 52.0%  | time= 0.1s  | nodes=183,345 | move=((5,2))
+  moves: ((4,8))  52.0% | ((1,3))  49.6% | ((7,3))  50.8% | ((6,7))  50.9% | ((3,2))  54.9%
+ponder: αβ[c++] depth=10   | best= 52.7%  | time= 0.2s  | nodes=496,458 | move=((5,2))
+  moves: ((3,2))  52.7% | ((4,8))  52.0% | ((6,7))  51.2% | ((7,3))  49.5% | ((6,2))  47.9%
+ponder: αβ[c++] depth= 2   | best= 12.2%  | time= 0.0s  | nodes=86 | move=((6,2))
+  moves: ((2,7))  12.2% | ((2,8))  16.1% | ((4,1))  48.1% | ((4,8))  53.8% | ((5,1))  47.1%
+ponder: αβ[c++] depth= 3   | best= 56.2%  | time= 0.0s  | nodes=393 | move=((6,2))
+  moves: ((7,3))  56.2% | ((4,8))  50.1% | ((6,7))  48.1% | ((5,8))  44.5% | ((6,1))  45.9%
+ponder: αβ[c++] depth= 4   | best= 56.2%  | time= 0.0s  | nodes=1,037 | move=((6,2))
+  moves: ((7,3))  56.2% | ((4,8))  52.5% | ((6,7))  48.8% | ((4,1))  49.9% | ((5,1))  50.6%
+ponder: αβ[c++] depth= 5   | best= 56.2%  | time= 0.0s  | nodes=3,958 | move=((6,2))
+  moves: ((7,3))  56.2% | ((4,8))  50.9% | ((5,1))  45.0% | ((4,1))  46.5% | ((6,7))  46.4%
+ponder: αβ[c++] depth= 6   | best= 56.2%  | time= 0.0s  | nodes=13,455 | move=((6,2))
+  moves: ((7,3))  56.2% | ((4,8))  51.8% | ((6,1))  48.9% | ((4,1))  49.9% | ((6,7))  49.0%
+ponder: αβ[c++] depth= 9   | best= 56.2%  | time= 0.1s  | nodes=227,501 | move=((6,2))
+  moves: ((7,3))  56.2% | ((4,8))  48.4% | ((5,2))  49.5% | ((4,1))  49.9% | ((5,1))  47.5%
+ponder: αβ[c++] depth=10   | best= 56.2%  | time= 0.1s  | nodes=632,509 | move=((6,2))
+  moves: ((7,3))  56.2% | ((4,1))  49.9% | ((6,1))  45.4% | ((5,2))  47.5% | ((6,7))  51.9%
+ponder: αβ[c++] depth= 2   | best= 49.6%  | time= 0.0s  | nodes=65 | move=((2,3))
+  moves: ((1,3))  49.6% | ((1,7))  13.3% | ((2,2))  10.1% | ((2,7))  12.3% | ((2,8))  15.0%
+ponder: αβ[c++] depth= 3   | best= 58.6%  | time= 0.0s  | nodes=328 | move=((2,3))
+  moves: ((4,8))  58.6% | ((4,1))  48.6% | ((5,8))  46.7% | ((3,2))  45.5% | ((8,5))  45.9%
+ponder: αβ[c++] depth= 4   | best= 58.6%  | time= 0.0s  | nodes=1,002 | move=((2,3))
+  moves: ((4,8))  58.6% | ((4,1))  52.9% | ((6,2))  48.4% | ((5,8))  50.9% | ((6,7))  52.7%
+ponder: αβ[c++] depth= 5   | best= 58.6%  | time= 0.0s  | nodes=3,302 | move=((2,3))
+  moves: ((4,8))  58.6% | ((4,1))  52.3% | ((6,7))  47.3% | ((8,5))  45.5% | ((5,8))  46.8%
+ponder: αβ[c++] depth= 6   | best= 58.6%  | time= 0.0s  | nodes=8,966 | move=((2,3))
+  moves: ((4,8))  58.6% | ((4,1))  52.9% | ((7,3))  50.5% | ((1,3))  51.9% | ((6,7))  52.0%
+ponder: αβ[c++] depth= 9   | best= 58.6%  | time= 0.1s  | nodes=208,612 | move=((2,3))
+  moves: ((4,8))  58.6% | ((4,1))  56.7% | ((7,3))  54.8% | ((6,7))  54.0% | ((1,3))  51.5%
+ponder: αβ[c++] depth=10   | best= 58.6%  | time= 0.1s  | nodes=548,368 | move=((2,3))
+  moves: ((4,8))  58.6% | ((4,1))  63.2% | ((7,3))  54.2% | ((6,7))  54.3% | ((1,3))  52.7%
+Ponder hit: reused cached ordering. cached depth=12, start depth=14
+ponder: stopped for exact solve
+ply=29   | empties=31   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=auto% | TT=ON  | limit=3.9s 
+tt: hit | start depth=14
+legal moves=16
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=14  
+[*]αβ[c++] depth=14   | best= 77.8%  | time= 1.4s  | nodes=4773784 
+  moves: (4,1) 77.8% | (1,3) 64.3% | (6,7) 62.8% | (4,8) 61.2% | (8,5) 61.1%
+[*]αβ[c++] depth=15   | best= 80.5%  | time= 1.7s  | nodes=2280730 
+  moves: (4,1) 80.5% | (1,3) 72.0% | (8,5) 71.3% | (4,8) 69.6% | (6,7) 63.9%
+[*]αβ[c++] depth=16   | best= 83.8%  | time= 2.4s  | nodes=5228006 
+  moves: (4,1) 83.8% | (8,5) 73.4% | (1,3) 73.2% | (4,8) 70.6% | (6,7) 59.3%
+[*]αβ[c++] depth=17   | best= 80.2%  | time= 3.2s  | nodes=6317012 
+  moves: (8,5) 80.2% | (1,3) 77.7% | (4,1) 77.7% | (4,8) 73.0% | (6,7) 66.8%
+ab: done | completed=17    | attempted=18   
+mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
+final: (8,5) 80.2% | (1,3) 77.7% | (4,1) 77.7% | (4,8) 73.0% | (6,7) 66.8%
+move: (8,5)
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 46.1%  | time= 0.0s  | nodes=59 | move=((8,6))
+  moves: ((1,3))  46.1% | ((1,7))  10.9% | ((2,2))   7.9% | ((2,7))   9.7% | ((2,8))  12.3%
+ponder: αβ[c++] depth= 3   | best= 80.2%  | time= 0.0s  | nodes=308 | move=((8,6))
+  moves: ((4,1))  80.2% | ((4,8))  45.1% | ((3,2))  41.8% | ((5,8))  43.0% | ((1,3))  44.9%
+ponder: αβ[c++] depth= 4   | best= 80.2%  | time= 0.0s  | nodes=691 | move=((8,6))
+  moves: ((4,1))  80.2% | ((4,8))  49.7% | ((1,3))  49.3% | ((5,8))  46.9% | ((7,3))  45.6%
+ponder: αβ[c++] depth= 5   | best= 80.2%  | time= 0.0s  | nodes=2,115 | move=((8,6))
+  moves: ((4,1))  80.2% | ((4,8))  57.1% | ((6,7))  43.2% | ((1,3))  45.5% | ((5,8))  43.0%
+ponder: αβ[c++] depth= 6   | best= 80.2%  | time= 0.0s  | nodes=6,057 | move=((8,6))
+  moves: ((4,1))  80.2% | ((4,8))  57.1% | ((7,3))  48.4% | ((1,3))  47.7% | ((6,7))  44.7%
+ponder: αβ[c++] depth= 9   | best= 80.2%  | time= 0.0s  | nodes=111,822 | move=((8,6))
+  moves: ((4,1))  80.2% | ((4,8))  57.1% | ((7,3))  48.6% | ((3,2))  45.8% | ((1,3))  49.9%
+ponder: αβ[c++] depth=10   | best= 80.2%  | time= 0.1s  | nodes=328,240 | move=((8,6))
+  moves: ((4,1))  80.2% | ((4,8))  57.1% | ((1,3))  57.1% | ((7,3))  50.3% | ((6,7))  49.1%
+ponder: αβ[c++] depth= 2   | best= 50.5%  | time= 0.0s  | nodes=82 | move=((7,6))
+  moves: ((1,3))  50.5% | ((1,7))  10.3% | ((2,2))   7.5% | ((2,8))  11.7% | ((3,2))  46.1%
+ponder: αβ[c++] depth= 3   | best= 77.1%  | time= 0.0s  | nodes=327 | move=((7,6))
+  moves: ((4,8))  77.1% | ((7,3))  50.9% | ((1,3))  52.2% | ((6,7))  48.0% | ((8,2))  52.9%
+ponder: αβ[c++] depth= 4   | best= 77.1%  | time= 0.0s  | nodes=697 | move=((7,6))
+  moves: ((4,8))  77.1% | ((8,2))  76.2% | ((1,3))  76.2% | ((7,3))  53.5% | ((6,7))  50.2%
+ponder: αβ[c++] depth= 5   | best= 77.1%  | time= 0.0s  | nodes=2,289 | move=((7,6))
+  moves: ((4,8))  77.1% | ((8,2))  76.2% | ((1,3))  76.2% | ((7,3))  53.5% | ((6,7))  49.1%
+ponder: αβ[c++] depth= 6   | best= 77.1%  | time= 0.0s  | nodes=6,655 | move=((7,6))
+  moves: ((4,8))  77.1% | ((8,2))  76.2% | ((1,3))  76.2% | ((7,3))  53.5% | ((6,7))  53.3%
+ponder: αβ[c++] depth= 9   | best= 77.1%  | time= 0.0s  | nodes=95,121 | move=((7,6))
+  moves: ((4,8))  77.1% | ((8,2))  77.4% | ((1,3))  76.2% | ((6,7))  55.6% | ((7,3))  53.5%
+ponder: αβ[c++] depth=10   | best= 76.2%  | time= 0.1s  | nodes=157,478 | move=((7,6))
+  moves: ((8,2))  76.2% | ((4,8))  77.1% | ((1,3))  76.2% | ((6,7))  62.1% | ((7,3))  53.5%
+ponder: αβ[c++] depth=15   | best= 80.2%  | time= 0.7s  | nodes=1,724,449 | move=((8,6))
+  moves: ((4,1))  80.2% | ((6,7))  68.5% | ((4,8))  65.0% | ((1,3))  65.0% | ((7,3))  52.2%
+endgame: C++ solver activated (empties=29)
+endgame: no valid moves found, falling back to normal search
+Ponder hit: reused cached ordering. cached depth=17, start depth=18
+ponder: stopped for exact solve
+ply=31   | empties=29   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=auto% | TT=ON  | limit=3.9s 
+tt: hit | start depth=18
+legal moves=15
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=18  
+ab: done | completed=17   
+mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
+final: (6,7) 50.0% | (4,1) 50.0% | (4,8) 50.0% | (1,3) 50.0% | (7,3) 50.0%
+move: (6,7)
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 44.7%  | time= 0.0s  | nodes=96 | move=((7,6))
+  moves: ((1,2))  44.7% | ((1,3))  42.6% | ((1,7))   7.2% | ((2,2))   5.0% | ((2,7))   6.5%
+ponder: αβ[c++] depth= 3   | best= 80.2%  | time= 0.0s  | nodes=333 | move=((7,6))
+  moves: ((4,8))  80.2% | ((1,2))  45.2% | ((7,3))  40.4% | ((5,8))  39.5% | ((6,2))  42.8%
+ponder: αβ[c++] depth= 4   | best= 80.2%  | time= 0.0s  | nodes=1,092 | move=((7,6))
+  moves: ((4,8))  80.2% | ((1,2))  50.7% | ((6,2))  47.2% | ((5,2))  44.6% | ((7,3))  49.3%
+ponder: αβ[c++] depth= 5   | best= 80.2%  | time= 0.0s  | nodes=3,233 | move=((7,6))
+  moves: ((4,8))  80.2% | ((1,2))  46.3% | ((7,3))  45.9% | ((1,3))  41.7% | ((6,2))  42.0%
+ponder: αβ[c++] depth= 6   | best= 80.2%  | time= 0.0s  | nodes=7,459 | move=((7,6))
+  moves: ((4,8))  80.2% | ((1,2))  48.7% | ((7,3))  44.9% | ((3,2))  44.5% | ((4,1))  44.7%
+ponder: αβ[c++] depth= 9   | best= 80.2%  | time= 0.0s  | nodes=137,418 | move=((7,6))
+  moves: ((4,8))  80.2% | ((1,2))  47.7% | ((7,3))  47.4% | ((5,2))  46.1% | ((6,2))  44.4%
+ponder: αβ[c++] depth=10   | best= 80.2%  | time= 0.1s  | nodes=319,182 | move=((7,6))
+  moves: ((4,8))  80.2% | ((3,2))  46.2% | ((4,1))  46.7% | ((1,2))  51.9% | ((7,3))  45.7%
+ponder: αβ[c++] depth= 2   | best= 80.3%  | time= 0.0s  | nodes=34 | move=((7,7))
+  moves: ((1,3))  80.3% | ((1,7))   7.9% | ((2,7))   6.4% | ((3,2))  46.5% | ((5,2))  41.8%
+ponder: αβ[c++] depth= 3   | best= 80.3%  | time= 0.0s  | nodes=122 | move=((7,7))
+  moves: ((1,3))  80.3% | ((5,8))  51.0% | ((6,2))  47.9% | ((3,2))  45.1% | ((5,2))  42.2%
+ponder: αβ[c++] depth= 4   | best= 80.3%  | time= 0.0s  | nodes=273 | move=((7,7))
+  moves: ((1,3))  80.3% | ((5,8))  50.0% | ((6,2))  48.9% | ((3,2))  49.2% | ((5,2))  46.6%
+ponder: αβ[c++] depth= 5   | best= 80.3%  | time= 0.0s  | nodes=915 | move=((7,7))
+  moves: ((1,3))  80.3% | ((5,8))  49.9% | ((3,2))  53.4% | ((6,2))  56.8% | ((5,2))  44.9%
+ponder: αβ[c++] depth= 6   | best= 80.3%  | time= 0.0s  | nodes=1,915 | move=((7,7))
+  moves: ((1,3))  80.3% | ((6,2))  52.0% | ((3,2))  54.2% | ((5,8))  52.0% | ((5,2))  44.6%
+ponder: αβ[c++] depth= 9   | best= 80.9%  | time= 0.1s  | nodes=119,378 | move=((7,7))
+  moves: ((5,8))  80.9% | ((1,3))  80.3% | ((3,2))  57.5% | ((6,2))  62.4% | ((5,2))  53.0%
+ponder: αβ[c++] depth=10   | best= 88.1%  | time= 0.1s  | nodes=158,841 | move=((7,7))
+  moves: ((5,8))  88.1% | ((1,3))  80.3% | ((6,2))  62.9% | ((3,2))  58.0% | ((5,2))  57.5%
+ponder: αβ[c++] depth= 2   | best= 49.2%  | time= 0.0s  | nodes=68 | move=((7,8))
+  moves: ((1,3))  49.2% | ((1,7))  11.2% | ((2,2))  43.6% | ((2,7))  10.4% | ((2,8))  13.2%
+ponder: αβ[c++] depth= 3   | best= 79.7%  | time= 0.0s  | nodes=260 | move=((7,8))
+  moves: ((5,8))  79.7% | ((4,1))  49.0% | ((3,2))  44.9% | ((4,8))  47.7% | ((1,3))  48.2%
+ponder: αβ[c++] depth= 4   | best= 79.7%  | time= 0.0s  | nodes=804 | move=((7,8))
+  moves: ((5,8))  79.7% | ((4,1))  53.0% | ((1,3))  52.4% | ((7,3))  48.1% | ((4,8))  49.1%
+ponder: αβ[c++] depth= 5   | best= 79.7%  | time= 0.0s  | nodes=2,065 | move=((7,8))
+  moves: ((5,8))  79.7% | ((4,1))  51.6% | ((1,3))  52.8% | ((4,8))  45.9% | ((5,2))  44.7%
+ponder: αβ[c++] depth= 6   | best= 79.7%  | time= 0.0s  | nodes=6,556 | move=((7,8))
+  moves: ((5,8))  79.7% | ((1,3))  52.8% | ((4,1))  52.1% | ((7,3))  48.1% | ((4,8))  50.8%
+ponder: αβ[c++] depth= 9   | best= 79.7%  | time= 0.0s  | nodes=83,425 | move=((7,8))
+  moves: ((5,8))  79.7% | ((1,3))  53.8% | ((2,2))  47.4% | ((4,8))  53.8% | ((7,3))  48.1%
+ponder: αβ[c++] depth=10   | best= 79.7%  | time= 0.1s  | nodes=289,062 | move=((7,8))
+  moves: ((5,8))  79.7% | ((1,3))  52.8% | ((4,8))  52.5% | ((4,1))  48.6% | ((7,3))  48.1%
+ponder: αβ[c++] depth=15   | best= 93.1%  | time= 1.1s  | nodes=2,111,566 | move=((7,6))
+  moves: ((4,8))  93.1% | ((1,2))  70.8% | ((3,2))  60.4% | ((4,1))  47.5% | ((7,3))  47.7%
+endgame: C++ solver activated (empties=27)
+endgame: no valid moves found, falling back to normal search
+Ponder hit: reused cached ordering. cached depth=12, start depth=16
+ponder: stopped for exact solve
+ply=33   | empties=27   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=auto% | TT=ON  | limit=3.9s 
+tt: hit | start depth=16
+legal moves=13
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=16  
+ab: done | completed=15   
+mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
+final: (5,8) 50.0% | (1,3) 50.0% | (2,2) 50.0% | (4,8) 50.0% | (7,3) 50.0%
+move: (5,8)
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 57.7%  | time= 0.0s  | nodes=69 | move=((7,6))
+  moves: ((1,3))  57.7% | ((1,7))   7.9% | ((2,2))   6.0% | ((2,7))   7.8% | ((2,8))   9.1%
+ponder: αβ[c++] depth= 3   | best= 77.2%  | time= 0.0s  | nodes=211 | move=((7,6))
+  moves: ((4,8))  77.2% | ((8,8))  68.3% | ((1,3))  57.7% | ((5,2))  37.7% | ((4,1))  37.1%
+ponder: αβ[c++] depth= 4   | best= 74.5%  | time= 0.0s  | nodes=355 | move=((7,6))
+  moves: ((4,8))  74.5% | ((8,8))  71.0% | ((1,3))  57.7% | ((5,2))  44.6% | ((4,1))  43.5%
+ponder: αβ[c++] depth= 5   | best= 77.4%  | time= 0.0s  | nodes=820 | move=((7,6))
+  moves: ((4,8))  77.4% | ((8,8))  80.2% | ((1,3))  57.7% | ((5,2))  36.8% | ((4,1))  35.8%
+ponder: αβ[c++] depth= 6   | best= 74.8%  | time= 0.0s  | nodes=2,144 | move=((7,6))
+  moves: ((8,8))  74.8% | ((4,8))  77.0% | ((1,3))  57.7% | ((6,2))  41.5% | ((5,2))  43.7%
+ponder: αβ[c++] depth= 9   | best= 95.6%  | time= 0.0s  | nodes=25,045 | move=((7,6))
+  moves: ((4,8))  95.6% | ((8,8))  88.5% | ((1,3))  57.7% | ((5,2))  42.9% | ((4,1))  37.2%
+ponder: αβ[c++] depth=10   | best= 95.6%  | time= 0.1s  | nodes=121,007 | move=((7,6))
+  moves: ((4,8))  95.6% | ((8,8))  93.0% | ((1,3))  57.7% | ((5,2))  38.3% | ((1,7))  32.4%
+ponder: αβ[c++] depth= 2   | best= 45.0%  | time= 0.0s  | nodes=61 | move=((4,8))
+  moves: ((1,2))  45.0% | ((1,3))  47.9% | ((1,7))  34.9% | ((2,2))   7.3% | ((2,7))   8.7%
+ponder: αβ[c++] depth= 3   | best= 79.7%  | time= 0.0s  | nodes=268 | move=((4,8))
+  moves: ((7,6))  79.7% | ((4,1))  46.3% | ((1,3))  48.4% | ((7,3))  39.6% | ((3,2))  45.5%
+ponder: αβ[c++] depth= 4   | best= 79.7%  | time= 0.0s  | nodes=501 | move=((4,8))
+  moves: ((7,6))  79.7% | ((1,3))  52.8% | ((4,1))  55.4% | ((3,2))  45.5% | ((1,2))  44.2%
+ponder: αβ[c++] depth= 5   | best= 79.7%  | time= 0.0s  | nodes=1,528 | move=((4,8))
+  moves: ((7,6))  79.7% | ((4,1))  50.9% | ((1,3))  50.5% | ((3,2))  45.5% | ((7,3))  44.5%
+ponder: αβ[c++] depth= 6   | best= 79.7%  | time= 0.0s  | nodes=3,423 | move=((4,8))
+  moves: ((7,6))  79.7% | ((4,1))  57.0% | ((1,3))  52.8% | ((3,2))  45.5% | ((7,3))  45.9%
+ponder: αβ[c++] depth= 9   | best= 79.7%  | time= 0.0s  | nodes=33,925 | move=((4,8))
+  moves: ((7,6))  79.7% | ((1,3))  52.8% | ((4,1))  50.3% | ((3,2))  45.5% | ((7,3))  44.7%
+ponder: αβ[c++] depth=10   | best= 79.7%  | time= 0.1s  | nodes=137,087 | move=((4,8))
+  moves: ((7,6))  79.7% | ((1,3))  52.8% | ((4,1))  52.8% | ((3,2))  45.5% | ((1,2))  40.9%
+ponder: αβ[c++] depth= 2   | best= 46.7%  | time= 0.0s  | nodes=60 | move=((7,7))
+  moves: ((1,2))  46.7% | ((1,3))  49.9% | ((1,7))  39.5% | ((2,7))   9.1% | ((3,2))  52.2%
+ponder: αβ[c++] depth= 3   | best= 67.4%  | time= 0.0s  | nodes=209 | move=((7,7))
+  moves: ((8,8))  67.4% | ((6,2))  64.2% | ((3,2))  59.3% | ((1,3))  44.8% | ((5,2))  41.5%
+ponder: αβ[c++] depth= 4   | best= 68.9%  | time= 0.0s  | nodes=330 | move=((7,7))
+  moves: ((8,8))  68.9% | ((6,2))  60.2% | ((3,2))  57.4% | ((1,3))  49.9% | ((1,2))  45.9%
+ponder: αβ[c++] depth= 5   | best= 75.6%  | time= 0.0s  | nodes=1,781 | move=((7,7))
+  moves: ((8,8))  75.6% | ((6,2))  62.5% | ((3,2))  62.2% | ((1,3))  49.8% | ((5,2))  46.3%
+ponder: αβ[c++] depth= 6   | best= 79.7%  | time= 0.0s  | nodes=2,732 | move=((7,7))
+  moves: ((8,8))  79.7% | ((6,2))  64.5% | ((3,2))  65.6% | ((1,2))  54.3% | ((1,3))  50.7%
+ponder: αβ[c++] depth= 9   | best= 87.1%  | time= 0.0s  | nodes=56,517 | move=((7,7))
+  moves: ((8,8))  87.1% | ((6,2))  75.3% | ((1,3))  69.1% | ((3,2))  76.5% | ((1,2))  72.1%
+ponder: αβ[c++] depth=10   | best= 89.3%  | time= 0.1s  | nodes=100,337 | move=((7,7))
+  moves: ((8,8))  89.3% | ((3,2))  77.3% | ((6,2))  74.8% | ((1,2))  70.8% | ((1,3))  76.1%
+ponder: αβ[c++] depth=15   | best=100.0%  | time= 0.2s  | nodes=4,876 | move=((4,8))
+  moves: ((7,6)) 100.0% | ((1,7))  79.1% | ((2,7)) 100.0% | ((1,3)) 100.0% | ((4,1)) 100.0%
+ponder: αβ[c++] depth=15   | best= 98.5%  | time= 0.2s  | nodes=562,868 | move=((7,6))
+  moves: ((4,8))  98.5% | ((8,8))  96.0% | ((2,7))  67.3% | ((2,2))  74.5% | ((2,8))  59.2%
+endgame: C++ solver activated (empties=25)
+endgame: no valid moves found, falling back to normal search
+Ponder hit: reused cached ordering. cached depth=15, start depth=16
+ponder: stopped for exact solve
+ply=35   | empties=25   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=auto% | TT=ON  | limit=3.9s 
+tt: hit | start depth=16
+legal moves=14
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=16  
+ab: done | completed=15   
+mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
+final: (7,6) 50.0% | (2,7) 50.0% | (1,3) 50.0% | (4,1) 50.0% | (7,3) 50.0%
+move: (7,6)
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 48.2%  | time= 0.0s  | nodes=29 | move=((7,7))
+  moves: ((1,2))  48.2% | ((1,3))  47.8% | ((1,7))   7.3% | ((2,7))   6.6% | ((3,2))  49.6%
+ponder: αβ[c++] depth= 3   | best= 83.8%  | time= 0.0s  | nodes=92 | move=((7,7))
+  moves: ((6,2))  83.8% | ((3,2))  40.7% | ((1,2))  49.0% | ((1,3))  47.8% | ((5,2))  44.8%
+ponder: αβ[c++] depth= 4   | best= 83.8%  | time= 0.0s  | nodes=235 | move=((7,7))
+  moves: ((6,2))  83.8% | ((1,2))  62.1% | ((1,3))  47.8% | ((5,2))  50.0% | ((3,2))  49.8%
+ponder: αβ[c++] depth= 5   | best= 83.8%  | time= 0.0s  | nodes=671 | move=((7,7))
+  moves: ((6,2))  83.8% | ((1,2))  74.7% | ((5,2))  51.4% | ((3,2))  53.1% | ((1,3))  47.8%
+ponder: αβ[c++] depth= 6   | best= 83.8%  | time= 0.0s  | nodes=1,072 | move=((7,7))
+  moves: ((6,2))  83.8% | ((1,2))  77.7% | ((3,2))  60.1% | ((5,2))  47.7% | ((1,3))  47.8%
+ponder: αβ[c++] depth= 9   | best= 83.8%  | time= 0.0s  | nodes=30,324 | move=((7,7))
+  moves: ((6,2))  83.8% | ((1,2))  75.5% | ((3,2))  79.5% | ((2,7))  81.4% | ((5,2))  54.7%
+ponder: αβ[c++] depth=10   | best= 83.8%  | time= 0.0s  | nodes=68,132 | move=((7,7))
+  moves: ((6,2))  83.8% | ((2,7))  82.5% | ((3,2))  75.1% | ((1,2))  83.3% | ((5,2))  62.3%
+ponder: αβ[c++] depth= 2   | best= 45.6%  | time= 0.0s  | nodes=55 | move=((8,7))
+  moves: ((1,2))  45.6% | ((1,3))  48.6% | ((1,7))   7.7% | ((2,2))  44.5% | ((2,8))   9.2%
+ponder: αβ[c++] depth= 3   | best= 50.4%  | time= 0.0s  | nodes=217 | move=((8,7))
+  moves: ((3,2))  50.4% | ((6,2))  42.9% | ((1,3))  55.4% | ((4,1))  42.2% | ((7,3))  42.3%
+ponder: αβ[c++] depth= 4   | best= 55.4%  | time= 0.0s  | nodes=558 | move=((8,7))
+  moves: ((1,3))  55.4% | ((3,2))  52.2% | ((6,2))  47.0% | ((2,2))  50.7% | ((7,3))  46.7%
+ponder: αβ[c++] depth= 5   | best= 55.4%  | time= 0.0s  | nodes=1,547 | move=((8,7))
+  moves: ((1,3))  55.4% | ((3,2))  48.8% | ((2,2))  47.9% | ((6,2))  44.7% | ((7,3))  48.5%
+ponder: αβ[c++] depth= 6   | best= 81.9%  | time= 0.0s  | nodes=3,697 | move=((8,7))
+  moves: ((1,3))  81.9% | ((3,2))  51.6% | ((7,3))  51.4% | ((2,2))  55.7% | ((6,2))  47.0%
+ponder: αβ[c++] depth= 9   | best= 81.9%  | time= 0.0s  | nodes=58,193 | move=((8,7))
+  moves: ((1,3))  81.9% | ((1,7))  29.7% | ((2,2))  74.1% | ((7,3))  62.3% | ((1,2))  62.7%
+ponder: αβ[c++] depth=10   | best= 84.6%  | time= 0.0s  | nodes=61,746 | move=((8,7))
+  moves: ((1,3))  84.6% | ((2,2))  73.3% | ((3,2))  76.5% | ((1,2))  78.6% | ((7,3))  61.7%
+ponder: αβ[c++] depth=15   | best= 97.0%  | time= 0.3s  | nodes=849,384 | move=((7,7))
+  moves: ((3,2))  97.0% | ((1,2))  97.3% | ((2,7))  97.2% | ((6,2))  91.5% | ((5,2))  84.6%
+ponder: αβ[c++] depth=20   | best= 99.3%  | time= 1.5s  | nodes=497,395 | move=((7,7))
+  moves: ((2,7))  99.3% | ((1,2))  98.1% | ((3,2))  96.5% | ((6,2))  91.5% | ((1,7))  60.5%
+ponder: αβ[c++] depth=15   | best= 70.7%  | time= 0.2s  | nodes=671,531 | move=((8,7))
+  moves: ((1,2))  70.7% | ((2,2))  88.5% | ((1,3))  87.3% | ((3,2))  87.7% | ((7,3))  74.8%
+ponder: αβ[c++] depth=20   | best= 93.7%  | time= 1.3s  | nodes=207,175 | move=((8,7))
+  moves: ((1,3))  93.7% | ((2,2))  95.0% | ((3,2))  76.8% | ((4,1))  78.4% | ((1,7))  84.4%
+endgame: C++ solver activated (empties=23)
+endgame: no valid moves found, falling back to normal search
+Ponder hit: reused cached ordering. cached depth=23, start depth=24
+ponder: stopped for exact solve
+ply=37   | empties=23   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=auto% | TT=ON  | limit=4.3s 
+tt: hit | start depth=23
+legal moves=10
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=23  
+ab: done | completed=22   
+mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
+final: (2,2) 50.0% | (1,3) 50.0% | (3,2) 50.0% | (4,1) 50.0% | (7,3) 50.0%
+move: (2,2)
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best=  9.1%  | time= 0.0s  | nodes=65 | move=((3,2))
+  moves: ((1,2))   9.1% | ((1,3))   8.6% | ((1,7))   5.4% | ((2,7))   5.1% | ((2,8))   6.7%
+ponder: αβ[c++] depth= 3   | best= 96.9%  | time= 0.0s  | nodes=181 | move=((3,2))
+  moves: ((3,1))  96.9% | ((6,2))  12.3% | ((1,2))  12.4% | ((1,3))  15.4% | ((7,3))  11.7%
+ponder: αβ[c++] depth= 4   | best= 96.9%  | time= 0.0s  | nodes=405 | move=((3,2))
+  moves: ((3,1))  96.9% | ((1,3))  15.4% | ((1,2))   9.5% | ((6,2))   9.9% | ((7,3))   8.7%
+ponder: αβ[c++] depth= 5   | best= 96.9%  | time= 0.0s  | nodes=837 | move=((3,2))
+  moves: ((3,1))  96.9% | ((1,3))  15.4% | ((6,2))  10.5% | ((1,2))  11.1% | ((2,8))  10.0%
+ponder: αβ[c++] depth= 6   | best= 96.9%  | time= 0.0s  | nodes=2,665 | move=((3,2))
+  moves: ((3,1))  96.9% | ((1,3))  15.4% | ((1,7))  15.4% | ((1,2))   8.7% | ((6,2))   8.7%
+ponder: αβ[c++] depth= 9   | best= 96.9%  | time= 0.0s  | nodes=38,369 | move=((3,2))
+  moves: ((3,1))  96.9% | ((1,3))  43.3% | ((1,7))  15.4% | ((7,3))  18.5% | ((2,8))  12.2%
+ponder: αβ[c++] depth=10   | best= 96.9%  | time= 0.1s  | nodes=73,441 | move=((3,2))
+  moves: ((3,1))  96.9% | ((1,3))  44.1% | ((7,3))  12.7% | ((1,7))  15.4% | ((2,8))  11.8%
+ponder: αβ[c++] depth= 2   | best= 98.5%  | time= 0.0s  | nodes=60 | move=((2,1))
+  moves: ((1,1))  98.5% | ((1,2))  51.3% | ((1,3))  49.8% | ((1,7))   9.1% | ((2,8))  10.9%
+ponder: αβ[c++] depth= 3   | best= 98.5%  | time= 0.0s  | nodes=270 | move=((2,1))
+  moves: ((1,1))  98.5% | ((7,3))  57.6% | ((6,2))  55.5% | ((4,1))  51.3% | ((1,2))  52.9%
+ponder: αβ[c++] depth= 4   | best= 98.5%  | time= 0.0s  | nodes=550 | move=((2,1))
+  moves: ((1,1))  98.5% | ((7,3))  54.0% | ((6,2))  57.6% | ((1,2))  50.5% | ((4,1))  52.1%
+ponder: αβ[c++] depth= 5   | best= 98.5%  | time= 0.0s  | nodes=1,689 | move=((2,1))
+  moves: ((1,1))  98.5% | ((6,2))  57.1% | ((5,1))  62.1% | ((7,3))  55.1% | ((4,1))  53.6%
+ponder: αβ[c++] depth= 6   | best= 98.5%  | time= 0.0s  | nodes=3,832 | move=((2,1))
+  moves: ((1,1))  98.5% | ((1,2))  59.1% | ((5,1))  63.0% | ((1,3))  59.1% | ((6,2))  57.4%
+ponder: αβ[c++] depth= 9   | best= 98.5%  | time= 0.0s  | nodes=52,343 | move=((2,1))
+  moves: ((1,1))  98.5% | ((1,2))  86.2% | ((6,2))  65.8% | ((5,2))  67.9% | ((7,3))  66.4%
+ponder: αβ[c++] depth=10   | best= 98.5%  | time= 0.1s  | nodes=104,568 | move=((2,1))
+  moves: ((1,1))  98.5% | ((1,2))  86.7% | ((1,3))  86.9% | ((5,1))  67.9% | ((5,2))  67.0%
+ponder: αβ[c++] depth=15   | best= 96.9%  | time= 0.2s  | nodes=214,958 | move=((3,2))
+  moves: ((3,1))  96.9% | ((1,3))  80.8% | ((1,2))  77.4% | ((1,7))  39.6% | ((7,3))  30.5%
+ponder: αβ[c++] depth=15   | best= 98.5%  | time= 0.2s  | nodes=124,070 | move=((2,1))
+  moves: ((1,1))  98.5% | ((1,2))  97.1% | ((5,1))  91.6% | ((1,3)) 100.0% | ((4,1))  88.0%
+ponder: αβ[c++] depth=20   | best= 96.9%  | time= 0.9s  | nodes=400,859 | move=((3,2))
+  moves: ((3,1))  96.9% | ((1,3))  84.5% | ((1,2))  61.2% | ((2,8))  46.5% | ((1,7))  56.4%
+endgame: C++ solver activated (empties=21)
+endgame: no valid moves found, falling back to normal search
+Ponder hit: reused cached ordering. cached depth=15, start depth=21
+ponder: stopped for exact solve
+ply=39   | empties=21   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=auto% | TT=ON  | limit=4.7s 
+tt: hit | start depth=21
+legal moves=10
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=21  
+ab: done | completed=20   
+mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
+final: (1,3) 50.0% | (7,3) 50.0% | (1,1) 50.0% | (1,2) 50.0% | (5,1) 50.0%
+move: (1,3)
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 58.5%  | time= 0.0s  | nodes=41 | move=((7,7))
+  moves: ((1,7))  58.5% | ((2,7))   5.8% | ((3,1))   6.2% | ((3,2))  52.5% | ((5,1))  86.4%
+ponder: αβ[c++] depth= 3   | best= 86.4%  | time= 0.0s  | nodes=118 | move=((7,7))
+  moves: ((5,1))  86.4% | ((1,7))  67.8% | ((3,2))  67.3% | ((7,3))  52.9% | ((6,2))  51.5%
+ponder: αβ[c++] depth= 4   | best= 86.4%  | time= 0.0s  | nodes=329 | move=((7,7))
+  moves: ((5,1))  86.4% | ((1,7))  76.1% | ((3,2))  71.0% | ((7,3))  56.0% | ((6,2))  61.5%
+ponder: αβ[c++] depth= 5   | best= 86.4%  | time= 0.0s  | nodes=901 | move=((7,7))
+  moves: ((5,1))  86.4% | ((1,7))  80.1% | ((3,2))  81.7% | ((6,2))  59.4% | ((7,3))  68.2%
+ponder: αβ[c++] depth= 6   | best= 86.4%  | time= 0.0s  | nodes=1,762 | move=((7,7))
+  moves: ((5,1))  86.4% | ((3,2))  90.5% | ((1,7))  74.3% | ((7,3))  64.2% | ((6,2))  81.1%
+ponder: αβ[c++] depth= 9   | best= 87.3%  | time= 0.0s  | nodes=32,918 | move=((7,7))
+  moves: ((3,2))  87.3% | ((6,2))  92.8% | ((5,1))  86.4% | ((1,7))  83.7% | ((5,2))  80.9%
+ponder: αβ[c++] depth=10   | best= 93.0%  | time= 0.1s  | nodes=42,671 | move=((7,7))
+  moves: ((6,2))  93.0% | ((3,2))  95.0% | ((5,1))  86.4% | ((7,3))  84.1% | ((1,7))  84.2%
+ponder: αβ[c++] depth= 2   | best= 90.4%  | time= 0.0s  | nodes=51 | move=((1,2))
+  moves: ((1,1))  90.4% | ((1,7))   8.0% | ((2,7))   8.0% | ((2,8))   9.7% | ((4,1))  50.8%
+ponder: αβ[c++] depth= 3   | best= 90.4%  | time= 0.0s  | nodes=188 | move=((1,2))
+  moves: ((1,1))  90.4% | ((6,2))  55.6% | ((7,3))  56.3% | ((5,1))  60.3% | ((4,1))  51.2%
+ponder: αβ[c++] depth= 4   | best= 90.4%  | time= 0.0s  | nodes=388 | move=((1,2))
+  moves: ((1,1))  90.4% | ((5,1))  58.6% | ((7,3))  52.1% | ((6,2))  56.9% | ((4,1))  51.0%
+ponder: αβ[c++] depth= 5   | best= 90.4%  | time= 0.0s  | nodes=1,116 | move=((1,2))
+  moves: ((1,1))  90.4% | ((5,1))  65.3% | ((6,2))  57.5% | ((7,3))  54.6% | ((5,2))  50.4%
+ponder: αβ[c++] depth= 6   | best= 90.4%  | time= 0.0s  | nodes=2,085 | move=((1,2))
+  moves: ((1,1))  90.4% | ((5,1))  70.5% | ((6,2))  55.5% | ((7,3))  56.1% | ((4,1))  50.8%
+ponder: αβ[c++] depth= 9   | best= 90.4%  | time= 0.0s  | nodes=33,496 | move=((1,2))
+  moves: ((1,1))  90.4% | ((5,1))  78.9% | ((6,2))  77.2% | ((7,3))  74.6% | ((5,2))  78.9%
+ponder: αβ[c++] depth=10   | best= 90.4%  | time= 0.0s  | nodes=50,092 | move=((1,2))
+  moves: ((1,1))  90.4% | ((5,2))  81.2% | ((5,1))  79.0% | ((6,2))  77.3% | ((2,7))  80.3%
+ponder: αβ[c++] depth= 2   | best= 95.2%  | time= 0.0s  | nodes=57 | move=((3,2))
+  moves: ((1,1))  95.2% | ((1,2))   9.4% | ((1,7))  98.4% | ((2,7))   8.3% | ((2,8))  10.0%
+ponder: αβ[c++] depth= 3   | best= 98.4%  | time= 0.0s  | nodes=202 | move=((3,2))
+  moves: ((1,7))  98.4% | ((1,1))  95.2% | ((7,3))  56.8% | ((6,2))  62.4% | ((5,1))  63.4%
+ponder: αβ[c++] depth= 4   | best= 98.4%  | time= 0.0s  | nodes=391 | move=((3,2))
+  moves: ((1,7))  98.4% | ((1,1))  95.2% | ((5,1))  65.5% | ((6,2))  66.7% | ((7,3))  63.0%
+ponder: αβ[c++] depth= 5   | best= 98.4%  | time= 0.0s  | nodes=1,160 | move=((3,2))
+  moves: ((1,7))  98.4% | ((1,1))  95.2% | ((6,2))  71.5% | ((5,1))  70.3% | ((7,3))  64.2%
+ponder: αβ[c++] depth= 6   | best= 98.4%  | time= 0.0s  | nodes=1,918 | move=((3,2))
+  moves: ((1,7))  98.4% | ((1,1))  95.2% | ((6,2))  74.3% | ((5,1))  87.5% | ((5,2))  69.6%
+ponder: αβ[c++] depth= 9   | best= 98.4%  | time= 0.0s  | nodes=38,007 | move=((3,2))
+  moves: ((1,7))  98.4% | ((1,1))  95.2% | ((5,1))  88.5% | ((6,2))  81.9% | ((7,3))  73.9%
+ponder: αβ[c++] depth=10   | best= 98.4%  | time= 0.0s  | nodes=39,644 | move=((3,2))
+  moves: ((1,7))  98.4% | ((1,1))  95.2% | ((5,1))  88.5% | ((5,2))  86.4% | ((2,7))  62.2%
+ponder: αβ[c++] depth=15   | best= 96.6%  | time= 0.2s  | nodes=216,188 | move=((7,7))
+  moves: ((3,2))  96.6% | ((6,2))  95.8% | ((5,1))  96.1% | ((5,2))  94.4% | ((1,7))  94.6%
+ponder: αβ[c++] depth=15   | best= 90.6%  | time= 0.0s  | nodes=140,501 | move=((1,2))
+  moves: ((5,2))  90.6% | ((6,2))  61.7% | ((1,1))  87.4% | ((5,1))  89.0% | ((7,3))  86.8%
+ponder: αβ[c++] depth=15   | best= 98.7%  | time= 0.0s  | nodes=144,974 | move=((3,2))
+  moves: ((1,7))  98.7% | ((1,1))  98.8% | ((5,2))  92.3% | ((2,7))  89.7% | ((6,2))  71.0%
+endgame: C++ solver activated (empties=19)
+endgame: exact solved in 4.08s | depth=19/19 | best move=((1,1))
+endgame: C++ solver activated (empties=17)
+endgame: exact solved in 0.53s | depth=17/17 | best move=((2,7))
+endgame: C++ solver activated (empties=15)
+endgame: exact solved in 0.23s | depth=15/15 | best move=((1,7))
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best= 70.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((2,8))  70.0% | ((3,1))  21.5% | ((4,1)) 100.0% | ((5,1))  20.2% | ((5,2))  16.8%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: all candidates exact, AB-only ponder
+Pondering start
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+ponder: αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=44 | move=((7,7))
+  moves: ((4,1)) 100.0% | ((8,8))  72.8% | ((2,8))  70.0% | ((3,1))  21.5% | ((5,1))  20.2%
+endgame: C++ solver activated (empties=13)
+endgame: exact solved in 0.01s | depth=13/13 | best move=((4,1))
+endgame: C++ solver activated (empties=11)
+endgame: exact solved in 0.00s | depth=11/11 | best move=((8,8))
+endgame: C++ solver activated (empties=9)
+endgame: exact solved in 0.00s | depth=9/9 | best move=((6,1))
+endgame: C++ solver activated (empties=8)
+endgame: exact solved in 0.00s | depth=8/8 | best move=((5,2))
+endgame: C++ solver activated (empties=7)
+endgame: exact solved in 0.00s | depth=7/7 | best move=((2,8))
+endgame: C++ solver activated (empties=6)
+endgame: exact solved in 0.00s | depth=6/6 | best move=((8,2))
+endgame: C++ solver activated (empties=5)
+endgame: exact solved in 0.00s | depth=5/5 | best move=((6,2))
+endgame: C++ solver activated (empties=3)
+endgame: exact solved in 0.00s | depth=3/3 | best move=((8,1))
+endgame: C++ solver activated (empties=2)
+endgame: exact solved in 0.00s | depth=2/2 | best move=((7,3))

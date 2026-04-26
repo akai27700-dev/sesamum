@@ -199,14 +199,13 @@ class OthelloSearchMixin:
             return
         all_exact = all((candidate['is_exact'] for candidate in candidates))
         if all_exact:
-            self.log('ponder: skipped (all candidates are exact)')
-            return
+            self.log('ponder: all candidates exact, AB-only ponder')
         run_ab_worker = self.use_cpp_engine and cpp_engine is not None and (not self.use_mcts_only or any((candidate['is_exact'] for candidate in candidates)))
         self.ponder_active_token = token
         self.log('Pondering start')
         self.mark_modules_active('PONDER')
         self.mark_connections_active(('PONDER', 'αβ'), ('PONDER', 'MCTS'), ('PONDER', 'TT'))
-        if run_mcts_worker:
+        if run_mcts_worker and not all_exact:
             self.ponder_mcts_thread = threading.Thread(target=self.ponder_mcts_r, args=(self.game_id, token, self.ponder_sf, candidates), daemon=True)
             self.ponder_thread = self.ponder_mcts_thread
             self.ponder_mcts_thread.start()
@@ -438,7 +437,8 @@ class OthelloSearchMixin:
             es = [math.exp(max(-20.0, (c - mx) / 10.0)) for _, _, c in combined]
             se = sum(es) if es else 1.0
             probs_map = {m: e / se * 100.0 for (m, _, _), e in zip(combined, es)}
-            pr_str = '[*]' if is_resumed else '[]'
+            is_resolved = bool(info.get('resolved', False))
+            pr_str = '[*]' if is_resolved or is_resumed else '[]'
             depth = int(info.get('depth', 0))
             elapsed = float(info.get('elapsed_sec', 0.0))
             nodes = int(info.get('nodes', 0))
