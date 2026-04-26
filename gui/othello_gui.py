@@ -690,12 +690,12 @@ class UltimateOthello(OthelloSearchMixin):
             return int(self.readout_empty_threshold)
         base_time = float(self.time_limit_sec)
         if base_time <= 1.0:
-            return 22
-        if base_time <= 5.0:
             return 26
+        if base_time <= 5.0:
+            return 30
         if base_time <= 10.0:
-            return 28
-        return 30
+            return 32
+        return 34
 
     def get_exact_gap_budget(self, legal_count, time_limit):
         budget = 7
@@ -718,13 +718,13 @@ class UltimateOthello(OthelloSearchMixin):
     def get_endgame_solver_threshold(self, legal_count, time_limit):
         limit = float(time_limit)
         if limit <= 1.0:
-            threshold = 24
-        elif limit <= 5.0:
             threshold = 28
+        elif limit <= 5.0:
+            threshold = 32
         elif limit <= 10.0:
-            threshold = 29
+            threshold = 33
         else:
-            threshold = 30
+            threshold = 34
         if legal_count <= 6:
             threshold += 2
         elif legal_count <= 10:
@@ -733,7 +733,7 @@ class UltimateOthello(OthelloSearchMixin):
             threshold -= 2
         elif legal_count >= 13:
             threshold -= 1
-        return max(22, min(32, threshold))
+        return max(26, min(36, threshold))
 
     def get_endgame_solver_time_limit_ms(self, empty, legal_count, time_limit):
         base_ms = float(time_limit) * 1000.0
@@ -1027,9 +1027,9 @@ class UltimateOthello(OthelloSearchMixin):
     def should_start_exact_early(self, aB, oB, empty, legal_count, start_depth=2, time_limit=None):
         base_threshold = int(self.get_exact_base_threshold())
         time_budget = float(self.time_limit_sec if time_limit is None else time_limit)
-        if empty > base_threshold + 3:
+        if empty > base_threshold + 7:
             return False
-        if empty > base_threshold and legal_count >= 12:
+        if empty > base_threshold and legal_count >= 14:
             return False
         gap_budget = self.get_exact_gap_budget(int(legal_count), time_budget)
         remaining_gap = max(0, int(empty) - max(2, int(start_depth)))
@@ -1044,7 +1044,7 @@ class UltimateOthello(OthelloSearchMixin):
             except Exception:
                 pass
         # フォールバック: C++ヒューリスティックが使えない場合のみ簡易判定
-        if empty <= min(20, base_threshold):
+        if empty <= min(24, base_threshold):
             return True
         if empty <= base_threshold:
             threshold = int(max(4, 11 + (base_threshold - empty)))
@@ -1559,6 +1559,7 @@ class UltimateOthello(OthelloSearchMixin):
         print(mode_text, flush=True)
         if hasattr(self, 'log_text') and (not self.board_only_mode):
             self.call_on_ui_thread(self.append_log_message, mode_text)
+        self.chk()
 
     def toggle_auto_battle_mode(self):
         self.auto_battle = bool(self.auto_battle_var.get())
@@ -1933,7 +1934,7 @@ class UltimateOthello(OthelloSearchMixin):
         self.refresh_activation_view()
 
     def clk(self, e):
-        if self.auto_battle or not self.running or self.tn != self.hc or self.is_viewing_historical_position() or (self.btn_pass and (not self.board_only_mode)):
+        if self.auto_battle or not self.running or self.tn != self.hc or self.is_viewing_historical_position() or self.btn_pass:
             return
         ix = np.uint64(e.y // self.cell_size * 8 + e.x // self.cell_size)
         mB, mW = (self.B if self.hc == 1 else self.W, self.W if self.hc == 1 else self.B)

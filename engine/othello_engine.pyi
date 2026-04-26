@@ -31,6 +31,9 @@ class SearchSession:
         stop_flag = ...,
         infer_batch = ...,
         ab_progress = ...,
+        multi_cut_enabled: bool = False,
+        multi_cut_threshold: int = 3,
+        multi_cut_depth: int = 8,
     ) -> dict: ...
 
 def clear_tt() -> None: ...

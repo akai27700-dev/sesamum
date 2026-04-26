@@ -594,7 +594,10 @@ public:
                             bool add_root_noise,
                             std::uint8_t* stop_ptr,
                             const py::function& infer_batch,
-                            const py::function& ab_progress);
+                            const py::function& ab_progress,
+                            bool multi_cut_enabled = false,
+                            int multi_cut_threshold = 3,
+                            int multi_cut_depth = 8);
 
 private:
     static int current_mcts_batch_size(int batch_size, double remain);
@@ -622,7 +625,10 @@ SearchSessionResult SearchSession::run(Bitboard p,
                                        bool add_root_noise,
                                        std::uint8_t* stop_ptr,
                                        const py::function& infer_batch,
-                                       const py::function& ab_progress) {
+                                       const py::function& ab_progress,
+                                       bool multi_cut_enabled,
+                                       int multi_cut_threshold,
+                                       int multi_cut_depth) {
     SearchSessionResult result;
     const auto start_time = std::chrono::steady_clock::now();
     const auto overall_deadline = start_time + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(std::max(0.0, time_limit_sec)));
@@ -836,7 +842,10 @@ void bind_engine_session_classes(py::module_& m) {
                        bool add_root_noise,
                        py::array_t<std::uint8_t, py::array::c_style | py::array::forcecast> stop_flag,
                        py::function infer_batch,
-                       py::object ab_progress) {
+                       py::object ab_progress,
+                       bool multi_cut_enabled = false,
+                       int multi_cut_threshold = 3,
+                       int multi_cut_depth = 8) {
             if (stop_flag.ndim() != 1 || stop_flag.shape(0) < 1) {
                 throw std::invalid_argument("stop_flag must be a uint8 array with at least one element");
             }
@@ -844,7 +853,7 @@ void bind_engine_session_classes(py::module_& m) {
             SearchSessionResult result;
             {
                 py::gil_scoped_release release;
-                result = self.run(p, o, turn, mvs, start_depth, is_exact, ordered_indices, root_policy, use_ab, use_mcts, time_limit_sec, mcts_batch_size, ab_delay_sec, ab_time_limit_ms, max_depth, add_root_noise, stop_flag.mutable_data(), infer_batch, progress_cb);
+                result = self.run(p, o, turn, mvs, start_depth, is_exact, ordered_indices, root_policy, use_ab, use_mcts, time_limit_sec, mcts_batch_size, ab_delay_sec, ab_time_limit_ms, max_depth, add_root_noise, stop_flag.mutable_data(), infer_batch, progress_cb, multi_cut_enabled, multi_cut_threshold, multi_cut_depth);
             }
             py::dict ab_out;
             ab_out["completed_depth"] = result.ab.completed_depth;
@@ -874,5 +883,5 @@ void bind_engine_session_classes(py::module_& m) {
             out["ab"] = ab_out;
             out["mcts"] = mcts_out;
             return out;
-        }, py::arg("p"), py::arg("o"), py::arg("turn"), py::arg("mvs"), py::arg("start_depth"), py::arg("is_exact"), py::arg("ordered_indices"), py::arg("root_policy"), py::arg("use_ab"), py::arg("use_mcts"), py::arg("time_limit_sec"), py::arg("mcts_batch_size"), py::arg("ab_delay_sec"), py::arg("ab_time_limit_ms"), py::arg("max_depth") = 60, py::arg("add_root_noise") = false, py::arg("stop_flag"), py::arg("infer_batch"), py::arg("ab_progress") = py::none());
+        }, py::arg("p"), py::arg("o"), py::arg("turn"), py::arg("mvs"), py::arg("start_depth"), py::arg("is_exact"), py::arg("ordered_indices"), py::arg("root_policy"), py::arg("use_ab"), py::arg("use_mcts"), py::arg("time_limit_sec"), py::arg("mcts_batch_size"), py::arg("ab_delay_sec"), py::arg("ab_time_limit_ms"), py::arg("max_depth") = 60, py::arg("add_root_noise") = false, py::arg("stop_flag"), py::arg("infer_batch"), py::arg("ab_progress") = py::none(), py::arg("multi_cut_enabled") = false, py::arg("multi_cut_threshold") = 3, py::arg("multi_cut_depth") = 8);
 }

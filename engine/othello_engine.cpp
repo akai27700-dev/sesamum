@@ -757,6 +757,9 @@ struct SearchContext {
     bool allow_tt = true;
     bool thread_safe_tt = false;
     bool nn_enabled = false;  
+    bool multi_cut_enabled = false;
+    int multi_cut_threshold = 3;
+    int multi_cut_depth = 8;
     std::array<std::array<int, 2>, 64> killer_moves{};
     std::array<std::array<double, 64>, 2> history_scores{};
     std::array<std::array<double, 64>, 2> history_avg_depth{};
@@ -1293,7 +1296,31 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     std::int64_t nodes = 1;
     bool found_pv = false;
 
-    
+    // Multi-cut pruning: shallow search of first few moves; if enough exceed beta, cut
+    // Disabled in opening (mvs < 20) and endgame (empties <= 20) to avoid tactical misses
+    const int empties = 64 - mvs;
+    if (ctx.multi_cut_enabled && !is_exact && depth >= ctx.multi_cut_depth && move_count >= ctx.multi_cut_threshold && mvs >= 20 && empties > 20) {
+        int cut_count = 0;
+        double mc_best = -1e18;
+        const int mc_shallow_depth = std::max(2, depth / 3);
+        for (int i = 0; i < std::min(move_count, ctx.multi_cut_threshold + 2); ++i) {
+            const OrderedMove& move = ordered_moves[static_cast<std::size_t>(i)];
+            Bitboard np = (p | move.bit | move.flip) & FULL_MASK;
+            Bitboard no = (o ^ move.flip) & FULL_MASK;
+            auto [v, n] = alphabeta(no, np, mvs + 1, mc_shallow_depth, -beta, -alpha, false, is_exact, ctx);
+            if (ctx.timed_out) break;
+            double mc_val = -v;
+            if (mc_val >= beta) {
+                ++cut_count;
+                if (mc_val > mc_best) mc_best = mc_val;
+            }
+        }
+        if (cut_count >= ctx.multi_cut_threshold) {
+            if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, mc_shallow_depth, mc_best, 3, bm, ctx.thread_safe_tt);
+            return {mc_best, nodes};
+        }
+    }
+
     for (int i = 0; i < move_count; ++i) {
         if (check_timeout(ctx)) break;
         const OrderedMove& move = ordered_moves[static_cast<std::size_t>(i)];
@@ -1340,7 +1367,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
             );
             if (reduction > depth - 2) reduction = depth - 2;
         }
-        
+
         if (found_pv) {
             auto res = alphabeta(no, np, mvs + 1, depth - 1, -alpha - pvs_window, -alpha, false, is_exact, ctx);
             val = -res.first;
@@ -1364,22 +1391,22 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
             val = -res.first;
             n = res.second;
         }
-        
+
         if (ctx.timed_out) break;
-        
-        
+
+
         if (val > max_val) {
             max_val = val;
             bm = sq;
             found_pv = true;
         }
-        
+
         nodes += n;
-        
+
         if (val > alpha) {
             alpha = val;
             if (val >= beta) {
-                
+
                 int ply_idx = std::max(0, std::min(63, mvs));
                 if (sq != ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0]) {
                     ctx.killer_moves[static_cast<std::size_t>(ply_idx)][1] = ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0];
@@ -2221,7 +2248,10 @@ public:
         bool add_root_noise,
         std::uint8_t* stop_ptr,
         const py::function& infer_batch,
-        const py::function& ab_progress
+        const py::function& ab_progress,
+        bool multi_cut_enabled = false,
+        int multi_cut_threshold = 3,
+        int multi_cut_depth = 8
     ) {
         SearchSessionResult result;
         const auto start_time = std::chrono::steady_clock::now();
@@ -2299,6 +2329,9 @@ public:
                     SearchContext ctx;
                     ctx.weights = &require_global_weights();
                     ctx.order_map = &require_global_order_map();
+                    ctx.multi_cut_enabled = multi_cut_enabled;
+                    ctx.multi_cut_threshold = multi_cut_threshold;
+                    ctx.multi_cut_depth = multi_cut_depth;
                     if (have_root_policy) {
                         root_policy_buffer_.assign(root_policy_arr.begin(), root_policy_arr.end());
                         ctx.root_policy = &root_policy_buffer_;
@@ -2597,7 +2630,7 @@ IterativeSearchResult get_best_move_ab_impl(Bitboard p, Bitboard o, int mvs, int
 
 bool should_use_early_exact(Bitboard p, Bitboard o, int empties, int base_threshold) {
     if (empties <= base_threshold) return true;
-    if (empties > base_threshold + 3) return false;
+    if (empties > base_threshold + 7) return false;
     const int own_moves = count_bits(get_legal_moves_optimized(p, o));
     const int opp_moves = count_bits(get_legal_moves_optimized(o, p));
     int total_moves = own_moves + opp_moves;
@@ -2627,8 +2660,8 @@ bool should_use_early_exact(Bitboard p, Bitboard o, int empties, int base_thresh
     if (stable_hint >= 4) exact_score += 1;
     if (region_count <= 3) exact_score += 1;
     if (small_regions > 0) exact_score += 1;
-    if (empties <= base_threshold + 1) exact_score += 1;
-    return exact_score >= (empties <= base_threshold + 1 ? 5 : 7);
+    if (empties <= base_threshold + 3) exact_score += 1;
+    return exact_score >= (empties <= base_threshold + 3 ? 5 : 8);
 }
 
 void clear_tt() {

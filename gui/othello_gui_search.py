@@ -562,7 +562,7 @@ class OthelloSearchMixin:
             }
 
         session = cpp_engine.SearchSession()
-        result = session.run(int(aB), int(oB), int(self.tn), int(mvs), int(max(start_dp, 2)), bool(is_exact), [int(x) for x in rms], [float(x) for x in root_policy_vector], bool(use_ab), bool(use_mcts_enabled), float(time_limit), int(self._get_live_mcts_batch_size(time_limit)), 0.0 if is_exact else float(search_profile['ab_delay']), int(ab_budget_ms), max_depth, False, self.sf_arr, infer_leaves, ab_progress if use_ab else None)
+        result = session.run(int(aB), int(oB), int(self.tn), int(mvs), int(max(start_dp, 2)), bool(is_exact), [int(x) for x in rms], [float(x) for x in root_policy_vector], bool(use_ab), bool(use_mcts_enabled), float(time_limit), int(self._get_live_mcts_batch_size(time_limit)), 0.0 if is_exact else float(search_profile['ab_delay']), int(ab_budget_ms), max_depth, False, self.sf_arr, infer_leaves, ab_progress if use_ab else None, bool(self.multi_cut_enabled), int(self.multi_cut_threshold), int(self.multi_cut_depth))
         parsed = unpack_result(result, use_ab, use_mcts_enabled)
         return {
             'mcts_res': parsed['mcts_res'],
