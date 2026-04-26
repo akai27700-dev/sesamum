@@ -1,12 +1,12 @@
-# GeNeLy - Advanced Othello AI Engine
+# Sesamum - Advanced Othello AI Engine
 
 A high-performance Othello AI engine with neural network evaluation, Monte Carlo Tree Search, and advanced pruning techniques.
 
 ## Project Structure
 
 ```
-GeNeLy_C++/
-├── genely.py              # Main entry point
+Sesamum_C++/
+├── sesamum.py            # Main entry point
 ├── convert_to_onnx.py     # PyTorch to ONNX conversion script
 ├── engine/                # C++ engine components
 │   ├── othello_engine.cpp # Core C++ engine with pybind11
@@ -65,7 +65,7 @@ GeNeLy_C++/
 
 Run the application:
 ```bash
-python genely.py
+python sesamum.py
 ```
 
 ## Settings

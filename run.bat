@@ -1,5 +1,5 @@
 @echo off
-echo Starting GeNeLy...
+echo Starting Sesamum...
 call .venv\Scripts\activate
-python genely.py
+python sesamum.py
 pause

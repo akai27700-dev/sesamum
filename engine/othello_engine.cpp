@@ -95,8 +95,8 @@ inline void simd_get_legal_moves_batch(const Bitboard* p_boards, const Bitboard*
         __m256i o = simd_load_bitboards(&o_boards[i*4]);
         __m256i occ = simd_or(p, o);
         
-        // Simplified legal move calculation for SIMD
-        // This is a basic version - full implementation would be more complex
+        
+        
         __m256i legal = simd_not(simd_or(p, o));
         legal = simd_and(legal, full_mask_vec);
         
@@ -308,7 +308,7 @@ inline Bitboard get_legal_moves_optimized(Bitboard p, Bitboard o) {
     const Bitboard m = NOT_A_FILE & NOT_H_FILE;
     Bitboard legal = 0;
     
-    // Egaroucid-style optimized legal move generation
+    
     Bitboard t = (p << 1) & o & m;
     t |= (t << 1) & o & m; t |= (t << 1) & o & m; t |= (t << 1) & o & m; t |= (t << 1) & o & m; t |= (t << 1) & o & m;
     legal |= (t << 1) & empty;
@@ -348,14 +348,14 @@ inline Bitboard get_flip_optimized(Bitboard p, Bitboard o, int idx) {
     const Bitboard mask = 1ULL << idx;
     const Bitboard occ = p | o;
     
-    // そのマスが空いていない場合は反転できない
+    
     if (occ & mask) return 0;
     
-    int r = idx / 8;  // 標準的なビットボード座標
+    int r = idx / 8;  
     int c = idx % 8;
     Bitboard flips = 0;
     
-    // 8方向をチェック
+    
     const int dr[8] = {0, 0, 1, -1, 1, 1, -1, -1};
     const int dc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
     
@@ -756,7 +756,7 @@ struct SearchContext {
     bool timed_out = false;
     bool allow_tt = true;
     bool thread_safe_tt = false;
-    bool nn_enabled = false;  // NNが有効かどうかのフラグ
+    bool nn_enabled = false;  
     std::array<std::array<int, 2>, 64> killer_moves{};
     std::array<std::array<double, 64>, 2> history_scores{};
     std::array<std::array<double, 64>, 2> history_avg_depth{};
@@ -775,14 +775,14 @@ struct MPCThreshold {
 };
 
 constexpr std::array<MPCThreshold, 4> MPC_THRESHOLDS = {{
-    {10, 2.2, -2.2, 4, 0.94, 0.94},  // More aggressive: depth 10 instead of 12
-    {12, 2.8, -2.8, 5, 0.96, 0.96},  // Lower thresholds
+    {10, 2.2, -2.2, 4, 0.94, 0.94},  
+    {12, 2.8, -2.8, 5, 0.96, 0.96},  
     {14, 3.3, -3.3, 6, 0.97, 0.97},
     {16, 3.8, -3.8, 7, 0.98, 0.98}
 }};
 
 inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value, std::int8_t& flag) {
-    if (is_exact || depth < 10) return false;  // depth >= 10 from MPC (more aggressive)
+    if (is_exact || depth < 10) return false;  
     
     for (const auto& mpc : MPC_THRESHOLDS) {
         if (depth >= mpc.depth) {
@@ -826,7 +826,7 @@ inline bool try_iid(Bitboard p, Bitboard o, int mvs, int depth, double alpha, do
 }
 
 inline bool try_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, bool is_exact, SearchContext& ctx) {
-    if (is_exact || depth > 3) return false;  // Extended to depth 3
+    if (is_exact || depth > 3) return false;  
 
     const Bitboard valid = get_legal_moves_optimized(p, o);
     if ((valid & MASK_CORNER) != 0) return false;
@@ -834,16 +834,16 @@ inline bool try_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, dou
     if (move_count == 0) return false;
 
     double futility_margin = 0.0;
-    if (depth == 1) futility_margin = 42.0;  // More aggressive (was 48)
-    else if (depth == 2) futility_margin = 98.0 + static_cast<double>(move_count) * 3.5;  // Was 112
-    else if (depth == 3) futility_margin = 156.0 + static_cast<double>(move_count) * 3.0;  // New for depth 3
+    if (depth == 1) futility_margin = 42.0;  
+    else if (depth == 2) futility_margin = 98.0 + static_cast<double>(move_count) * 3.5;  
+    else if (depth == 3) futility_margin = 156.0 + static_cast<double>(move_count) * 3.0;  
 
     double static_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
     return static_eval + futility_margin < alpha;
 }
 
 inline bool try_reverse_futility_pruning(Bitboard p, Bitboard o, int mvs, int depth, double beta, bool is_exact, SearchContext& ctx) {
-    if (is_exact || depth > 3) return false;  // Extended to depth 3
+    if (is_exact || depth > 3) return false;  
 
     const Bitboard valid = get_legal_moves_optimized(p, o);
     if ((valid & MASK_CORNER) != 0) return false;
@@ -851,9 +851,9 @@ inline bool try_reverse_futility_pruning(Bitboard p, Bitboard o, int mvs, int de
     if (move_count == 0) return false;
 
     double reverse_margin = 0.0;
-    if (depth == 1) reverse_margin = 48.0;  // More aggressive (was 56)
-    else if (depth == 2) reverse_margin = 112.0 + static_cast<double>(move_count) * 3.5;  // Was 128
-    else if (depth == 3) reverse_margin = 168.0 + static_cast<double>(move_count) * 3.0;  // New for depth 3
+    if (depth == 1) reverse_margin = 48.0;  
+    else if (depth == 2) reverse_margin = 112.0 + static_cast<double>(move_count) * 3.5;  
+    else if (depth == 3) reverse_margin = 168.0 + static_cast<double>(move_count) * 3.0;  
 
     double static_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
     return static_eval - reverse_margin > beta;
@@ -1040,16 +1040,16 @@ inline int compute_dynamic_lmr_reduction(
     double score_gap,
     bool nn_enabled
 ) {
-    // More aggressive base reduction
+    
     int reduction = 1 + (move_index >= 3 ? 1 : 0) + (move_index >= 6 ? 1 : 0) + (move_index >= 10 ? 1 : 0);
-    reduction += (depth >= 6 ? 1 : 0) + (depth >= 10 ? 1 : 0);  // Lower depth thresholds
-    if (move_count >= 8) reduction += 1;  // Lower move count threshold
+    reduction += (depth >= 6 ? 1 : 0) + (depth >= 10 ? 1 : 0);  
+    if (move_count >= 8) reduction += 1;  
 
-    if (complexity >= 0.65) reduction -= 1;  // Higher complexity threshold
+    if (complexity >= 0.65) reduction -= 1;  
     else if (complexity <= 0.35) reduction += 1;
 
-    if (score_gap <= 32.0) reduction -= 1;  // Higher gap threshold
-    else if (score_gap >= 128.0) reduction += 1;  // Lower gap threshold
+    if (score_gap <= 32.0) reduction -= 1;  
+    else if (score_gap >= 128.0) reduction += 1;  
 
     if (nn_enabled) reduction -= 1;
     return std::max(0, reduction);
@@ -1058,12 +1058,12 @@ inline int compute_dynamic_lmr_reduction(
 inline std::size_t compute_late_move_pruning_start(int depth, std::size_t move_count, double complexity) {
     std::size_t start = 0;
     if (depth <= 1) start = 2;
-    else if (depth == 2) start = 3;  // Was 4
-    else if (depth == 3) start = 5;  // Was 6
+    else if (depth == 2) start = 3;  
+    else if (depth == 3) start = 5;  
     else return move_count + 1;
 
-    if (complexity <= 0.35) start += 2;  // Was 0.30
-    else if (complexity >= 0.60 && start > 1) start -= 1;  // Was 0.65
+    if (complexity <= 0.35) start += 2;  
+    else if (complexity >= 0.60 && start > 1) start -= 1;  
 
     return std::min(move_count + 1, start);
 }
@@ -1125,12 +1125,12 @@ inline double compute_move_order_bonus(const SearchContext& ctx, int mvs, int sq
     return score;
 }
 
-// NN-based pruning - more aggressive margins
+
 inline bool try_nn_pruning(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, double& value, std::int8_t& flag) {
-    if (is_exact || depth < 6 || !ctx.nn_enabled) return false;  // Lower depth threshold from 8 to 6
+    if (is_exact || depth < 6 || !ctx.nn_enabled) return false;  
 
     const double nn_eval = evaluate_board_full(p, o, mvs, *ctx.weights);
-    const double nn_margin = 108.0 + static_cast<double>(depth) * 16.0;  // More aggressive: was 120 + 18*depth
+    const double nn_margin = 108.0 + static_cast<double>(depth) * 16.0;  
 
     if (beta < 1e17 && nn_eval >= beta + nn_margin) {
         value = nn_eval;
@@ -1147,7 +1147,7 @@ inline bool try_nn_pruning(Bitboard p, Bitboard o, int mvs, int depth, double al
     return false;
 }
 
-// NNベースのMove Ordering - NN評価値と既存ヒューリスティックを合成
+
 inline int fill_ordered_moves_with_nn(
     Bitboard p,
     Bitboard o,
@@ -1167,14 +1167,14 @@ inline int fill_ordered_moves_with_nn(
         Bitboard np = (p | bit | f) & FULL_MASK;
         Bitboard no = (o ^ f) & FULL_MASK;
         
-        // 各手のNN評価を計算
+        
         double move_score = evaluate_board_full(np, no, mvs + 1, *ctx.weights);
         move_score += compute_move_order_bonus(ctx, mvs, idx, bit, tt_move);
 
         moves[move_count++] = OrderedMove{idx, bit, f, count_bits(f), move_score};
     }
     
-    // 評価値の高い順にソート
+    
     std::sort(moves.begin(), moves.begin() + move_count,
               [](const OrderedMove& a, const OrderedMove& b) { return a.score > b.score; });
 
@@ -1246,41 +1246,9 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         if (entry) tm = entry->best_move.load();
     }
 
-    if (!is_exact &&
-        !passed &&
-        depth >= 5 &&  // Lower from 6 to 5
-        beta < 1e17 &&
-        count_bits(valid) >= 3 &&  // Lower from 4 to 3
-        (valid & MASK_CORNER) == 0 &&
-        estimate_search_complexity(p, o, valid) < 0.85 &&  // Higher from 0.82
-        get_static_eval() >= beta - (72.0 + static_cast<double>(depth) * 9.0)) {  // More aggressive: was 82 + 10*depth
-        Bitboard opp_valid = get_legal_moves_optimized(o, p);
-        if (opp_valid) {
-            int nmp_depth = depth - 5 - (depth >= 8 ? 2 : 1);  // More aggressive: was -4, now -5
-            if (nmp_depth > 0) {
-                auto [nmp_value, nmp_nodes] = alphabeta(o, p, mvs, nmp_depth, -beta, -beta + 1.0, true, is_exact, ctx);
-                nmp_value = -nmp_value;
-
-                if (nmp_value >= beta) {
-                    if (depth >= 6 && nmp_depth - 1 > 0) {  // Lower from 8 to 6
-                        auto [verify_value, verify_nodes] = alphabeta(o, p, mvs, nmp_depth - 1, -beta, -beta + 1.0, true, is_exact, ctx);
-                        verify_value = -verify_value;
-                        if (verify_value >= beta) {
-                            if (!ctx.timed_out && ctx.allow_tt) {
-                                store_tt(hv, depth, beta, 2, -1, ctx.thread_safe_tt);
-                            }
-                            return {beta, nmp_nodes + verify_nodes + 1};
-                        }
-                    } else {
-                        if (!ctx.timed_out && ctx.allow_tt) {
-                            store_tt(hv, depth, beta, 2, -1, ctx.thread_safe_tt);
-                        }
-                        return {beta, nmp_nodes + 1};
-                    }
-                }
-            }
-        }
-    }
+    // Null-move pruning is intentionally disabled for Othello.
+    // Pass is a real game mechanic here, so "skip a move and still hold beta"
+    // is much less reliable than in chess-like search and was causing tactical misses.
 
     tt_generation().fetch_add(1, std::memory_order_relaxed);
     const double position_complexity = estimate_search_complexity(p, o, valid);
@@ -1295,7 +1263,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     if (use_nn_ordering) {
         move_count = fill_ordered_moves_with_nn(p, o, valid, mvs, ctx, tm, ordered_moves);
     } else {
-        // 従来のMove Orderingにフォールバック
+        
         Bitboard v_temp = valid;
         while (v_temp) {
             Bitboard bit = lsb(v_temp);
@@ -1312,7 +1280,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
             ordered_moves[move_count++] = OrderedMove{sq, bit, flip, flip_count, score};
         }
         
-        // 従来のスコアでソート
+        
         std::sort(ordered_moves.begin(), ordered_moves.begin() + move_count,
                   [](const OrderedMove& a, const OrderedMove& b) { return a.score > b.score; });
     }
@@ -1325,7 +1293,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     std::int64_t nodes = 1;
     bool found_pv = false;
 
-    // NNベースにソートされた手を探索
+    
     for (int i = 0; i < move_count; ++i) {
         if (check_timeout(ctx)) break;
         const OrderedMove& move = ordered_moves[static_cast<std::size_t>(i)];
@@ -1399,7 +1367,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         
         if (ctx.timed_out) break;
         
-        // Alpha-Beta updates
+        
         if (val > max_val) {
             max_val = val;
             bm = sq;
@@ -1411,7 +1379,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         if (val > alpha) {
             alpha = val;
             if (val >= beta) {
-                // Beta cutoff - update history and killer moves
+                
                 int ply_idx = std::max(0, std::min(63, mvs));
                 if (sq != ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0]) {
                     ctx.killer_moves[static_cast<std::size_t>(ply_idx)][1] = ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0];
@@ -1423,7 +1391,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         }
     }
     
-    // Store result in transposition table
+    
     if (!ctx.timed_out && ctx.allow_tt) {
         int flag = 1;
         if (max_val >= beta) flag = 2;
@@ -1473,44 +1441,42 @@ std::pair<std::vector<double>, std::vector<std::int64_t>> search_root_parallel_i
         }
         return align_to_requested_order(vals, nodes);
     }
-    struct RootResult {
-        double value;
-        std::int64_t nodes;
-        bool timed_out;
-    };
-    const int lane_count = estimate_root_parallel_lanes(static_cast<int>(root_order.size()), depth, is_exact);
-    std::vector<std::future<RootResult>> futures;
-    futures.reserve(static_cast<std::size_t>(lane_count));
-    for (std::size_t base = 0; base < root_order.size(); base += static_cast<std::size_t>(lane_count)) {
-        if (check_timeout(ctx)) {
-            break;
-        }
-        futures.clear();
-        const std::size_t chunk_end = std::min(root_order.size(), base + static_cast<std::size_t>(lane_count));
-        for (std::size_t i = base; i < chunk_end; ++i) {
-            const int idx = root_order[i];
-            futures.push_back(std::async(std::launch::async, [&, idx]() {
-                SearchContext local_ctx = ctx;
-                local_ctx.thread_safe_tt = true;
+    const int worker_count = estimate_root_parallel_lanes(static_cast<int>(root_order.size()), depth, is_exact);
+    std::atomic<std::size_t> next_index{0};
+    std::atomic<bool> saw_timeout{false};
+    std::vector<std::thread> workers;
+    workers.reserve(static_cast<std::size_t>(worker_count));
+    for (int worker_id = 0; worker_id < worker_count; ++worker_id) {
+        workers.emplace_back([&, worker_id]() {
+            SearchContext local_ctx = ctx;
+            local_ctx.thread_safe_tt = true;
+            while (true) {
+                const std::size_t i = next_index.fetch_add(1, std::memory_order_relaxed);
+                if (i >= root_order.size()) break;
+                if (check_timeout(local_ctx)) {
+                    saw_timeout.store(true, std::memory_order_relaxed);
+                    break;
+                }
+                const int idx = root_order[i];
                 Bitboard bit = 1ULL << idx;
                 Bitboard f = get_flip_optimized(p, o, idx);
                 Bitboard np = (p | bit | f) & FULL_MASK;
                 Bitboard no = (o ^ f) & FULL_MASK;
                 auto [v, n] = alphabeta(no, np, mvs + 1, depth - 1, -1e18, 1e18, false, is_exact, local_ctx);
-                return RootResult{-v, n, local_ctx.timed_out};
-            }));
-        }
-        for (std::size_t i = base; i < chunk_end; ++i) {
-            auto result = futures[i - base].get();
-            vals[i] = result.value;
-            nodes[i] = result.nodes;
-            if (result.timed_out) {
-                ctx.timed_out = true;
+                vals[i] = -v;
+                nodes[i] = n;
+                if (local_ctx.timed_out) {
+                    saw_timeout.store(true, std::memory_order_relaxed);
+                    break;
+                }
             }
-        }
-        if (ctx.timed_out) {
-            break;
-        }
+        });
+    }
+    for (auto& worker : workers) {
+        worker.join();
+    }
+    if (saw_timeout.load(std::memory_order_relaxed)) {
+        ctx.timed_out = true;
     }
     return align_to_requested_order(vals, nodes);
 }
@@ -1568,77 +1534,17 @@ int estimate_root_parallel_lanes(int move_count, int depth, bool is_exact) {
     }
     unsigned int hw = std::thread::hardware_concurrency();
     if (hw == 0) {
-        hw = 64;
+        hw = 8;
     }
-    
-    bool is_high_performance = (hw >= 32);
-    bool is_ultra_high = (hw >= 64);
-    bool is_extreme = (hw >= 128);
-    
-    int max_lanes = static_cast<int>(hw * 8);
-    
+    int workers = static_cast<int>(hw);
     if (!is_exact) {
-        if (is_extreme) {
-            max_lanes = static_cast<int>(hw * 16);
-        } else if (is_ultra_high) {
-            max_lanes = static_cast<int>(hw * 12);
-        } else if (is_high_performance) {
-            max_lanes = static_cast<int>(hw * 8);
-        } else {
-            max_lanes = static_cast<int>(hw * 6);
+        if (depth <= 4) {
+            workers = std::max(1, workers / 2);
+        } else if (depth <= 8) {
+            workers = std::max(1, (workers * 3) / 4);
         }
     }
-    
-    if (depth <= 4) {
-        if (is_extreme) {
-            max_lanes = std::min(max_lanes, static_cast<int>(move_count) * 24);
-        } else if (is_ultra_high) {
-            max_lanes = std::min(max_lanes, static_cast<int>(move_count) * 16);
-        } else if (is_high_performance) {
-            max_lanes = std::min(max_lanes, static_cast<int>(move_count) * 12);
-        } else {
-            max_lanes = std::min(max_lanes, static_cast<int>(move_count) * 8);
-        }
-    } else if (depth <= 8) {
-        if (is_extreme) {
-            max_lanes = std::min(max_lanes * 24, static_cast<int>(move_count));
-            max_lanes = std::min(max_lanes, static_cast<int>(hw) * 48);
-        } else if (is_ultra_high) {
-            max_lanes = std::min(max_lanes * 16, static_cast<int>(move_count));
-            max_lanes = std::min(max_lanes, static_cast<int>(hw) * 36);
-        } else if (is_high_performance) {
-            max_lanes = std::min(max_lanes * 12, static_cast<int>(move_count));
-            max_lanes = std::min(max_lanes, static_cast<int>(hw) * 24);
-        } else {
-            max_lanes = std::min(max_lanes * 8, static_cast<int>(move_count));
-            max_lanes = std::min(max_lanes, static_cast<int>(hw) * 16);
-        }
-    } else {
-        if (is_extreme) {
-            max_lanes = std::min(static_cast<int>(move_count), static_cast<int>(hw) * 72);
-        } else if (is_ultra_high) {
-            max_lanes = std::min(static_cast<int>(move_count), static_cast<int>(hw) * 48);
-        } else if (is_high_performance) {
-            max_lanes = std::min(static_cast<int>(move_count), static_cast<int>(hw) * 36);
-        } else {
-            max_lanes = std::min(static_cast<int>(move_count), static_cast<int>(hw) * 24);
-        }
-    }
-    
-    if (is_exact) {
-        if (is_extreme) {
-            max_lanes = std::min(static_cast<int>(move_count), static_cast<int>(hw) * 96);
-        } else if (is_ultra_high) {
-            max_lanes = std::min(static_cast<int>(move_count), static_cast<int>(hw) * 64);
-        } else if (is_high_performance) {
-            max_lanes = std::min(static_cast<int>(move_count), static_cast<int>(hw) * 48);
-        } else {
-            max_lanes = std::min(static_cast<int>(move_count), static_cast<int>(hw) * 32);
-        }
-    }
-    
-    int min_threads = is_extreme ? 32 : (is_ultra_high ? 24 : (is_high_performance ? 16 : 12));
-    return std::max(min_threads, max_lanes);
+    return std::max(1, std::min(move_count, workers));
 }
 
 struct ExactCacheEntry {
@@ -1663,7 +1569,7 @@ public:
         std::shared_lock<std::shared_mutex> lock(mutexes_[idx]);
         const auto& entry = cache_[idx];
         if (entry.p == p && entry.o == o && entry.turn == turn && entry.is_resolved) {
-            // Accept if empty count matches (same game phase)
+            
             if (entry.empty_count == empty_count) {
                 return entry;
             }
@@ -1700,7 +1606,7 @@ public:
     }
 
 private:
-    static constexpr std::size_t CACHE_SIZE = 1u << 20; // 65536 entries
+    static constexpr std::size_t CACHE_SIZE = 1u << 20; 
     std::array<ExactCacheEntry, CACHE_SIZE> cache_;
     mutable std::array<std::shared_mutex, CACHE_SIZE> mutexes_;
 };
@@ -1710,8 +1616,8 @@ ExactResultCache& exact_cache() {
     return cache;
 }
 
-// Calculate dynamic MCTS influence based on simulation count
-// Higher simulation count = higher confidence = higher influence
+
+
 double calculate_mcts_influence_ratio(int simulation_count, int empty_count, bool is_auto_mode) {
     if (simulation_count <= 0) return 0.0;
     
@@ -2397,15 +2303,13 @@ public:
                         root_policy_buffer_.assign(root_policy_arr.begin(), root_policy_arr.end());
                         ctx.root_policy = &root_policy_buffer_;
                     }
-                    if (!is_exact) {
-                        const auto now = std::chrono::steady_clock::now();
-                        const auto hard_deadline = ab_deadline < overall_deadline ? ab_deadline : overall_deadline;
-                        if (now >= hard_deadline) {
-                            break;
-                        }
-                        ctx.use_deadline = true;
-                        ctx.deadline = hard_deadline;
+                    const auto now = std::chrono::steady_clock::now();
+                    const auto hard_deadline = ab_deadline < overall_deadline ? ab_deadline : overall_deadline;
+                    if (now >= hard_deadline) {
+                        break;
                     }
+                    ctx.use_deadline = true;
+                    ctx.deadline = hard_deadline;
                     std::pair<std::vector<double>, std::vector<std::int64_t>> search_result = search_root_parallel_impl(p, o, mvs, depth, is_exact, curr_ordered, ctx);
                     if (ctx.timed_out) {
                         ab_result.timed_out = true;
@@ -2742,12 +2646,12 @@ void clear_tt() {
     tt_generation().store(1);
 }
 
-// Performance benchmark function
+
 std::vector<double> benchmark_optimizations(int iterations = 1000) {
     std::vector<double> results(4);
     auto start = std::chrono::high_resolution_clock::now();
     
-    // Benchmark 1: TT operations
+    
     Bitboard test_p = 0x0000000810000000ULL;
     Bitboard test_o = 0x0000001008000000ULL;
     for (int i = 0; i < iterations; ++i) {
@@ -2759,7 +2663,7 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
     auto end = std::chrono::high_resolution_clock::now();
     results[0] = std::chrono::duration<double>(end - start).count();
     
-    // Benchmark 2: Bitboard operations
+    
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iterations * 100; ++i) {
         Bitboard legal = get_legal_moves_optimized(test_p, test_o);
@@ -2769,7 +2673,7 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
     end = std::chrono::high_resolution_clock::now();
     results[1] = std::chrono::duration<double>(end - start).count();
     
-    // Benchmark 3: Evaluation
+    
     std::vector<double> weights = make_board_perfect_seed();
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iterations * 10; ++i) {
@@ -2778,7 +2682,7 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
     end = std::chrono::high_resolution_clock::now();
     results[2] = std::chrono::duration<double>(end - start).count();
     
-    // Benchmark 4: SIMD batch evaluation (if available)
+    
 #if defined(__AVX2__)
     if (iterations >= 4) {
         Bitboard p_boards[4] = {test_p, test_p, test_p, test_p};
@@ -2796,7 +2700,7 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
         results[3] = 0.0;
     }
 #else
-    results[3] = -1.0; // SIMD not available
+    results[3] = -1.0; 
 #endif
     
     return results;
@@ -2882,7 +2786,7 @@ std::tuple<std::vector<double>, std::vector<std::int64_t>, bool> engine_search_r
     ctx.weights = &require_global_weights();
     ctx.order_map = &require_global_order_map();
     ctx.root_policy = root_policy;
-    if (!is_exact && time_limit_ms > 0) {
+    if (time_limit_ms > 0) {
         ctx.use_deadline = true;
         ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
     }

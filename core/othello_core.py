@@ -2,8 +2,14 @@
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 import numpy as np
 from numba import njit as _numba_njit, set_num_threads
-import torch 
-import torch.nn as nn
+try:
+    import torch 
+    import torch.nn as nn
+except (ImportError, OSError) as e:
+    print(f"PyTorch import failed: {e}")
+    print("Using ONNX-only mode")
+    torch = None
+    nn = None
 import platform
 import psutil
 
@@ -35,6 +41,17 @@ except ImportError:
     CPP_EVAL_AVAILABLE = False
     print("C++ evaluation unavailable. Python version will be used.", flush=True)
 
+# Endgame solver availability
+try:
+    from engine.othello_engine import solve_endgame_exact, get_endgame_best_move
+    ENDGAME_SOLVER_AVAILABLE = True
+    print("C++ endgame solver loaded.", flush=True)
+except ImportError:
+    solve_endgame_exact = None
+    get_endgame_best_move = None
+    ENDGAME_SOLVER_AVAILABLE = False
+    print("C++ endgame solver unavailable.", flush=True)
+
 # ONNX推論エンジン
 try:
     from .onnx_inference import ONNXInference, create_onnx_model_from_pytorch
@@ -45,40 +62,118 @@ except ImportError:
     print("ONNX inference engine unavailable.", flush=True)
 
 
-_NN_EXECUTOR = ThreadPoolExecutor(max_workers=1)
-
 # PCスペックを自動検出して最適なスレッド数を設定
 import os
 import multiprocessing
 
 def get_optimal_thread_count():
-    """PCスペックに応じた最適なスレッド数を返す（Numba上限20を考慮）"""
+    """PCスペックに応じた最適なスレッド数を返す（少コア環境を考慮）"""
+    import wmi
+    import psutil
+    
     cpu_count = multiprocessing.cpu_count()
     
-    # Intel Core Ultra 7 265KFは24スレッドだが、Numbaの上限は20
-    if cpu_count >= 24:
-        return 20  # Numbaの上限
-    elif cpu_count >= 16:
-        return 20  # Numbaの上限
-    elif cpu_count >= 8:
-        return min(20, cpu_count * 2)  # 中性能CPU：20スレッドまで
+    # 物理コア数と論理コア数を取得
+    try:
+        c = wmi.WMI()
+        cpu_info = c.Win32_Processor()[0]
+        physical_cores = cpu_info.NumberOfCores
+        logical_cores = cpu_info.NumberOfLogicalProcessors
+    except:
+        # WMIが使えない場合はpsutilで推定
+        physical_cores = psutil.cpu_count(logical=False) or cpu_count // 2
+        logical_cores = cpu_count
+    
+    # CPU性能に応じた最適なスレッド数設定
+    if logical_cores <= 4:
+        # 4コア以下では全コアを使用
+        optimal = logical_cores
+        print(f"Low core CPU detected: {physical_cores} physical cores, {logical_cores} logical cores")
+    elif logical_cores <= 8:
+        # 8コア以下では論理コア数まで使用
+        optimal = logical_cores
+    elif logical_cores <= 16:
+        # 9-16コア：論理コア数を最大限活用
+        optimal = logical_cores
+        print(f"Mid-range CPU detected: {physical_cores} physical cores, {logical_cores} logical cores")
     else:
-        return min(16, cpu_count * 2)  # 低性能CPU：16スレッドまで
+        # ハイパフォーマンスCPU（16コア以上）：論理コア数を最大限活用
+        # Intel Core Ultra 7 265KFなどの最新CPUでは全論理コアを使用
+        optimal = logical_cores
+        print(f"High-performance CPU detected: {physical_cores} physical cores, {logical_cores} logical cores")
+    
+    # 最小でも2スレッド（4コア以下環境では1スレッドでも可）
+    if logical_cores <= 4:
+        optimal = max(1, optimal)
+    else:
+        optimal = max(4, optimal)
+    
+    # 最大でも論理コア数
+    optimal = min(optimal, logical_cores)
+    
+    print(f"CPU: {physical_cores} physical cores, {logical_cores} logical cores, using {optimal} threads")
+    return optimal
 
 optimal_threads = get_optimal_thread_count()
 set_num_threads(optimal_threads)
 print(f"CPU threads set to {optimal_threads} (detected {multiprocessing.cpu_count()} cores)", flush=True)
-torch.backends.cudnn.benchmark = True
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
+
+cpp_openmp_threads = optimal_threads
+omp_override = os.environ.get('SESAMUM_OMP_THREADS') or os.environ.get('OMP_NUM_THREADS')
+if omp_override:
+    try:
+        cpp_openmp_threads = max(1, int(omp_override))
+    except ValueError:
+        cpp_openmp_threads = optimal_threads
+
+if cpp_engine is not None and hasattr(cpp_engine, 'set_openmp_threads'):
+    try:
+        cpp_engine.set_openmp_threads(int(cpp_openmp_threads))
+        if hasattr(cpp_engine, 'has_openmp') and cpp_engine.has_openmp():
+            active_threads = cpp_engine.get_openmp_thread_count() if hasattr(cpp_engine, 'get_openmp_thread_count') else cpp_openmp_threads
+            max_threads = cpp_engine.get_openmp_max_threads() if hasattr(cpp_engine, 'get_openmp_max_threads') else active_threads
+            print(f"C++ OpenMP enabled: using {active_threads} threads (max {max_threads})", flush=True)
+        else:
+            print("C++ OpenMP unavailable in current engine build.", flush=True)
+    except Exception as e:
+        print(f"C++ OpenMP initialization failed: {e}", flush=True)
+
+# 動的なスレッド数でThreadPoolExecutorを初期化
+def create_nn_executor():
+    """最適なワーカー数でNN推論用ThreadPoolExecutorを作成（高性能CPU向けに最適化）"""
+    # 高性能CPUではより多くのワーカーを使用
+    if optimal_threads <= 2:
+        optimal_workers = 1  # 1-2コアでは1ワーカー
+    elif optimal_threads <= 4:
+        optimal_workers = 2  # 3-4コアでは2ワーカー
+    elif optimal_threads <= 8:
+        optimal_workers = optimal_threads // 2  # 5-8コア：半分のスレッド
+    elif optimal_threads <= 16:
+        optimal_workers = optimal_threads // 2 + 2  # 9-16コア：半分+2ワーカー
+    else:
+        # ハイパフォーマンスCPU：最大16ワーカーまで使用
+        optimal_workers = min(16, optimal_threads // 2 + 4)
+    
+    print(f"ThreadPoolExecutor: using {optimal_workers} workers for {optimal_threads} threads")
+    return ThreadPoolExecutor(max_workers=optimal_workers)
+
+_NN_EXECUTOR = create_nn_executor()
+
+if torch is not None:
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+    DEVICE_STR = "cuda" if torch.cuda.is_available() else "cpu"
+    DEVICE = torch.device(DEVICE_STR)
+else:
+    DEVICE_STR = "cpu"
+    DEVICE = None
 
 USE_WEIGHT = True
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEIGHTS_PATH = os.path.join(BASE_DIR, "data", "best_weights.json")
 BEST_MODEL_PATH = os.path.join(BASE_DIR, "data", "model_best.pth")
 ONNX_MODEL_PATH = os.path.join(BASE_DIR, "data", "model_best.onnx")
-DEVICE_STR = "cuda" if torch.cuda.is_available() else "cpu"
-DEVICE = torch.device(DEVICE_STR)
 
 # ONNX推論エンジン
 _onnx_inference_engine = None
@@ -95,7 +190,7 @@ def initialize_onnx_engine(force_pytorch: bool = False):
     
     try:
         # ONNXモデルが存在しない場合は作成
-        if not os.path.exists(ONNX_MODEL_PATH) and os.path.exists(BEST_MODEL_PATH):
+        if torch is not None and (not os.path.exists(ONNX_MODEL_PATH)) and os.path.exists(BEST_MODEL_PATH):
             print(f"Converting PyTorch model to ONNX: {BEST_MODEL_PATH} -> {ONNX_MODEL_PATH}")
             create_onnx_model_from_pytorch(BEST_MODEL_PATH, ONNX_MODEL_PATH)
         
@@ -106,11 +201,17 @@ def initialize_onnx_engine(force_pytorch: bool = False):
             print("Using ONNX inference engine.", flush=True)
         else:
             _use_onnx = False
-            print("ONNX model not found, using PyTorch inference engine.", flush=True)
+            if torch is None:
+                print("ONNX model not found and PyTorch is unavailable. Neural inference disabled.", flush=True)
+            else:
+                print("ONNX model not found, using PyTorch inference engine.", flush=True)
     except Exception as e:
         _use_onnx = False
         print(f"Failed to initialize ONNX engine: {e}", flush=True)
-        print("Falling back to PyTorch inference engine.", flush=True)
+        if torch is None:
+            print("PyTorch is unavailable, so neural inference remains disabled.", flush=True)
+        else:
+            print("Falling back to PyTorch inference engine.", flush=True)
 
 def get_inference_engine():
     """現在の推論エンジンを取得"""
@@ -162,7 +263,7 @@ def print_system_info():
     
     # GPU情報
     print(f"\nGPU:")
-    if torch.cuda.is_available():
+    if torch is not None and torch.cuda.is_available():
         gpu_count = torch.cuda.device_count()
         for i in range(gpu_count):
             gpu_props = torch.cuda.get_device_properties(i)
@@ -189,7 +290,7 @@ def print_system_info():
     else:
         print(f"  Engine: PyTorch")
         print(f"  Device: {DEVICE_STR}")
-        if torch.cuda.is_available():
+        if torch is not None and torch.cuda.is_available():
             print(f"  CUDA Version: {torch.version.cuda}")
             print(f"  cuDNN Version: {torch.backends.cudnn.version()}")
     
@@ -476,31 +577,56 @@ def get_flip(P, O, idx):
             break
     return flips & _FULL_MASK
 
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True)
+def shift_direction(bb, direction):
+    if direction == 0:   # 左
+        return (bb << np.uint64(1)) & _NOT_A_FILE
+    elif direction == 1: # 右
+        return (bb >> np.uint64(1)) & _NOT_H_FILE
+    elif direction == 2: # 下
+        return (bb << np.uint64(8)) & _FULL_MASK
+    elif direction == 3: # 上
+        return (bb >> np.uint64(8)) & _FULL_MASK
+    elif direction == 4: # 左下
+        return (bb << np.uint64(7)) & _NOT_A_FILE
+    elif direction == 5: # 右上
+        return (bb >> np.uint64(7)) & _NOT_H_FILE
+    elif direction == 6: # 右下
+        return (bb << np.uint64(9)) & _NOT_H_FILE
+    elif direction == 7: # 左上
+        return (bb >> np.uint64(9)) & _NOT_A_FILE
+    return np.uint64(0)
+
+@njit(cache=True)
 def neighbor_union(bb):
     n = np.uint64(0)
-    n |= (bb << np.uint64(1)) & _NOT_A_FILE; n |= (bb >> np.uint64(1)) & _NOT_H_FILE
-    n |= (bb << np.uint64(8)) & _FULL_MASK; n |= (bb >> np.uint64(8)) & _FULL_MASK
-    n |= (bb << np.uint64(7)) & _NOT_A_FILE; n |= (bb >> np.uint64(7)) & _NOT_H_FILE
-    n |= (bb << np.uint64(9)) & _NOT_H_FILE; n |= (bb >> np.uint64(9)) & _NOT_A_FILE
+    for i in range(8):
+        n |= shift_direction(bb, i)
     return n & _FULL_MASK
 
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True)
 def compute_strict_stable(P, O):
     s = P & MASK_CORNER
-    if not s: return np.uint64(0)
-    for _ in range(np.int64(7)):
+    if not s: 
+        return np.uint64(0)
+    
+    # 角から安定石を広げていく
+    # 7回くらい回せば十分
+    for iteration in range(np.int64(7)):
         ns = np.uint64(0)
-        ns |= (s << np.uint64(1)) & _NOT_A_FILE; ns |= (s >> np.uint64(1)) & _NOT_H_FILE
-        ns |= (s << np.uint64(8)) & _FULL_MASK; ns |= (s >> np.uint64(8)) & _FULL_MASK
-        ns |= (s << np.uint64(7)) & _NOT_A_FILE; ns |= (s >> np.uint64(7)) & _NOT_H_FILE
-        ns |= (s << np.uint64(9)) & _NOT_H_FILE; ns |= (s >> np.uint64(9)) & _NOT_A_FILE
+        for i in range(8):
+            ns |= shift_direction(s, i)
         a = (ns & P) & ~s
-        if not a: break
+        if not a: 
+            break
         s |= a
+    
+    # エッジの安定性チェック
     ch, it, occ = True, np.int64(0), P | O
     while ch and it < np.int64(8):
-        ch = False; b = np.uint64(1)
+        ch = False
+        # ここは結構 heuristic
+        b = np.uint64(1)
         for _ in range(np.int64(64)):
             if (P & b) and not(s & b):
                 ld = np.int64(0)
@@ -545,7 +671,7 @@ def eval_xc(p, o, cor, cx, cc):
 
 @njit(cache=True, fastmath=True, nogil=True)
 def _evaluate_board_full_python(P, O, mvs, W):
-    """Original Numba-compiled Python implementation (fallback)"""
+    # stageによって重み変える
     st = np.int64(0) if mvs <= np.int64(15) else (np.int64(80) if mvs <= np.int64(45) else np.int64(160))
     wp, we, sc = W[st:st+np.int64(64)], W[st+np.int64(64):st+np.int64(80)], np.float64(0.0)
     tp, to = P, O
@@ -562,8 +688,10 @@ def _evaluate_board_full_python(P, O, mvs, W):
     sp, so = compute_strict_stable(P, O), compute_strict_stable(O, P); occ = P | O
     m_mult = np.float64(2.5) if np.int64(20) <= mvs <= np.int64(45) else np.float64(1.0)
     sc += np.float64(lm - lo) * m_mult * np.float64(4.0)
+    # パリティ
     if (np.int64(64) - mvs) % np.int64(2) == np.int64(0): sc += np.float64(10.0)
     else: sc -= np.float64(10.0)
+    # コーナーとXマスク
     c1, x1, cc1 = np.uint64(0x1), np.uint64(0x200), np.uint64(0x102)
     c2, x2, cc2 = np.uint64(0x80), np.uint64(0x4000), np.uint64(0x8040)
     c3, x3, cc3 = np.uint64(0x100000000000000), np.uint64(0x20000000000000), np.uint64(0x201000000000000)
@@ -592,10 +720,7 @@ def _evaluate_board_full_python(P, O, mvs, W):
     return sc
 
 def evaluate_board_full(P, O, mvs, W):
-    """
-    Evaluate board position using either C++ or Python implementation.
-    Auto-selects based on availability.
-    """
+    # C++かPythonか自動選択
     if CPP_EVAL_AVAILABLE and _cpp_eval is not None:
         try:
             return _cpp_eval(int(P), int(O), int(mvs), W)
@@ -604,8 +729,9 @@ def evaluate_board_full(P, O, mvs, W):
             return _evaluate_board_full_python(P, O, mvs, W)
     return _evaluate_board_full_python(P, O, mvs, W)
 
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True)
 def exact_eval(P, O):
+    # 終盤用の単純評価
     return np.float64((count_bits(P) - count_bits(O)) * 10000.0)
 
 @njit(cache=True, fastmath=True, nogil=True)
@@ -626,7 +752,7 @@ def alphabeta(P, O, mvs, depth, alpha, beta, passed, is_exact, W, order_map, tk_
         if td >= depth:
             if tf == 1 or (tf == 2 and tv >= beta) or (tf == 3 and tv <= alpha): return tv, 1
 
-    valid = get_legal_moves(P, O)
+    valid = _get_legal_moves_numba(P, O)
     if not valid:
         if passed:
             return exact_eval(P, O), 1
@@ -635,11 +761,11 @@ def alphabeta(P, O, mvs, depth, alpha, beta, passed, is_exact, W, order_map, tk_
     
     if depth <= 0:
         if is_exact: return exact_eval(P, O), 1
-        return evaluate_board_full(P, O, mvs, W), 1
+        return _evaluate_board_full_python(P, O, mvs, W), 1
 
     # Razoring: 浅いノードで明らかに悪い評価値の場合、フルミニマックスをスキップ
     if depth <= np.int64(3) and not is_exact:
-        static_eval = evaluate_board_full(P, O, mvs, W)
+        static_eval = _evaluate_board_full_python(P, O, mvs, W)
         # 深度に応じてmarginを調整
         if depth == np.int64(1):
             razor_margin = np.float64(150.0)
@@ -652,7 +778,7 @@ def alphabeta(P, O, mvs, depth, alpha, beta, passed, is_exact, W, order_map, tk_
 
     # Futility Pruning: 十分に低い評価値は枝刈り
     if depth <= np.int64(2) and not is_exact:
-        static_eval = evaluate_board_full(P, O, mvs, W)
+        static_eval = _evaluate_board_full_python(P, O, mvs, W)
         if static_eval + (np.float64(100.0) * np.float64(depth)) < alpha:
             return static_eval, 1
 
@@ -844,12 +970,19 @@ def nn_infer_batch(model, tensor_batch):
     if _use_onnx and _onnx_inference_engine is not None:
         # ONNX推論を使用
         try:
-            return _onnx_inference_engine.infer_batch(tensor_batch.cpu().numpy())
+            if hasattr(tensor_batch, "cpu"):
+                onnx_input = tensor_batch.cpu().numpy()
+            else:
+                onnx_input = np.asarray(tensor_batch, dtype=np.float32)
+            return _onnx_inference_engine.infer_batch(onnx_input)
         except Exception as e:
             print(f"ONNX inference failed: {e}, falling back to PyTorch", flush=True)
             # フォールバックしてPyTorchを使用
     
     # PyTorch推論
+    if torch is None:
+        raise RuntimeError("PyTorch is not available and ONNX inference failed")
+    
     try:
         with torch.inference_mode():
             if DEVICE_STR == "cuda":
@@ -882,55 +1015,66 @@ def nn_infer_batch(model, tensor_batch):
 
 def make_input_tensor(states):
     tensors = board_to_tensor_batch(states)
+    if torch is None:
+        return tensors
     cpu_tensor = torch.from_numpy(tensors)
-    if DEVICE_STR == "cuda":
+    if DEVICE_STR == "cuda" and DEVICE is not None:
         cpu_tensor = cpu_tensor.pin_memory()
         return cpu_tensor.to(device=DEVICE, dtype=torch.float32, non_blocking=True)
     return cpu_tensor.to(device=DEVICE, dtype=torch.float32)
 
 
-class ResidualBlock(nn.Module):
-    def __init__(self, channels):
-        super().__init__()
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(channels)
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(channels)
+if nn is not None:
+    class ResidualBlock(nn.Module):
+        def __init__(self, channels):
+            super().__init__()
+            self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
+            self.bn1 = nn.BatchNorm2d(channels)
+            self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
+            self.bn2 = nn.BatchNorm2d(channels)
 
-    def forward(self, x):
-        residual = x
-        x = torch.relu(self.bn1(self.conv1(x)))
-        x = self.bn2(self.conv2(x))
-        x += residual
-        return torch.relu(x)
+        def forward(self, x):
+            residual = x
+            x = torch.relu(self.bn1(self.conv1(x)))
+            x = self.bn2(self.conv2(x))
+            x += residual
+            return torch.relu(x)
 
-class OthelloNet(nn.Module):
-    def __init__(self, num_blocks=15, channels=192):
-        super().__init__()
-        self.start_conv = nn.Conv2d(3, channels, kernel_size=3, padding=1, bias=False)
-        self.bn = nn.BatchNorm2d(channels)
-        self.res_blocks = nn.ModuleList([ResidualBlock(channels) for _ in range(num_blocks)])
-        self.policy_conv = nn.Conv2d(channels, 2, kernel_size=1, bias=False)
-        self.policy_bn = nn.BatchNorm2d(2)
-        self.policy_fc = nn.Linear(2 * 8 * 8, 64)
-        self.value_conv = nn.Conv2d(channels, 1, kernel_size=1, bias=False)
-        self.value_bn = nn.BatchNorm2d(1)
-        self.value_fc1 = nn.Linear(8 * 8, 256)
-        self.value_fc2 = nn.Linear(256, 1)
+    class OthelloNet(nn.Module):
+        def __init__(self, num_blocks=15, channels=192):
+            super().__init__()
+            self.start_conv = nn.Conv2d(3, channels, kernel_size=3, padding=1, bias=False)
+            self.bn = nn.BatchNorm2d(channels)
+            self.res_blocks = nn.ModuleList([ResidualBlock(channels) for _ in range(num_blocks)])
+            self.policy_conv = nn.Conv2d(channels, 2, kernel_size=1, bias=False)
+            self.policy_bn = nn.BatchNorm2d(2)
+            self.policy_fc = nn.Linear(2 * 8 * 8, 64)
+            self.value_conv = nn.Conv2d(channels, 1, kernel_size=1, bias=False)
+            self.value_bn = nn.BatchNorm2d(1)
+            self.value_fc1 = nn.Linear(8 * 8, 256)
+            self.value_fc2 = nn.Linear(256, 1)
 
-    def forward(self, x):
-        x = torch.relu(self.bn(self.start_conv(x)))
-        for block in self.res_blocks:
-            x = block(x)
-        p = torch.relu(self.policy_bn(self.policy_conv(x)))
-        p = self.policy_fc(p.view(p.size(0), -1))
-        v = torch.relu(self.value_bn(self.value_conv(x)))
-        v = torch.relu(self.value_fc1(v.view(v.size(0), -1)))
-        v = torch.tanh(self.value_fc2(v))
-        return p, v
+        def forward(self, x):
+            x = torch.relu(self.bn(self.start_conv(x)))
+            for block in self.res_blocks:
+                x = block(x)
+            p = torch.relu(self.policy_bn(self.policy_conv(x)))
+            p = self.policy_fc(p.view(p.size(0), -1))
+            v = torch.relu(self.value_bn(self.value_conv(x)))
+            v = torch.relu(self.value_fc1(v.view(v.size(0), -1)))
+            v = torch.tanh(self.value_fc2(v))
+            return p, v
+else:
+    class ResidualBlock:
+        def __init__(self, channels):
+            raise RuntimeError("PyTorch is not available for ResidualBlock")
+
+    class OthelloNet:
+        def __init__(self, num_blocks=15, channels=192):
+            raise RuntimeError("PyTorch is not available for OthelloNet")
 
 def get_nn_activation_snapshot(model, P, O, turn, top_k=6):
-    if model is None:
+    if model is None or torch is None:
         return None
     model.eval()
     tensor_batch = make_input_tensor([(int(P), int(O), int(turn))])
@@ -1126,30 +1270,73 @@ class GPUMCTS:
 
 
 def _current_mcts_batch_size(batch_size, remain):
-    # GPUの場合は大きなバッチサイズ
-    if DEVICE_STR == "cuda":
-        if remain >= 10.0:
-            return min(batch_size, 32768)
-        if remain >= 5.0:
-            return min(batch_size, 24576)
-        if remain >= 2.0:
-            return min(batch_size, 16384)
-        if remain >= 1.0:
-            return min(batch_size, 8192)
-        if remain >= 0.4:
-            return min(batch_size, 4096)
-        return min(batch_size, 2048)
-    
-    # CPUの場合は中程度のバッチサイズで速度とメモリのバランスを取る
-    if remain >= 5.0:
-        return min(batch_size, 2048)  # 時間がある場合は少し大きめ
-    if remain >= 2.0:
-        return min(batch_size, 1024)  # 標準的なサイズ
-    if remain >= 1.0:
-        return min(batch_size, 512)   # 中程度
-    if remain >= 0.3:
-        return min(batch_size, 256)   # 小さめ
-    return min(batch_size, 128)       # 最小サイズ
+    # 少コア環境向けにバッチサイズを調整
+    if optimal_threads <= 2:
+        # 1-2コア：非常に小さなバッチサイズ
+        if DEVICE_STR == "cuda":
+            if remain >= 2.0:
+                return min(batch_size, 512)
+            if remain >= 1.0:
+                return min(batch_size, 256)
+            return min(batch_size, 128)
+        else:
+            if remain >= 2.0:
+                return min(batch_size, 256)
+            if remain >= 1.0:
+                return min(batch_size, 128)
+            return min(batch_size, 64)
+    elif optimal_threads <= 4:
+        # 3-4コア：小さめのバッチサイズ
+        if DEVICE_STR == "cuda":
+            if remain >= 5.0:
+                return min(batch_size, 1024)
+            if remain >= 2.0:
+                return min(batch_size, 512)
+            if remain >= 1.0:
+                return min(batch_size, 256)
+            return min(batch_size, 128)
+        else:
+            if remain >= 5.0:
+                return min(batch_size, 512)
+            if remain >= 2.0:
+                return min(batch_size, 256)
+            if remain >= 1.0:
+                return min(batch_size, 128)
+            return min(batch_size, 64)
+    else:
+        # 5コア以上：従来のスケーリング
+        core_multiplier = max(1, optimal_threads // 4)  # スレッド数の1/4を基本乗数
+        
+        # GPUの場合は大きなバッチサイズ
+        if DEVICE_STR == "cuda":
+            if remain >= 10.0:
+                return min(batch_size, 32768 * core_multiplier)
+            if remain >= 5.0:
+                return min(batch_size, 16384 * core_multiplier)
+            if remain >= 2.0:
+                return min(batch_size, 8192 * core_multiplier)
+            if remain >= 1.0:
+                return min(batch_size, 4096 * core_multiplier)
+            if remain >= 0.5:
+                return min(batch_size, 2048 * core_multiplier)
+            if remain >= 0.3:
+                return min(batch_size, 1024 * core_multiplier)
+            return min(batch_size, 512 * core_multiplier)
+        else:
+            # CPUの場合：コア数に応じてスケール
+            if remain >= 10.0:
+                return min(batch_size, 4096 * core_multiplier)
+            if remain >= 5.0:
+                return min(batch_size, 2048 * core_multiplier)
+            if remain >= 2.0:
+                return min(batch_size, 1024 * core_multiplier)
+            if remain >= 1.0:
+                return min(batch_size, 512 * core_multiplier)
+            if remain >= 0.5:
+                return min(batch_size, 256 * core_multiplier)
+            if remain >= 0.3:
+                return min(batch_size, 512 * core_multiplier)   # 小さめでもコア数を考慮
+            return min(batch_size, 256 * core_multiplier)       # 最小サイズでもコア数を考慮
 
 
 def get_mcts_win_rates_time_batched(model, P, O, turn, time_limit, batch_size, sf_arr, add_root_noise=False):

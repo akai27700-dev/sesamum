@@ -4,8 +4,11 @@
 #include <cmath>
 #include <algorithm>
 #include <intrin.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
-// Bitboard masks (from Python version)
+
 constexpr uint64_t FULL_MASK = 0xFFFFFFFFFFFFFFFFULL;
 constexpr uint64_t NOT_A_FILE = 0xFEFEFEFEFEFEFEFEULL;
 constexpr uint64_t NOT_H_FILE = 0x7F7F7F7F7F7F7FULL;
@@ -18,22 +21,22 @@ constexpr uint64_t MASK_B2 = 0xF0F0F0F000000000ULL;
 constexpr uint64_t MASK_B3 = 0x000000000F0F0F0FULL;
 constexpr uint64_t MASK_B4 = 0x00000000F0F0F0F0ULL;
 
-// Hardware POPCNT - extremely fast bit counting using CPU instruction
+
 __forceinline int32_t count_bits(uint64_t x) {
     return static_cast<int32_t>(_mm_popcnt_u64(x));
 }
 
-// Least significant bit
+
 __forceinline uint64_t lsb(uint64_t x) {
     return x & (~x + 1);
 }
 
-// Get bit index from LSB using hardware CTZ (count trailing zeros)
+
 __forceinline int32_t bit_index(uint64_t x) {
     return static_cast<int32_t>(_tzcnt_u64(x));
 }
 
-// Neighbor union - highly optimized with forceinline
+
 __forceinline uint64_t neighbor_union(uint64_t bb) {
     uint64_t n = 0;
     n |= (bb << 1) & NOT_A_FILE;
@@ -47,7 +50,45 @@ __forceinline uint64_t neighbor_union(uint64_t bb) {
     return n & FULL_MASK;
 }
 
-// Get legal moves (simplified - calls Python fallback for now)
+
+extern "C" int32_t engine_has_openmp() {
+#ifdef _OPENMP
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+
+extern "C" int32_t engine_get_openmp_max_threads() {
+#ifdef _OPENMP
+    return static_cast<int32_t>(omp_get_max_threads());
+#else
+    return 1;
+#endif
+}
+
+
+extern "C" int32_t engine_get_openmp_thread_count() {
+#ifdef _OPENMP
+    return static_cast<int32_t>(omp_get_max_threads());
+#else
+    return 1;
+#endif
+}
+
+
+extern "C" void engine_set_openmp_threads(int32_t thread_count) {
+#ifdef _OPENMP
+    if (thread_count > 0) {
+        omp_set_num_threads(thread_count);
+    }
+#else
+    (void)thread_count;
+#endif
+}
+
+
 extern "C" uint64_t get_legal_moves_cpp(uint64_t P, uint64_t O) {
     uint64_t occ = (P | O) & FULL_MASK;
     uint64_t legal = 0;
@@ -89,7 +130,7 @@ extern "C" uint64_t get_legal_moves_cpp(uint64_t P, uint64_t O) {
     return legal & FULL_MASK;
 }
 
-// Get flip bits for a move
+
 extern "C" uint64_t get_flip_cpp(uint64_t P, uint64_t O, int32_t idx) {
     int32_t r = idx / 8;
     int32_t c = idx % 8;
@@ -124,12 +165,12 @@ extern "C" uint64_t get_flip_cpp(uint64_t P, uint64_t O, int32_t idx) {
     return flips & FULL_MASK;
 }
 
-// Compute stable pieces
+
 extern "C" uint64_t compute_strict_stable_cpp(uint64_t P, uint64_t O) {
     uint64_t s = P & MASK_CORNER;
     if (!s) return 0;
     
-    // First pass: expand from corners
+    
     for (int32_t iter = 0; iter < 7; iter++) {
         uint64_t ns = 0;
         ns |= (s << 1) & NOT_A_FILE;
@@ -146,7 +187,7 @@ extern "C" uint64_t compute_strict_stable_cpp(uint64_t P, uint64_t O) {
         s |= a;
     }
     
-    // Second pass: check stability conditions
+    
     bool changed = true;
     int32_t it = 0;
     uint64_t occ = P | O;
@@ -168,7 +209,7 @@ extern "C" uint64_t compute_strict_stable_cpp(uint64_t P, uint64_t O) {
                     bool all_covered = true;
                     
                     for (int32_t step = 0; step < 8 && all_covered; step++) {
-                        // Move in direction d
+                        
                         if (d == 0) c = (c << 1) & NOT_A_FILE;
                         else if (d == 1) c = (c >> 1) & NOT_H_FILE;
                         else if (d == 2) c = (c << 8) & FULL_MASK;
@@ -212,7 +253,7 @@ extern "C" uint64_t compute_strict_stable_cpp(uint64_t P, uint64_t O) {
     return s & FULL_MASK;
 }
 
-// Evaluate corner-X-C regions - inlined for speed
+
 __forceinline double eval_xc(uint64_t p, uint64_t o, uint64_t cor, uint64_t cx, uint64_t cc) {
     double v = 0.0;
     if (!(p & cor) && !(o & cor)) {
@@ -230,7 +271,7 @@ __forceinline double eval_xc(uint64_t p, uint64_t o, uint64_t cor, uint64_t cx, 
     return v;
 }
 
-// Fast piece weight accumulation using hardware popcnt
+
 __forceinline double accumulate_piece_weights(uint64_t bits, const double* weights) {
     double sum = 0.0;
     while (bits) {
@@ -242,47 +283,47 @@ __forceinline double accumulate_piece_weights(uint64_t bits, const double* weigh
     return sum;
 }
 
-// Main evaluation function - HEAVILY OPTIMIZED
+
 extern "C" double evaluate_board_full_cpp(
     uint64_t P,
     uint64_t O,
     int32_t mvs,
-    const double* W  // Weight array of size 243
+    const double* W  
 ) {
-    // Determine stage once with ternary
+    
     const int32_t st = (mvs <= 15) ? 0 : ((mvs <= 45) ? 80 : 160);
     const double* wp = &W[st];
     const double* we = &W[st + 64];
     
-    // Material score - single pass with optimized bit iteration
+    
     double sc = accumulate_piece_weights(P, wp) - accumulate_piece_weights(O, wp);
     
-    // Precompute frequently used values
+    
     uint64_t emp = ~(P | O) & FULL_MASK;
     uint64_t occ = P | O;
     uint64_t np_ = neighbor_union(P);
     uint64_t no = neighbor_union(O);
     
-    // Mobility - computed once each
+    
     uint64_t player_moves = get_legal_moves_cpp(P, O);
     uint64_t opp_moves = get_legal_moves_cpp(O, P);
     int32_t lm = count_bits(player_moves);
     int32_t lo = count_bits(opp_moves);
     
-    // Mobility multiplier and score
+    
     double m_mult = (mvs >= 20 && mvs <= 45) ? 2.5 : 1.0;
     sc += static_cast<double>(lm - lo) * m_mult * 4.0;
     
-    // Parity score using bitwise AND
+    
     sc += (((64 - mvs) & 1) == 0) ? 10.0 : -10.0;
     
-    // Corner-X-C evaluation (4 corners) - inlined
+    
     sc += eval_xc(P, O, 0x1ULL, 0x200ULL, 0x102ULL);
     sc += eval_xc(P, O, 0x80ULL, 0x4000ULL, 0x8040ULL);
     sc += eval_xc(P, O, 0x100000000000000ULL, 0x20000000000000ULL, 0x201000000000000ULL);
     sc += eval_xc(P, O, 0x8000000000000000ULL, 0x400000000000000ULL, 0x4080000000000000ULL);
     
-    // Stable pieces (only compute in endgame)
+    
     int32_t sp_count = 0, so_count = 0;
     if (mvs >= 30) {
         uint64_t sp = compute_strict_stable_cpp(P, O);
@@ -292,7 +333,7 @@ extern "C" double evaluate_board_full_cpp(
         sc += static_cast<double>(sp_count - so_count) * 25.0;
     }
     
-    // Feature-based evaluation - batch compute all counts with hardware POPCNT
+    
     int32_t emp_np = count_bits(emp & np_);
     int32_t emp_no = count_bits(emp & no);
     int32_t p_np = count_bits(P & np_);
@@ -317,7 +358,7 @@ extern "C" double evaluate_board_full_cpp(
     int32_t occ_b3 = count_bits(occ & MASK_B3);
     int32_t occ_b4 = count_bits(occ & MASK_B4);
     
-    // Apply weights - use static_cast for type safety
+    
     sc += (static_cast<double>(lm - lo) / 20.0) * we[0];
     sc += (static_cast<double>(emp_np - emp_no) / 64.0) * we[1];
     sc += static_cast<double>(sp_count - so_count) * we[2];
@@ -338,7 +379,7 @@ extern "C" double evaluate_board_full_cpp(
     return sc;
 }
 
-// Batch evaluation with OpenMP parallelization
+
 extern "C" void evaluate_board_batch_cpp(
     const uint64_t* P_arr,
     const uint64_t* O_arr,

@@ -1,1 +1,1 @@
-# GeNeLy Core Package
+# Sesamum Core Package

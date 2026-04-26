@@ -627,6 +627,7 @@ SearchSessionResult SearchSession::run(Bitboard p,
     const auto start_time = std::chrono::steady_clock::now();
     const auto overall_deadline = start_time + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(std::max(0.0, time_limit_sec)));
     const std::vector<int> initial_order = ordered_indices.empty() ? engine_legal_move_indices(p, o) : ordered_indices;
+    const int empty_count = 64 - engine_count_bits(p | o);
     std::array<float, 64> root_policy_arr = make_root_policy(root_policy, p, o, turn, infer_batch);
     bool have_root_policy = false;
     for (float value : root_policy_arr) {
@@ -686,6 +687,7 @@ SearchSessionResult SearchSession::run(Bitboard p,
             for (int depth = std::max(start_depth, 2); depth <= max_depth; ++depth) {
                 if (stop_ptr != nullptr && stop_ptr[0] != 0) break;
                 ab_result.attempted_depth = depth;
+                const bool depth_exact = is_exact && depth >= empty_count;
                 std::vector<double> root_policy_buffer;
                 const std::vector<double>* root_policy_ptr = nullptr;
                 if (have_root_policy) {
@@ -693,13 +695,11 @@ SearchSessionResult SearchSession::run(Bitboard p,
                     root_policy_ptr = &root_policy_buffer;
                 }
                 int remain_ms = 0;
-                if (!is_exact) {
-                    const auto now = std::chrono::steady_clock::now();
-                    const auto hard_deadline = ab_deadline < overall_deadline ? ab_deadline : overall_deadline;
-                    if (now >= hard_deadline) break;
-                    remain_ms = static_cast<int>(std::max(0LL, std::chrono::duration_cast<std::chrono::milliseconds>(hard_deadline - now).count()));
-                }
-                auto [vals, nodes, timed_out] = engine_search_root_parallel_layer(p, o, mvs, depth, is_exact, curr_ordered, root_policy_ptr, remain_ms);
+                const auto now = std::chrono::steady_clock::now();
+                const auto hard_deadline = ab_deadline < overall_deadline ? ab_deadline : overall_deadline;
+                if (now >= hard_deadline) break;
+                remain_ms = static_cast<int>(std::max(0LL, std::chrono::duration_cast<std::chrono::milliseconds>(hard_deadline - now).count()));
+                auto [vals, nodes, timed_out] = engine_search_root_parallel_layer(p, o, mvs, depth, depth_exact, curr_ordered, root_policy_ptr, remain_ms);
                 if (timed_out) {
                     ab_result.timed_out = true;
                     break;
@@ -710,7 +710,7 @@ SearchSessionResult SearchSession::run(Bitboard p,
                 combined.reserve(curr_ordered.size());
                 std::int64_t layer_nodes = 0;
                 for (std::size_t i = 0; i < curr_ordered.size(); ++i) {
-                    const double win_rate = engine_calculate_win_rate(vals[i], is_exact);
+                    const double win_rate = engine_calculate_win_rate(vals[i], depth_exact);
                     combined.push_back(LayerResult{curr_ordered[i], vals[i], win_rate});
                     layer_nodes += nodes[i];
                 }
@@ -728,7 +728,7 @@ SearchSessionResult SearchSession::run(Bitboard p,
                 ab_result.total_nodes += layer_nodes;
                 ab_result.completed_depth = depth;
                 emit_ab_progress(ab_progress, depth, std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count(), layer_nodes, ab_result);
-                if (is_exact || (!ab_result.values.empty() && std::abs(ab_result.values.front()) > 5000.0)) {
+                if (depth_exact || (!ab_result.values.empty() && std::abs(ab_result.values.front()) > 5000.0)) {
                     ab_result.resolved = true;
                     if (!use_mcts && stop_ptr != nullptr) {
                         stop_ptr[0] = 1;
@@ -804,7 +804,7 @@ void SearchSession::emit_ab_progress(const py::function& ab_progress, int depth,
     }
 }
 
-}  // namespace
+}  
 
 void bind_engine_session_classes(py::module_& m) {
     py::class_<BatchMCTS>(m, "BatchMCTS")

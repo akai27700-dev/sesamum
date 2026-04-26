@@ -19,10 +19,32 @@ class ONNXInference:
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"ONNX model not found: {self.model_path}")
         
+        # 動的なスレッド数設定
+        import multiprocessing
+        cpu_count = multiprocessing.cpu_count()
+        
         # SessionOptions で詳細設定
         sess_opts = ort.SessionOptions()
         sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        sess_opts.intra_op_num_threads = 4  # オプティマイザースレッド数を制限
+        
+        # CPUコア数に応じてスレッド数を動的に設定（高性能CPU向けに最適化）
+        if cpu_count >= 32:
+            intra_threads = min(cpu_count, 32)  # 超ハイパフォーマンスCPU：32スレッドまで
+        elif cpu_count >= 24:
+            intra_threads = min(cpu_count, 24)  # ハイパフォーマンスCPU：24スレッドまで
+        elif cpu_count >= 16:
+            intra_threads = min(cpu_count, 20)  # ミドルハイCPU：20スレッドまで
+        elif cpu_count >= 12:
+            intra_threads = min(cpu_count, 16)  # ミドルレンジCPU：16スレッドまで
+        elif cpu_count >= 8:
+            intra_threads = cpu_count           # 8-11コア：全コア使用
+        elif cpu_count >= 4:
+            intra_threads = cpu_count           # 4-7コア：全コア使用
+        else:
+            intra_threads = max(1, cpu_count)   # 1-3コア：1スレッドでも安定
+            
+        sess_opts.intra_op_num_threads = intra_threads
+        sess_opts.inter_op_num_threads = max(1, intra_threads // 2)  # 演算間の並列化も有効化
         
         # 実行環境を設定
         if self.use_gpu:
@@ -68,8 +90,26 @@ class ONNXInference:
         if input_batch.dtype != np.float32:
             input_batch = input_batch.astype(np.float32)
         
+        # CPUコア数に応じて動的にバッチサイズを調整（高性能CPU向けに最適化）
+        import multiprocessing
+        cpu_count = multiprocessing.cpu_count()
+        
+        if cpu_count >= 32:
+            max_batch_size = 4096  # 超ハイパフォーマンスCPU
+        elif cpu_count >= 24:
+            max_batch_size = 3072  # ハイパフォーマンスCPU
+        elif cpu_count >= 16:
+            max_batch_size = 2048  # ミドルハイCPU
+        elif cpu_count >= 12:
+            max_batch_size = 1536  # ミドルレンジCPU
+        elif cpu_count >= 8:
+            max_batch_size = 1024  # 一般的なCPU
+        elif cpu_count >= 4:
+            max_batch_size = 512   # 4-7コア：中程度のバッチ
+        else:
+            max_batch_size = 256   # 1-3コア：小さなバッチで安定
+            
         # 大きなバッチの場合は分割処理
-        max_batch_size = 512
         if len(input_batch) > max_batch_size:
             policies = []
             values = []
