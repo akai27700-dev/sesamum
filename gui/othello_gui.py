@@ -384,8 +384,6 @@ class UltimateOthello(OthelloSearchMixin):
         self.weights_match_game_index = 0
         self.weights_match_score = {'w1': 0, 'w2': 0, 'draw': 0}
         self.weights_match_profiles = None
-        # exact ロック: 一度 exact に入ったら終局まで読み切り継続
-        self.exact_lock_active = False
         self.log_file_path = os.path.join(BASE_DIR, 'sesamum_log.txt')
         self._log_file_error_reported = False
         try:
@@ -737,17 +735,14 @@ class UltimateOthello(OthelloSearchMixin):
     def get_exact_base_threshold(self):
         if not self.exact_auto:
             return int(self.readout_empty_threshold)
-        # Egaroucid complete0方式: 時間制限に基づくexact開始閾値
         base_time = float(self.time_limit_sec)
-        if base_time <= 0.5:
-            return 28
         if base_time <= 1.0:
-            return 31
+            return 26
         if base_time <= 5.0:
-            return 36
+            return 30
         if base_time <= 10.0:
-            return 40
-        return 42
+            return 32
+        return 34
 
     def get_exact_gap_budget(self, legal_count, time_limit):
         budget = 7
@@ -768,18 +763,15 @@ class UltimateOthello(OthelloSearchMixin):
         return max(3, budget)
 
     def get_endgame_solver_threshold(self, legal_count, time_limit):
-        # Egaroucid complete0方式: 時間制限に基づくendgame solver閾値
         limit = float(time_limit)
-        if limit <= 0.5:
+        if limit <= 1.0:
             threshold = 28
-        elif limit <= 1.0:
-            threshold = 31
         elif limit <= 5.0:
-            threshold = 36
+            threshold = 32
         elif limit <= 10.0:
-            threshold = 40
+            threshold = 33
         else:
-            threshold = 42
+            threshold = 34
         if legal_count <= 6:
             threshold += 2
         elif legal_count <= 10:
@@ -788,7 +780,7 @@ class UltimateOthello(OthelloSearchMixin):
             threshold -= 2
         elif legal_count >= 13:
             threshold -= 1
-        return max(24, min(48, threshold))
+        return max(26, min(36, threshold))
 
     def get_endgame_solver_time_limit_ms(self, empty, legal_count, time_limit):
         base_ms = float(time_limit) * 1000.0
@@ -1080,16 +1072,39 @@ class UltimateOthello(OthelloSearchMixin):
         return (prior_map, primary_move, book_roll_used)
 
     def should_start_exact_early(self, aB, oB, empty, legal_count, start_depth=2, time_limit=None):
-        # Egaroucid方式: empties <= base_threshold なら即座にexact solve
         base_threshold = int(self.get_exact_base_threshold())
-        if int(empty) <= base_threshold:
-            return True
-        # base_thresholdより大きいemptiesではC++ヒューリスティックで補助判定
-        if int(empty) <= base_threshold + 7 and self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'should_use_early_exact'):
+        time_budget = float(self.time_limit_sec if time_limit is None else time_limit)
+        # 厳格ゲート: legal/empty/time の同時しきい値を満たさない場合は exact に入らない
+        time_gate = 0.45 if self.light_mode else 0.65
+        if time_budget < time_gate:
+            return False
+        strict_empty = min(base_threshold, 26 if not self.light_mode else 24)
+        strict_legal = max(4, min(12, 8 + max(0, strict_empty - int(empty)) // 2))
+        if int(empty) > strict_empty or int(legal_count) > strict_legal:
+            return False
+        if empty > base_threshold + 7:
+            return False
+        if empty > base_threshold and legal_count >= 14:
+            return False
+        gap_budget = self.get_exact_gap_budget(int(legal_count), time_budget)
+        remaining_gap = max(0, int(empty) - max(2, int(start_depth)))
+        if remaining_gap > gap_budget:
+            return False
+        if self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'should_use_early_exact'):
             try:
-                return bool(cpp_engine.should_use_early_exact(int(aB), int(oB), int(empty), base_threshold))
+                heuristic_exact = bool(cpp_engine.should_use_early_exact(int(aB), int(oB), int(empty), base_threshold))
+                if heuristic_exact and legal_count >= 15 and remaining_gap >= max(5, gap_budget):
+                    return False
+                return heuristic_exact
             except Exception:
                 pass
+        # フォールバック: C++ヒューリスティックが使えない場合のみ簡易判定
+        if empty <= min(24, base_threshold):
+            return True
+        if empty <= base_threshold:
+            threshold = int(max(4, 11 + (base_threshold - empty)))
+            if legal_count <= threshold:
+                return True
         return False
 
     def get_turn_state(self):
@@ -1616,7 +1631,7 @@ class UltimateOthello(OthelloSearchMixin):
                 val = entry[idx]
                 if val is None:
                     if len(segment_points) >= 4:
-                        canvas.create_line(*segment_points, fill=color, width=2, smooth=True, splinesteps=16)
+                        canvas.create_line(*segment_points, fill=color, width=2)
                     elif len(segment_points) == 2:
                         canvas.create_oval(segment_points[0] - 2, segment_points[1] - 2, segment_points[0] + 2, segment_points[1] + 2, fill=color, outline=color)
                     segment_points = []
@@ -1624,7 +1639,7 @@ class UltimateOthello(OthelloSearchMixin):
                 y = mt + (y_max - val) / (y_max - y_min) * (h - mt - mb)
                 segment_points.extend([x, y])
             if len(segment_points) >= 4:
-                canvas.create_line(*segment_points, fill=color, width=2, smooth=True, splinesteps=16)
+                canvas.create_line(*segment_points, fill=color, width=2)
             elif len(segment_points) == 2:
                 canvas.create_oval(segment_points[0] - 2, segment_points[1] - 2, segment_points[0] + 2, segment_points[1] + 2, fill=color, outline=color)
             for x, entry in zip(xs, history):
@@ -1644,10 +1659,12 @@ class UltimateOthello(OthelloSearchMixin):
                     midpoints.extend([x, y])
                 else:
                     if len(midpoints) >= 4:
-                        canvas.create_line(*midpoints, fill='#00aa00', width=2, dash=(4, 2), smooth=True, splinesteps=16)
+                        for i in range(0, len(midpoints) - 2, 2):
+                            canvas.create_line(midpoints[i], midpoints[i + 1], midpoints[i + 2], midpoints[i + 3], fill='#00aa00', width=2, dash=(4, 2))
                     midpoints = []
             if len(midpoints) >= 4:
-                canvas.create_line(*midpoints, fill='#00aa00', width=2, dash=(4, 2), smooth=True, splinesteps=16)
+                for i in range(0, len(midpoints) - 2, 2):
+                    canvas.create_line(midpoints[i], midpoints[i + 1], midpoints[i + 2], midpoints[i + 3], fill='#00aa00', width=2, dash=(4, 2))
         legend_x = ml
         for color, label in zip([s[1] for s in specs], labels):
             canvas.create_rectangle(legend_x, legend_y - 5, legend_x + 10, legend_y + 5, fill=color, outline=color)
@@ -1943,7 +1960,6 @@ class UltimateOthello(OthelloSearchMixin):
             self.ac = -self.hc
             self.last_win_rate = 50.0
             self.last_mcts_win_rate = None
-            self.exact_lock_active = False
             self.reset_graph_history()
             self.redraw_graphs()
             self.update_title()
@@ -1964,7 +1980,6 @@ class UltimateOthello(OthelloSearchMixin):
         self.reset_position_history()
         self.last_win_rate = 50.0
         self.last_mcts_win_rate = None
-        self.exact_lock_active = False
         self.reset_graph_history()
         self.redraw_graphs()
         self.update_title()
@@ -2322,7 +2337,7 @@ class UltimateOthello(OthelloSearchMixin):
             initial_time_limit = self.get_auto_time_limit(empty, initial_legal_count, mvs)
             solver_threshold = self.get_endgame_solver_threshold(initial_legal_count, initial_time_limit)
             solver_time_limit_ms = self.get_endgame_solver_time_limit_ms(empty, initial_legal_count, initial_time_limit)
-            if empty <= solver_threshold and ENDGAME_SOLVER_AVAILABLE:
+            if empty <= solver_threshold and ENDGAME_SOLVER_AVAILABLE and (not is_quick_mode):
                 self.log(f'endgame: C++ solver activated (empties={empty})')
                 start_time = time.time()
                 try:
@@ -2335,12 +2350,10 @@ class UltimateOthello(OthelloSearchMixin):
                         best_move_idx = int(status.get('best_move', -1))
                         completed_depth = int(status.get('completed_depth', 0))
                         fully_solved = bool(status.get('fully_solved', False))
-                        solved_score = int(status.get('score', 0))
                     else:
                         best_move_idx = get_endgame_best_move(int(self.B), int(self.W), current_player, empty, int(solver_time_limit_ms))
                         fully_solved = (best_move_idx >= 0) or (best_move_idx == -1)  # -1も有効な結果（pass）
                         completed_depth = empty if fully_solved else 0
-                        solved_score = 0
                     if fully_solved and best_move_idx >= 0:
                         # 通常の手を指す場合
                         if self.tn == 1:
@@ -2350,11 +2363,6 @@ class UltimateOthello(OthelloSearchMixin):
                         elapsed = time.time() - start_time
                         move_label = self.format_move_label(best_move_idx)
                         self.log(f'endgame: exact solved in {elapsed:.2f}s | depth={completed_depth}/{empty} | best move=({move_label})')
-                        try:
-                            wr = float(calculate_win_rate(float(solved_score), True))
-                        except Exception:
-                            wr = 50.0
-                        self.call_on_ui_thread(self.update_gui_from_ai, wr, {int(best_move_idx): 100.0}, current_game_id)
                         self.tn = -self.tn
                         self.drw()
                         self.rt.after(100, self.chk)
@@ -2364,11 +2372,6 @@ class UltimateOthello(OthelloSearchMixin):
                         # passの場合
                         elapsed = time.time() - start_time
                         self.log(f'endgame: exact solved in {elapsed:.2f}s | depth={completed_depth}/{empty} | pass')
-                        try:
-                            wr = float(calculate_win_rate(float(solved_score), True))
-                        except Exception:
-                            wr = 50.0
-                        self.call_on_ui_thread(self.update_gui_from_ai, wr, {}, current_game_id)
                         self.advance_forced_pass_state()
                         self.call_on_ui_thread(self.resolve_forced_pass, 100, False)
                         follow_up_handled = True
@@ -2507,22 +2510,11 @@ class UltimateOthello(OthelloSearchMixin):
                 self.call_on_ui_thread(self.chk)
                 return
             time_limit = self.get_auto_time_limit(empty, len(rms), mvs)
-            is_exact = bool(self.exact_lock_active) or self.should_start_exact_early(aB, oB, empty, len(rms), start_dp, time_limit)
-            # Egaroucid方式: exact突入時はstart_dpをempties付近に設定（浅いdepthの無駄なイテレーションを回避）
-            if is_exact and not is_resumed:
-                presearch_offset = 6 if time_limit >= 5.0 else 4 if time_limit >= 1.0 else 2
-                start_dp = max(start_dp, max(2, int(empty) - presearch_offset))
+            is_exact = self.should_start_exact_early(aB, oB, empty, len(rms), start_dp, time_limit)
             start_dp = self.clamp_search_depth(start_dp, empty, is_exact)
             if is_exact:
                 self.stop_pondering_explicitly()
                 self.log('ponder: stopped for exact solve')
-                self.exact_lock_active = True
-                # exact突入直後は結果が返るまで勝率を保持（50%への見かけの巻き戻り防止）
-                try:
-                    hold_wr = float(self.last_win_rate) if self.last_win_rate is not None else 50.0
-                except Exception:
-                    hold_wr = 50.0
-                self.call_on_ui_thread(self.update_gui_from_ai, hold_wr, {}, current_game_id)
             best_move = -1
             if book_move is not None:
                 if valid >> book_move & 1:
@@ -2757,7 +2749,7 @@ class UltimateOthello(OthelloSearchMixin):
                         es = [math.exp(max(-20.0, (c - mx) / 10.0)) for _, _, c in combined]
                         se = sum(es) if es else 1.0
                         probs_map = {m: e / se * 100.0 for (m, _, _), e in zip(combined, es)}
-                        pr_str = '[*]' if depth_exact or is_resumed else '[]'
+                        pr_str = '[*]' if is_resumed else '[]'
                         el = time.time() - ai_start_time
                         ds = combined[:5]
                         move_summary = self.format_top_moves([(r[0], r[2]) for r in ds], limit=5)
@@ -2766,8 +2758,8 @@ class UltimateOthello(OthelloSearchMixin):
                         if is_exact:
                             self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
                         completed_depth = dp
-                        if depth_exact:
-                            resolved_flag = True
+                        if depth_exact or abs(combined[0][1]) > 5000:
+                            resolved_flag = bool(depth_exact or abs(combined[0][1]) > 5000)
                             if not use_mcts_enabled:
                                 self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
                                 time.sleep(0.1)
@@ -2811,7 +2803,7 @@ class UltimateOthello(OthelloSearchMixin):
                     es = [math.exp(max(-20.0, (c - mx) / 10.0)) for _, _, c in combined]
                     se = sum(es) if es else 1.0
                     probs_map = {m: e / se * 100.0 for (m, _, _), e in zip(combined, es)}
-                    pr_str = '[*]' if depth_exact or is_resumed else '[]'
+                    pr_str = '[*]' if is_resumed else '[]'
                     el = time.time() - ai_start_time
                     ds = combined[:5]
                     move_summary = self.format_top_moves([(r[0], r[2]) for r in ds], limit=5)
@@ -2820,8 +2812,8 @@ class UltimateOthello(OthelloSearchMixin):
                     if is_exact:
                         self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
                     completed_depth = dp
-                    if depth_exact:
-                        resolved_flag = True
+                    if depth_exact or abs(combined[0][1]) > 5000:
+                        resolved_flag = bool(depth_exact or abs(combined[0][1]) > 5000)
                         if not use_mcts_enabled:
                             self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
                             time.sleep(0.1)
