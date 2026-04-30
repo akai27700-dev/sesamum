@@ -21,10 +21,26 @@ def _load_attr(module_name: str, attr_name: str) -> Any:
     return getattr(module, attr_name, None)
 
 def _get_msvc_helper_module() -> Any:
-    return importlib.import_module('setuptools._distutils.compilers.C.msvc')
+    # setuptools >= 77: setuptools._distutils.compilers.C.msvc
+    # setuptools < 77: setuptools._distutils._msvccompiler
+    for mod_name in ('setuptools._distutils.compilers.C.msvc', 'setuptools._distutils._msvccompiler'):
+        try:
+            return importlib.import_module(mod_name)
+        except (ImportError, ModuleNotFoundError):
+            continue
+    return None
 
 def _get_msvc_compiler_class() -> Any:
-    return _load_attr('setuptools._distutils.compilers.C.msvc', 'Compiler')
+    # setuptools >= 77: Compiler attr in compilers.C.msvc
+    # setuptools < 77: MSVCCompiler in msvccompiler
+    for mod_name, attr in (
+        ('setuptools._distutils.compilers.C.msvc', 'Compiler'),
+        ('setuptools._distutils.msvccompiler', 'MSVCCompiler'),
+    ):
+        cls = _load_attr(mod_name, attr)
+        if cls is not None:
+            return cls
+    return None
 
 class CustomBuildExt(build_ext):
     """カスタム build_ext: 最適化フラグを削除"""

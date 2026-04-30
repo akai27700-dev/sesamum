@@ -351,7 +351,7 @@ class OthelloSearchMixin:
                                 move_label = self.format_move_label(candidate['move'])
                                 self.log(f'ponder: αβ[c++] depth={dp:2d}   | best={best_wr:5.1f}%  | time={elapsed:4.1f}s  | nodes={nodes_sum:,} | move=({move_label})')
                                 if len(curr_ordered) > 1:
-                                    moves_str = ' | '.join([f"({self.format_move_label(m)}) {calculate_win_rate(vals[i], depth_exact):5.1f}%" for i, m in enumerate(curr_ordered[:5])])
+                                    moves_str = ' | '.join([f"({self.format_move_label(m)}) {calculate_win_rate(vals[i], depth_exact):5.1f}%" for i, m in enumerate(curr_ordered[:3])])
                                     self.log(f'  moves: {moves_str}')
                         except Exception as e:
                             break
@@ -446,6 +446,8 @@ class OthelloSearchMixin:
             self.log(self.format_log_columns([f'{pr_str}αβ[c++] depth={depth:2d}', f'best={mx:5.1f}%', f'time={elapsed:4.1f}s', f'nodes={nodes}'], [21, 12, 11, 14]))
             self.log(f'  moves: {move_summary}')
             self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
+            if is_exact:
+                self.call_on_ui_thread(self.push_blend_preview, min(64, self.mc() + 1), combined[0][0], 1.0, 0.0)
 
         def unpack_result(result, ab_enabled, mcts_enabled):
             ab_out = dict(result.get('ab', {}))

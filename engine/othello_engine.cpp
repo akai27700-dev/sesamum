@@ -532,14 +532,67 @@ double evaluate_board_full(Bitboard p, Bitboard o, int mvs, const std::vector<do
         stable_diff = count_bits(sp & p) - count_bits(so & o);
     }
     Bitboard occ = p | o;
-    double m_mult = (20 <= mvs && mvs <= 45) ? 2.5 : 1.0;
+    const int empties = 64 - mvs;
+
+    // --- Mobility (Egaroucid-inspired phase-dependent) ---
+    double m_mult = 1.0;
+    if (mvs >= 20 && mvs <= 45) m_mult = 2.5;
+    else if (mvs > 45) m_mult = 1.8;
     sc += static_cast<double>(lm - lo) * m_mult * 4.0;
-    sc += ((64 - mvs) % 2 == 0) ? 10.0 : -10.0;
-    
+
+    // --- Parity: odd empties = last mover advantage ---
+    if (empties > 0) {
+        double parity_bonus = (empties % 2 == 1) ? 12.0 : -12.0;
+        if (mvs >= 40) parity_bonus *= 2.0;
+        sc += parity_bonus;
+    }
+
+    // --- 4-corner XC evaluation (Egaroucid style) ---
+    static constexpr Bitboard CORNER_TL = 1ULL << 63;  // a1
+    static constexpr Bitboard CX_TL = 1ULL << 62;      // b1
+    static constexpr Bitboard CC_TL = (1ULL << 61) | (1ULL << 55); // c1, a2
+    sc += eval_xc(p, o, CORNER_TL, CX_TL, CC_TL);
+
+    static constexpr Bitboard CORNER_TR = 1ULL << 56;  // h1
+    static constexpr Bitboard CX_TR = 1ULL << 57;      // g1
+    static constexpr Bitboard CC_TR = (1ULL << 58) | (1ULL << 48); // f1, h2
+    sc += eval_xc(p, o, CORNER_TR, CX_TR, CC_TR);
+
+    static constexpr Bitboard CORNER_BL = 1ULL << 7;   // a8
+    static constexpr Bitboard CX_BL = 1ULL << 6;       // b8
+    static constexpr Bitboard CC_BL = (1ULL << 5) | (1ULL << 15); // c8, a7
+    sc += eval_xc(p, o, CORNER_BL, CX_BL, CC_BL);
+
+    static constexpr Bitboard CORNER_BR = 1ULL << 0;   // h8
+    static constexpr Bitboard CX_BR = 1ULL << 1;       // g8
+    static constexpr Bitboard CC_BR = (1ULL << 2) | (1ULL << 8); // f8, h7
+    sc += eval_xc(p, o, CORNER_BR, CX_BR, CC_BR);
+    // Legacy LUT for additional row/column patterns
     sc += lut.corner_xc_table[(p & 0xFFFF) & 0xFFFF] + lut.corner_xc_table[((p >> 48) & 0xFFFF)];
     sc += lut.pattern_table[((p >> 32) & 0xFFFF)] + lut.pattern_table[(p >> 16) & 0xFFFF];
     
-    if (mvs >= 30) sc += static_cast<double>(stable_diff) * 25.0;
+    // --- Stability with phase-dependent weight ---
+    double stable_weight = 15.0;
+    if (mvs >= 30) stable_weight = 25.0;
+    if (mvs >= 45) stable_weight = 40.0;
+    sc += static_cast<double>(stable_diff) * stable_weight;
+
+    // --- Frontier disc penalty (Egaroucid-inspired) ---
+    // Discs adjacent to empty squares are unstable and vulnerable
+    const Bitboard frontier_p = p & np & emp;
+    const Bitboard frontier_o = o & no & emp;
+    const int frontier_diff = count_bits(frontier_p) - count_bits(frontier_o);
+    double frontier_weight = 3.0;
+    if (mvs >= 30) frontier_weight = 5.0;
+    if (mvs >= 45) frontier_weight = 8.0;
+    sc -= static_cast<double>(frontier_diff) * frontier_weight;
+
+    // --- Potential mobility (empty squares adjacent to opponent) ---
+    // More potential moves = better position
+    const int pot_mob_p = count_bits(emp & no);
+    const int pot_mob_o = count_bits(emp & np);
+    sc += static_cast<double>(pot_mob_p - pot_mob_o) * 2.0;
+
     sc += lut.mobility_table[(lm & 0xF) | ((lo & 0xF) << 4)];
     sc += (static_cast<double>(count_bits(emp & np) - count_bits(emp & no)) / 64.0) * w_feat[1];
     sc += static_cast<double>(stable_diff) * w_feat[2];
@@ -760,6 +813,9 @@ struct SearchContext {
     bool multi_cut_enabled = false;
     int multi_cut_threshold = 3;
     int multi_cut_depth = 8;
+    std::atomic<int>* ybwc_active_workers = nullptr;
+    int ybwc_max_workers = 1;
+    int ybwc_min_depth = 99;
     std::array<std::array<int, 2>, 64> killer_moves{};
     std::array<std::array<double, 64>, 2> history_scores{};
     std::array<std::array<double, 64>, 2> history_avg_depth{};
@@ -1007,6 +1063,45 @@ inline bool check_timeout(SearchContext& ctx) {
     return ctx.timed_out;
 }
 
+inline int hardware_thread_budget() {
+    unsigned int hw = std::thread::hardware_concurrency();
+    return static_cast<int>(hw == 0 ? 8 : hw);
+}
+
+inline int acquire_ybwc_workers(SearchContext& ctx, int requested) {
+    if (ctx.ybwc_active_workers == nullptr || ctx.ybwc_max_workers <= 0 || requested <= 0) {
+        return 0;
+    }
+    int active = ctx.ybwc_active_workers->load(std::memory_order_relaxed);
+    while (true) {
+        const int available = std::max(0, ctx.ybwc_max_workers - active);
+        const int acquired = std::min(requested, available);
+        if (acquired <= 0) {
+            return 0;
+        }
+        if (ctx.ybwc_active_workers->compare_exchange_weak(
+                active,
+                active + acquired,
+                std::memory_order_acq_rel,
+                std::memory_order_relaxed)) {
+            return acquired;
+        }
+    }
+}
+
+inline void release_ybwc_workers(SearchContext& ctx, int count) {
+    if (ctx.ybwc_active_workers != nullptr && count > 0) {
+        ctx.ybwc_active_workers->fetch_sub(count, std::memory_order_acq_rel);
+    }
+}
+
+inline void raise_atomic_double(std::atomic<double>& target, double value) {
+    double current = target.load(std::memory_order_relaxed);
+    while (value > current &&
+           !target.compare_exchange_weak(current, value, std::memory_order_acq_rel, std::memory_order_relaxed)) {
+    }
+}
+
 inline double estimate_search_complexity(Bitboard p, Bitboard o, Bitboard valid) {
     const int empties = 64 - count_bits(p | o);
     const int own_moves = count_bits(valid);
@@ -1188,6 +1283,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     Bitboard hv = zobrist_hash(p, o);
     int tm = -1;
     double oa = alpha;
+    const bool tt_allowed = ctx.allow_tt && !is_exact;
     bool static_eval_cached = false;
     double static_eval = 0.0;
     auto get_static_eval = [&]() -> double {
@@ -1198,7 +1294,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         return static_eval;
     };
 
-    if (ctx.allow_tt) {
+    if (tt_allowed) {
         double tt_value = 0.0;
         if (probe_tt(hv, depth, alpha, beta, tm, tt_value, ctx.thread_safe_tt)) return {tt_value, 1};
     }
@@ -1207,7 +1303,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     if (!valid) {
         if (passed) {
             double v = exact_eval(p, o);
-            if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, v, 1, -1, ctx.thread_safe_tt);
+            if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, v, 1, -1, ctx.thread_safe_tt);
             return {v, 1};
         }
         auto [v, n] = alphabeta(o, p, mvs, depth, -beta, -alpha, true, is_exact, ctx);
@@ -1215,36 +1311,37 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     }
 
     if (depth <= 0) {
+        // Exact mode must stay on pure disc difference; no mobility bias here.
         double v = is_exact ? exact_eval(p, o) : evaluate_board_full(p, o, mvs, *ctx.weights);
-        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, v, 1, -1, ctx.thread_safe_tt);
+        if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, v, 1, -1, ctx.thread_safe_tt);
         return {v, 1};
     }
 
     double pruned_value = 0.0;
     std::int8_t pruned_flag = 0;
     if (try_nn_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx, pruned_value, pruned_flag)) {
-        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
+        if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
         return {pruned_value, 1};
     }
 
     if (try_mpc_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx, pruned_value, pruned_flag)) {
-        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
+        if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
         return {pruned_value, 1};
     }
 
     if (try_reverse_futility_pruning(p, o, mvs, depth, beta, is_exact, ctx)) {
         const double eval = get_static_eval();
-        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, eval, 2, tm, ctx.thread_safe_tt);
+        if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, eval, 2, tm, ctx.thread_safe_tt);
         return {eval, 1};
     }
 
     if (try_futility_pruning(p, o, mvs, depth, alpha, is_exact, ctx)) {
         const double eval = get_static_eval();
-        if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, depth, eval, 3, tm, ctx.thread_safe_tt);
+        if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, eval, 3, tm, ctx.thread_safe_tt);
         return {eval, 1};
     }
 
-    if (try_iid(p, o, mvs, depth, alpha, beta, is_exact, ctx, tm)) {
+    if (try_iid(p, o, mvs, depth, alpha, beta, is_exact, ctx, tm) && tt_allowed) {
         const TTEntry* entry = probe_tt_entry(p, o);
         if (entry) tm = entry->best_move.load();
     }
@@ -1316,9 +1413,139 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
             }
         }
         if (cut_count >= ctx.multi_cut_threshold) {
-            if (!ctx.timed_out && ctx.allow_tt) store_tt(hv, mc_shallow_depth, mc_best, 3, bm, ctx.thread_safe_tt);
+            if (!ctx.timed_out && tt_allowed) store_tt(hv, mc_shallow_depth, mc_best, 3, bm, ctx.thread_safe_tt);
             return {mc_best, nodes};
         }
+    }
+
+    if (is_exact &&
+        depth >= ctx.ybwc_min_depth &&
+        move_count >= 2 &&
+        ctx.ybwc_active_workers != nullptr &&
+        !check_timeout(ctx)) {
+        std::vector<double> ybwc_vals(static_cast<std::size_t>(move_count), -1e18);
+        std::vector<std::int64_t> ybwc_nodes(static_cast<std::size_t>(move_count), 0);
+        auto search_ybwc_child = [&](int i, SearchContext& child_ctx, double alpha_snapshot) {
+            const OrderedMove& move = ordered_moves[static_cast<std::size_t>(i)];
+            Bitboard np = (p | move.bit | move.flip) & FULL_MASK;
+            Bitboard no = (o ^ move.flip) & FULL_MASK;
+            auto res = alphabeta(no, np, mvs + 1, depth - 1, -beta, -alpha_snapshot, false, true, child_ctx);
+            return std::make_pair(-res.first, res.second);
+        };
+
+        auto first_res = search_ybwc_child(0, ctx, alpha);
+        ybwc_vals[0] = first_res.first;
+        ybwc_nodes[0] = first_res.second;
+        max_val = first_res.first;
+        bm = ordered_moves[0].sq;
+        nodes += first_res.second;
+        if (!ctx.timed_out && first_res.first > alpha) {
+            alpha = first_res.first;
+        }
+        if (ctx.timed_out || alpha >= beta) {
+            if (alpha >= beta) {
+                int ply_idx = std::max(0, std::min(63, mvs));
+                if (bm != ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0]) {
+                    ctx.killer_moves[static_cast<std::size_t>(ply_idx)][1] = ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0];
+                    ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0] = bm;
+                }
+                record_history_cutoff(ctx, mvs, bm, depth);
+            }
+            return {max_val, nodes};
+        }
+
+        const int requested_workers = std::min(move_count - 1, ctx.ybwc_max_workers);
+        const int ybwc_worker_count = acquire_ybwc_workers(ctx, requested_workers);
+        if (ybwc_worker_count > 0) {
+            std::atomic<int> next_child{1};
+            std::atomic<double> shared_alpha{alpha};
+            std::atomic<bool> cutoff{false};
+            std::atomic<bool> saw_timeout{false};
+            std::vector<std::thread> ybwc_workers;
+            ybwc_workers.reserve(static_cast<std::size_t>(ybwc_worker_count));
+            for (int worker_id = 0; worker_id < ybwc_worker_count; ++worker_id) {
+                ybwc_workers.emplace_back([&, worker_id]() {
+                    SearchContext local_ctx = ctx;
+                    local_ctx.thread_safe_tt = true;
+                    while (!cutoff.load(std::memory_order_relaxed)) {
+                        const int i = next_child.fetch_add(1, std::memory_order_relaxed);
+                        if (i >= move_count) {
+                            break;
+                        }
+                        if (check_timeout(local_ctx)) {
+                            saw_timeout.store(true, std::memory_order_relaxed);
+                            break;
+                        }
+                        const double alpha_snapshot = shared_alpha.load(std::memory_order_acquire);
+                        if (alpha_snapshot >= beta) {
+                            cutoff.store(true, std::memory_order_relaxed);
+                            break;
+                        }
+                        auto child_res = search_ybwc_child(i, local_ctx, alpha_snapshot);
+                        ybwc_vals[static_cast<std::size_t>(i)] = child_res.first;
+                        ybwc_nodes[static_cast<std::size_t>(i)] = child_res.second;
+                        if (local_ctx.timed_out) {
+                            saw_timeout.store(true, std::memory_order_relaxed);
+                            break;
+                        }
+                        if (child_res.first > alpha_snapshot) {
+                            raise_atomic_double(shared_alpha, child_res.first);
+                            if (child_res.first >= beta) {
+                                cutoff.store(true, std::memory_order_relaxed);
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+            for (auto& worker : ybwc_workers) {
+                worker.join();
+            }
+            release_ybwc_workers(ctx, ybwc_worker_count);
+            if (saw_timeout.load(std::memory_order_relaxed)) {
+                ctx.timed_out = true;
+            }
+        } else {
+            for (int i = 1; i < move_count; ++i) {
+                if (check_timeout(ctx) || alpha >= beta) {
+                    break;
+                }
+                auto child_res = search_ybwc_child(i, ctx, alpha);
+                ybwc_vals[static_cast<std::size_t>(i)] = child_res.first;
+                ybwc_nodes[static_cast<std::size_t>(i)] = child_res.second;
+                if (ctx.timed_out) {
+                    break;
+                }
+                if (child_res.first > alpha) {
+                    alpha = child_res.first;
+                }
+            }
+        }
+
+        nodes = 1;
+        max_val = -1e18;
+        bm = -1;
+        for (int i = 0; i < move_count; ++i) {
+            const auto child_nodes = ybwc_nodes[static_cast<std::size_t>(i)];
+            if (child_nodes <= 0) {
+                continue;
+            }
+            nodes += child_nodes;
+            const double child_val = ybwc_vals[static_cast<std::size_t>(i)];
+            if (child_val > max_val) {
+                max_val = child_val;
+                bm = ordered_moves[static_cast<std::size_t>(i)].sq;
+            }
+        }
+        if (bm >= 0 && max_val >= beta) {
+            int ply_idx = std::max(0, std::min(63, mvs));
+            if (bm != ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0]) {
+                ctx.killer_moves[static_cast<std::size_t>(ply_idx)][1] = ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0];
+                ctx.killer_moves[static_cast<std::size_t>(ply_idx)][0] = bm;
+            }
+            record_history_cutoff(ctx, mvs, bm, depth);
+        }
+        return {max_val, nodes};
     }
 
     for (int i = 0; i < move_count; ++i) {
@@ -1419,7 +1646,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     }
     
     
-    if (!ctx.timed_out && ctx.allow_tt) {
+    if (!ctx.timed_out && tt_allowed) {
         int flag = 1;
         if (max_val >= beta) flag = 2;
         else if (max_val <= oa) flag = 3;
@@ -1430,6 +1657,23 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
 }
 
 std::pair<std::vector<double>, std::vector<std::int64_t>> search_root_parallel_impl(Bitboard p, Bitboard o, int mvs, int depth, bool is_exact, const std::vector<int>& ordered_indices, SearchContext& ctx) {
+    std::atomic<int> ybwc_active_workers{0};
+    struct YbwcScope {
+        SearchContext& ctx;
+        bool owns;
+        std::atomic<int>* previous_active;
+        int previous_max;
+        ~YbwcScope() {
+            if (owns) {
+                ctx.ybwc_active_workers = previous_active;
+                ctx.ybwc_max_workers = previous_max;
+            }
+        }
+    } ybwc_scope{ctx, ctx.ybwc_active_workers == nullptr, ctx.ybwc_active_workers, ctx.ybwc_max_workers};
+    if (ybwc_scope.owns) {
+        ctx.ybwc_active_workers = &ybwc_active_workers;
+        ctx.ybwc_max_workers = std::max(1, hardware_thread_budget() - 1);
+    }
     std::vector<int> root_order = reorder_root_moves(ordered_indices, mvs, ctx);
     auto align_to_requested_order = [&](const std::vector<double>& raw_vals, const std::vector<std::int64_t>& raw_nodes) {
         if (root_order == ordered_indices) {
@@ -1469,6 +1713,9 @@ std::pair<std::vector<double>, std::vector<std::int64_t>> search_root_parallel_i
         return align_to_requested_order(vals, nodes);
     }
     const int worker_count = estimate_root_parallel_lanes(static_cast<int>(root_order.size()), depth, is_exact);
+    if (ybwc_scope.owns) {
+        ctx.ybwc_max_workers = std::max(1, hardware_thread_budget() - worker_count);
+    }
     std::atomic<std::size_t> next_index{0};
     std::atomic<bool> saw_timeout{false};
     std::vector<std::thread> workers;
