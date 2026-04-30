@@ -24,6 +24,7 @@ class StartupSettingsDialog:
         self.time_limit = tk.StringVar(value='5.0') # 秒
         self.player_color = tk.StringVar(value='black')
         self.use_pondering = tk.BooleanVar(value=True)
+        self.exact_threshold = tk.IntVar(value=24) # 読み切り開始しきい値
         
         # 枝刈り・最適化設定
         self.pruning_level = tk.StringVar(value='aggressive') # extreme, aggressive, standard, none
@@ -86,6 +87,7 @@ class StartupSettingsDialog:
                             [('Egaroucid', 'egaroucid'), ('JSON', 'json'), ('なし', 'none')])
         
         self.book_usage_scale = self._add_scale_group(right_col, 'JSON定石採用率 (%)', self.book_usage, 0, 100)
+        self.exact_scale = self._add_scale_group(right_col, '読み切り開始 (空きマス数)', self.exact_threshold, 18, 32)
 
         # エラーメッセージ表示エリア
         self.error_frame = tk.Frame(main_frame, bg='#f8fafc')
@@ -201,6 +203,8 @@ class StartupSettingsDialog:
             'mcts_pruning_time': self.mcts_pruning_time.get(),
             'mcts_pruning_branches': self.mcts_pruning_branches.get(),
             'ab_pruning_time': self.ab_pruning_time.get(),
+            'use_pondering': self.use_pondering.get(),
+            'exact_threshold': self.exact_threshold.get(),
             'multi_cut_threshold': self.multi_cut_threshold.get(),
             'multi_cut_depth': self.multi_cut_depth.get()
         }

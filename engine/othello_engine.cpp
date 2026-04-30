@@ -353,45 +353,50 @@ inline Bitboard get_legal_moves_optimized(Bitboard p, Bitboard o) {
 }
 
 inline Bitboard get_flip_optimized(Bitboard p, Bitboard o, int idx) {
-    const Bitboard mask = 1ULL << idx;
-    const Bitboard occ = p | o;
-    
-    
-    if (occ & mask) return 0;
-    
-    int r = idx / 8;  
-    int c = idx % 8;
+    const Bitboard move = 1ULL << idx;
     Bitboard flips = 0;
-    
-    
-    const int dr[8] = {0, 0, 1, -1, 1, 1, -1, -1};
-    const int dc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
-    
-    for (int dir = 0; dir < 8; ++dir) {
-        int rr = r + dr[dir];
-        int cc = c + dc[dir];
-        Bitboard captured = 0;
-        bool seen_opponent = false;
-        
-        while (0 <= rr && rr < 8 && 0 <= cc && cc < 8) {
-            int nidx = rr * 8 + cc;
-            Bitboard nbit = 1ULL << nidx;
-            
-            if (o & nbit) {
-                seen_opponent = true;
-                captured |= nbit;
-                rr += dr[dir];
-                cc += dc[dir];
-                continue;
-            }
-            
-            if (seen_opponent && (p & nbit)) {
-                flips |= captured;
-            }
-            break;
-        }
-    }
-    
+    Bitboard temp, c;
+
+    // Right (<< 1)
+    temp = move; c = 0;
+    while (((temp = (temp << 1) & 0xFEFEFEFEFEFEFEFEULL) & o)) c |= temp;
+    if (temp & p) flips |= c;
+
+    // Left (>> 1)
+    temp = move; c = 0;
+    while (((temp = (temp >> 1) & 0x7F7F7F7F7F7F7F7FULL) & o)) c |= temp;
+    if (temp & p) flips |= c;
+
+    // Down (<< 8)
+    temp = move; c = 0;
+    while (((temp = (temp << 8) & FULL_MASK) & o)) c |= temp;
+    if (temp & p) flips |= c;
+
+    // Up (>> 8)
+    temp = move; c = 0;
+    while (((temp = (temp >> 8)) & o)) c |= temp;
+    if (temp & p) flips |= c;
+
+    // Down-Right (<< 9)
+    temp = move; c = 0;
+    while (((temp = (temp << 9) & 0xFEFEFEFEFEFEFEFEULL) & o)) c |= temp;
+    if (temp & p) flips |= c;
+
+    // Down-Left (<< 7)
+    temp = move; c = 0;
+    while (((temp = (temp << 7) & 0x7F7F7F7F7F7F7F7FULL) & o)) c |= temp;
+    if (temp & p) flips |= c;
+
+    // Up-Right (>> 7)
+    temp = move; c = 0;
+    while (((temp = (temp >> 7) & 0xFEFEFEFEFEFEFEFEULL) & o)) c |= temp;
+    if (temp & p) flips |= c;
+
+    // Up-Left (>> 9)
+    temp = move; c = 0;
+    while (((temp = (temp >> 9) & 0x7F7F7F7F7F7F7F7FULL) & o)) c |= temp;
+    if (temp & p) flips |= c;
+
     return flips & FULL_MASK;
 }
 
@@ -900,7 +905,7 @@ inline bool try_mpc_pruning(Bitboard p, Bitboard o, int mvs, int depth, double a
 inline bool try_iid(Bitboard p, Bitboard o, int mvs, int depth, double alpha, double beta, bool is_exact, SearchContext& ctx, int& best_move) {
     if (depth >= 6 && best_move == -1) {
         int iid_depth = depth / 2;
-        auto [iid_value, iid_nodes] = alphabeta(p, o, mvs, iid_depth, alpha, beta, false, is_exact, ctx);
+        auto [iid_value, iid_nodes] = alphabeta(p, o, mvs, iid_depth, alpha, beta, false, false, ctx);
         if (!ctx.timed_out) {
             const TTEntry* entry = probe_tt_entry(p, o);
             if (entry && entry->depth.load() >= iid_depth) {
@@ -1070,13 +1075,16 @@ inline bool probe_tt(Bitboard hv, int depth, double alpha, double beta, int& tm,
     for (int i = 0; i < 32; ++i) {
         Bitboard h = table[tx0 + i].hash.load();
         if (h == hv) {
+            // Always extract best_move for ordering, regardless of depth or exactness
+            int stored_move = table[tx0 + i].best_move.load();
+            if (stored_move != -1) tm = stored_move;
+            
             int d = table[tx0 + i].depth.load();
             if (d >= depth) {
                 std::int8_t f = table[tx0 + i].flag.load();
                 double v = table[tx0 + i].value.load();
-                tm = table[tx0 + i].best_move.load();
                 if (f == 1 || (f == 2 && v >= beta) || (f == 3 && v <= alpha)) {
-                    // If we need an exact result but the entry is heuristic, ignore it
+                    // If we need an exact result but the entry is heuristic, ignore the value
                     bool is_exact_entry = (std::abs(v) > 20000.0);
                     if (is_exact && !is_exact_entry) continue;
                     
@@ -1460,15 +1468,15 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         !check_timeout(ctx)) {
         std::vector<double> ybwc_vals(static_cast<std::size_t>(move_count), -1e18);
         std::vector<std::int64_t> ybwc_nodes(static_cast<std::size_t>(move_count), 0);
-        auto search_ybwc_child = [&](int i, SearchContext& child_ctx, double alpha_snapshot) {
+        auto search_ybwc_child = [&](int i, SearchContext& child_ctx, double alpha_snapshot, double beta_snapshot) {
             const OrderedMove& move = ordered_moves[static_cast<std::size_t>(i)];
             Bitboard np = (p | move.bit | move.flip) & FULL_MASK;
             Bitboard no = (o ^ move.flip) & FULL_MASK;
-            auto res = alphabeta(no, np, mvs + 1, depth - 1, -beta, -alpha_snapshot, false, true, child_ctx);
+            auto res = alphabeta(no, np, mvs + 1, depth - 1, -beta_snapshot, -alpha_snapshot, false, is_exact, child_ctx);
             return std::make_pair(-res.first, res.second);
         };
 
-        auto first_res = search_ybwc_child(0, ctx, alpha);
+        auto first_res = search_ybwc_child(0, ctx, alpha, beta);
         ybwc_vals[0] = first_res.first;
         ybwc_nodes[0] = first_res.second;
         max_val = first_res.first;
@@ -1516,7 +1524,15 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
                             cutoff.store(true, std::memory_order_relaxed);
                             break;
                         }
-                        auto child_res = search_ybwc_child(i, local_ctx, alpha_snapshot);
+                        
+                        // Use Null Window Search for younger brothers in parallel
+                        auto child_res = search_ybwc_child(i, local_ctx, alpha_snapshot, alpha_snapshot + 1.0);
+                        
+                        if (!local_ctx.timed_out && child_res.first > alpha_snapshot && child_res.first < beta) {
+                            // Re-search with full window if it fails high
+                            child_res = search_ybwc_child(i, local_ctx, alpha_snapshot, beta);
+                        }
+
                         ybwc_vals[static_cast<std::size_t>(i)] = child_res.first;
                         ybwc_nodes[static_cast<std::size_t>(i)] = child_res.second;
                         if (local_ctx.timed_out) {
@@ -1545,7 +1561,10 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
                 if (check_timeout(ctx) || alpha >= beta) {
                     break;
                 }
-                auto child_res = search_ybwc_child(i, ctx, alpha);
+                auto child_res = search_ybwc_child(i, ctx, alpha, alpha + 1.0);
+                if (!ctx.timed_out && child_res.first > alpha && child_res.first < beta) {
+                    child_res = search_ybwc_child(i, ctx, alpha, beta);
+                }
                 ybwc_vals[static_cast<std::size_t>(i)] = child_res.first;
                 ybwc_nodes[static_cast<std::size_t>(i)] = child_res.second;
                 if (ctx.timed_out) {

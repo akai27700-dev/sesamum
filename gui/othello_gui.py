@@ -469,6 +469,7 @@ class UltimateOthello(OthelloSearchMixin):
         self.mcts_influence_pct = 0 if self.search_mode == 'ab_only' else 100 if self.search_mode == 'mcts_only' else 50
         self.auto_time = settings.get('auto_time', False)
         self.time_limit_sec = settings.get('time_limit', 5.0)
+        self.exact_threshold = settings.get('exact_threshold', 24)
         self.auto_mode_type = 'normal'
         self.use_pondering = settings.get('use_pondering', True)
         self.use_book = settings.get('use_book', True)
@@ -1073,41 +1074,47 @@ class UltimateOthello(OthelloSearchMixin):
                 break
         return (prior_map, primary_move, book_roll_used)
 
+    def get_exact_base_threshold(self):
+        """ユーザー設定またはCPUコア数に応じた読み切り開始のベースしきい値"""
+        if hasattr(self, 'exact_threshold'):
+            return self.exact_threshold
+        try:
+            import multiprocessing
+            cores = multiprocessing.cpu_count()
+            if cores >= 16: return 26
+            elif cores >= 8: return 24
+            return 22
+        except:
+            return 22
+
     def should_start_exact_early(self, aB, oB, empty, legal_count, start_depth=2, time_limit=None):
         base_threshold = int(self.get_exact_base_threshold())
+        if int(empty) <= base_threshold:
+            return True
+            
         time_budget = float(self.time_limit_sec if time_limit is None else time_limit)
-        # 厳格ゲート: legal/empty/time の同時しきい値を満たさない場合は exact に入らない
-        time_gate = 0.15 if self.light_mode else 0.2
+        time_gate = 0.12 if self.light_mode else 0.15
         if time_budget < time_gate:
             return False
-        strict_empty = min(base_threshold, 28 if not self.light_mode else 24)
-        strict_legal = max(4, min(14, 8 + max(0, strict_empty - int(empty)) // 2))
+            
+        # 進行度に応じて許容される合法手数を緩和
+        is_aggressive = base_threshold >= 24
+        strict_empty = min(base_threshold + 6, 32 if is_aggressive else 28)
+        strict_legal = max(6, min(20 if is_aggressive else 16, 12 + (strict_empty - int(empty))))
+        
         if int(empty) > strict_empty or int(legal_count) > strict_legal:
             return False
-        if empty > base_threshold + 8:
-            return False
-        if empty > base_threshold and legal_count >= 18:
-            return False
-        gap_budget = self.get_exact_gap_budget(int(legal_count), time_budget)
-        remaining_gap = max(0, int(empty) - max(2, int(start_depth)))
-        if remaining_gap > gap_budget + 2:
-            return False
+            
         if self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'should_use_early_exact'):
             try:
-                heuristic_exact = bool(cpp_engine.should_use_early_exact(int(aB), int(oB), int(empty), base_threshold))
-                if heuristic_exact and legal_count >= 15 and remaining_gap >= max(5, gap_budget):
-                    return False
-                return heuristic_exact
-            except Exception:
+                if bool(cpp_engine.should_use_early_exact(int(aB), int(oB), int(empty), base_threshold)):
+                    return True
+            except:
                 pass
-        # フォールバック: C++ヒューリスティックが使えない場合のみ簡易判定
-        if empty <= min(32, base_threshold):
-            return True
-        if empty <= base_threshold:
-            threshold = int(max(4, 11 + (base_threshold - empty)))
-            if legal_count <= threshold:
-                return True
-        return False
+                
+        gap_budget = self.get_exact_gap_budget(int(legal_count), time_budget)
+        remaining_gap = max(0, int(empty) - max(2, int(start_depth)))
+        return remaining_gap <= gap_budget + (3 if is_aggressive else 1)
 
     def get_turn_state(self):
         current_player = self.B if self.tn == 1 else self.W
@@ -1210,7 +1217,8 @@ class UltimateOthello(OthelloSearchMixin):
             self.history_heuristic[side_idx][idx] *= 0.997
 
     def update_title(self):
-        t = f'Sesamum - αβ: {max(0.0, min(100.0, self.last_win_rate)):.1f}%'
+        engine_tag = " [C++]" if self.use_cpp_engine and cpp_engine is not None else " [PY]"
+        t = f'Sesamum{engine_tag} - αβ: {max(0.0, min(100.0, self.last_win_rate)):.1f}%'
         if self.use_mcts_enabled and self.last_mcts_win_rate is not None:
             t += f' | MCTS: {max(0.0, min(100.0, self.last_mcts_win_rate)):.1f}%'
         self.rt.title(t)
