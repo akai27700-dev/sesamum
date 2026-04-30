@@ -467,9 +467,15 @@ int exact_negamax_limited(Bitboard p, Bitboard o, int depth, bool passed, int al
         const int disc_diff = count_bits(p) - count_bits(o);
         const int opp_mob = count_bits(get_legal_moves_fast(o, p));
         const int own_mob = count_bits(get_legal_moves_fast(p, o));
-        int eval = disc_diff * 100;
-        eval += (own_mob - opp_mob) * 5;
-        if (opp_mob == 0 && own_mob > 0) eval += 30;
+        
+        // Intelligent Heuristic: Stone Difference + Mobility + Stability
+        int eval = disc_diff * 1000;
+        eval += (own_mob - opp_mob) * 50; 
+        
+        const Bitboard corners = 0x8100000000000081ULL;
+        eval += (count_bits(p & corners) - count_bits(o & corners)) * 300;
+        
+        if (opp_mob == 0 && own_mob > 0) eval += 100; // Strong bonus for wipeout potential
         return eval;
     }
 

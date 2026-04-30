@@ -202,7 +202,9 @@ class OthelloSearchMixin:
             self.log('ponder: all candidates exact, AB-only ponder')
         run_ab_worker = self.use_cpp_engine and cpp_engine is not None and (not self.use_mcts_only or any((candidate['is_exact'] for candidate in candidates)))
         self.ponder_active_token = token
-        self.log('Pondering start')
+        empty_count = 64 - (self.mc() + 4)
+        if empty_count > 32:
+            self.log('Pondering start')
         self.mark_modules_active('PONDER')
         self.mark_connections_active(('PONDER', 'αβ'), ('PONDER', 'MCTS'), ('PONDER', 'TT'))
         if run_mcts_worker and not all_exact:
@@ -318,8 +320,10 @@ class OthelloSearchMixin:
                         curr_ordered = legal_indices
                     empty_count = max(2, int(candidate.get('empty', 60)))
                     depth_cap = self.get_search_depth_cap(empty_count, bool(candidate['is_exact']))
-                    completed_depth = self.clamp_search_depth(cached_entry.get('completed_depth', 2), empty_count, bool(candidate['is_exact']))
-                    depth_start = 2 if completed_depth <= 2 else min(depth_cap, completed_depth + 1)
+                    prev_completed = self.clamp_search_depth(cached_entry.get('completed_depth', 0), empty_count, bool(candidate['is_exact']))
+                    depth_start = max(2, prev_completed + 1)
+                    if depth_start > depth_cap:
+                        continue
                     start_t = time.time()
                     for dp in range(depth_start, depth_cap + 1):
                         if self.should_stop_pondering(current_game_id, ponder_token, ponder_sf):
@@ -348,11 +352,13 @@ class OthelloSearchMixin:
                             best_val = vals[0] if vals else 0.0
                             best_wr = calculate_win_rate(best_val, depth_exact)
                             if dp <= 5 or (dp <= 9 and dp % 3 == 0) or (dp >= 10 and dp % 5 == 0):
-                                move_label = self.format_move_label(candidate['move'])
-                                self.log(f'ponder: αβ[c++] depth={dp:2d}   | best={best_wr:5.1f}%  | time={elapsed:4.1f}s  | nodes={nodes_sum:,} | move=({move_label})')
-                                if len(curr_ordered) > 1:
-                                    moves_str = ' | '.join([f"({self.format_move_label(m)}) {calculate_win_rate(vals[i], depth_exact):5.1f}%" for i, m in enumerate(curr_ordered[:3])])
-                                    self.log(f'  moves: {moves_str}')
+                                # Suppress ponder logs if the position is already resolved or in deep exact solve
+                                if not (depth_exact or abs(best_val) > 5000):
+                                    move_label = self.format_move_label(candidate['move'])
+                                    self.log(f'ponder: αβ[c++] depth={dp:2d}   | best={best_wr:5.1f}%  | time={elapsed:4.1f}s  | nodes={nodes_sum:,} | move=({move_label})')
+                                    if len(curr_ordered) > 1:
+                                        moves_str = ' | '.join([f"({self.format_move_label(m)}) {calculate_win_rate(vals[i], depth_exact):5.1f}%" for i, m in enumerate(curr_ordered[:3])])
+                                        self.log(f'  moves: {moves_str}')
                         except Exception as e:
                             break
                         combined = []
@@ -367,6 +373,7 @@ class OthelloSearchMixin:
                         if combined and (depth_exact or abs(combined[0][1]) > 5000):
                             break
                 round_idx += 1
+                time.sleep(0.01)
         except Exception:
             pass
         finally:

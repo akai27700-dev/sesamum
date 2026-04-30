@@ -485,6 +485,16 @@ class UltimateOthello(OthelloSearchMixin):
         self.multi_cut_enabled = settings.get('multi_cut_enabled', False)
         self.multi_cut_threshold = settings.get('multi_cut_threshold', 3)
         self.multi_cut_depth = settings.get('multi_cut_depth', 8)
+        
+        if self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'set_search_params'):
+            cpp_engine.set_search_params({
+                'pruning_enabled': self.pruning_enabled,
+                'traditional_pruning_enabled': self.traditional_pruning_enabled,
+                'multi_cut_enabled': self.multi_cut_enabled,
+                'multi_cut_threshold': self.multi_cut_threshold,
+                'multi_cut_depth': self.multi_cut_depth,
+                'ybwc_min_depth': 6
+            })
         if not self.use_book:
             self.opening_book_rate = 0.0
         elif book_source == 'json':
@@ -737,17 +747,17 @@ class UltimateOthello(OthelloSearchMixin):
             return min(60, int(self.readout_empty_threshold) + 4)
         base_time = float(self.time_limit_sec)
         if base_time <= 1.0:
-            return 29
+            return 34
         if base_time <= 5.0:
-            return 38
+            return 40
         if base_time <= 10.0:
-            return 42
-        return 46
+            return 44
+        return 48
 
     def get_exact_gap_budget(self, legal_count, time_limit):
-        budget = 10
+        budget = 14
         if time_limit >= 10.0:
-            budget += 6
+            budget += 8
         elif time_limit >= 5.0:
             budget += 5
         elif time_limit >= 2.0:
@@ -945,32 +955,32 @@ class UltimateOthello(OthelloSearchMixin):
         if self.auto_time:
             time_limit = self.time_limit_sec
             if time_limit <= 1.0:
-                base_influence = 68
+                base_influence = 60
             elif time_limit <= 3.0:
-                base_influence = 58
+                base_influence = 50
             elif time_limit <= 10.0:
-                base_influence = 48
-            else:
                 base_influence = 40
-            if empty <= 16:
-                base_influence -= 22
-            elif empty <= 24:
-                base_influence -= 14
-            elif empty <= 32:
-                base_influence -= 8
-            elif empty <= 44:
-                base_influence -= 2
             else:
-                base_influence += 6
-            if mcts_sim_count >= 300000:
-                base_influence += 6
-            elif mcts_sim_count >= 150000:
-                base_influence += 3
-            elif mcts_sim_count < 50000:
+                base_influence = 32
+            if empty <= 16:
                 base_influence -= 18
-            elif mcts_sim_count < 100000:
+            elif empty <= 24:
                 base_influence -= 10
-            return max(10, min(80, base_influence))
+            elif empty <= 32:
+                base_influence -= 5
+            elif empty <= 44:
+                base_influence -= 1
+            else:
+                base_influence += 4
+            if mcts_sim_count >= 300000:
+                base_influence += 5
+            elif mcts_sim_count >= 150000:
+                base_influence += 2
+            elif mcts_sim_count < 50000:
+                base_influence -= 15
+            elif mcts_sim_count < 100000:
+                base_influence -= 8
+            return max(8, min(75, base_influence))
         else:
             return self.mcts_influence_pct
 
@@ -1067,20 +1077,20 @@ class UltimateOthello(OthelloSearchMixin):
         base_threshold = int(self.get_exact_base_threshold())
         time_budget = float(self.time_limit_sec if time_limit is None else time_limit)
         # 厳格ゲート: legal/empty/time の同時しきい値を満たさない場合は exact に入らない
-        time_gate = 0.3 if self.light_mode else 0.4
+        time_gate = 0.15 if self.light_mode else 0.2
         if time_budget < time_gate:
             return False
-        strict_empty = min(base_threshold, 34 if not self.light_mode else 30)
-        strict_legal = max(4, min(12, 8 + max(0, strict_empty - int(empty)) // 2))
+        strict_empty = min(base_threshold, 28 if not self.light_mode else 24)
+        strict_legal = max(4, min(14, 8 + max(0, strict_empty - int(empty)) // 2))
         if int(empty) > strict_empty or int(legal_count) > strict_legal:
             return False
-        if empty > base_threshold + 7:
+        if empty > base_threshold + 8:
             return False
-        if empty > base_threshold and legal_count >= 14:
+        if empty > base_threshold and legal_count >= 18:
             return False
         gap_budget = self.get_exact_gap_budget(int(legal_count), time_budget)
         remaining_gap = max(0, int(empty) - max(2, int(start_depth)))
-        if remaining_gap > gap_budget:
+        if remaining_gap > gap_budget + 2:
             return False
         if self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'should_use_early_exact'):
             try:
@@ -2831,7 +2841,7 @@ class UltimateOthello(OthelloSearchMixin):
                     move_summary = self.format_top_moves([(r[0], r[2]) for r in ds], limit=5)
                     self.log(self.format_log_columns([f'{pr_str}ab[py] depth={dp:2d}', f'best={mx:5.1f}%', f'time={el:4.1f}s', f'nodes={np.sum(nodes)}'], [21, 12, 11, 14]))
                     self.log(f'  moves:  {move_summary}')
-                    if is_exact:
+                    if is_exact or True: # Always update during iterative deepening
                         self.call_on_ui_thread(self.update_gui_from_ai, mx, probs_map, current_game_id)
                         self.call_on_ui_thread(self.push_blend_preview, min(64, mvs + 1), int(combined[0][0]), 1.0, 0.0)
                     completed_depth = dp

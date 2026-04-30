@@ -24,6 +24,14 @@
 namespace py = pybind11;
 
 using Bitboard = std::uint64_t;
+struct GlobalSearchSettings {
+    bool pruning_enabled = true;
+    bool traditional_pruning_enabled = true;
+    bool multi_cut_enabled = true;
+    int multi_cut_threshold = 3;
+    int multi_cut_depth = 8;
+    int ybwc_min_depth = 6;
+} g_search_settings;
 
 namespace {
 
@@ -690,8 +698,27 @@ inline void evaluate_board_full_simd_batch(const Bitboard* p_boards, const Bitbo
         scores[i] = evaluate_board_full(p_boards[i], o_boards[i], mvs_array[i], w);
     }
 }
-inline double exact_eval(Bitboard p, Bitboard o) {
-    return static_cast<double>(count_bits(p) - count_bits(o)) * 10000.0;
+inline double exact_eval(Bitboard p, Bitboard o, int mvs, Bitboard valid) {
+    const int p_count = count_bits(p);
+    const int o_count = count_bits(o);
+    const int diff = p_count - o_count;
+    
+    // Primary: Disc Difference
+    double score = static_cast<double>(diff) * 10000.0;
+    
+    // Secondary: Mobility and Stability (for deeper exact searches that haven't reached the end)
+    const int own_moves = count_bits(valid);
+    const int opp_moves = count_bits(get_legal_moves_optimized(o, p));
+    
+    // Stability/Corners
+    const Bitboard corners = 0x8100000000000081ULL;
+    const int p_corners = count_bits(p & corners);
+    const int o_corners = count_bits(o & corners);
+    
+    score += static_cast<double>(own_moves - opp_moves) * 150.0;
+    score += static_cast<double>(p_corners - o_corners) * 800.0;
+    
+    return score;
 }
 
 struct TTEntry {
@@ -945,7 +972,7 @@ inline void store_tt(Bitboard hv, int depth, double value, std::int8_t flag, int
     std::size_t tx0 = static_cast<std::size_t>(hv % TT_SIZE) * 32;
     std::size_t deep_end = tx0 + 16;
     std::size_t shallow_end = tx0 + 32;
-    std::shared_lock<std::shared_mutex> lock(tt_mutexes()[tt_mutex_index(hv)], std::defer_lock);
+    std::unique_lock<std::shared_mutex> lock(tt_mutexes()[tt_mutex_index(hv)], std::defer_lock);
     if (thread_safe_tt) lock.lock();
     
     TTEntry new_entry{};
@@ -1028,7 +1055,10 @@ std::vector<int> reorder_root_moves(const std::vector<int>& ordered_indices, int
     return reordered;
 }
 
-inline bool probe_tt(Bitboard hv, int depth, double alpha, double beta, int& tm, double& value, bool thread_safe_tt) {
+inline bool probe_tt(Bitboard hv, int depth, double alpha, double beta, int& tm, double& value, bool thread_safe_tt, bool is_exact) {
+    std::shared_lock<std::shared_mutex> lock(tt_mutexes()[tt_mutex_index(hv)], std::defer_lock);
+    if (thread_safe_tt) lock.lock();
+    
     auto& table = tt_table();
     std::size_t tx0 = static_cast<std::size_t>(hv % TT_SIZE) * 32;
     
@@ -1046,6 +1076,10 @@ inline bool probe_tt(Bitboard hv, int depth, double alpha, double beta, int& tm,
                 double v = table[tx0 + i].value.load();
                 tm = table[tx0 + i].best_move.load();
                 if (f == 1 || (f == 2 && v >= beta) || (f == 3 && v <= alpha)) {
+                    // If we need an exact result but the entry is heuristic, ignore it
+                    bool is_exact_entry = (std::abs(v) > 20000.0);
+                    if (is_exact && !is_exact_entry) continue;
+                    
                     value = v;
                     return true;
                 }
@@ -1283,7 +1317,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     Bitboard hv = zobrist_hash(p, o);
     int tm = -1;
     double oa = alpha;
-    const bool tt_allowed = ctx.allow_tt && !is_exact;
+    const bool tt_allowed = ctx.allow_tt;
     bool static_eval_cached = false;
     double static_eval = 0.0;
     auto get_static_eval = [&]() -> double {
@@ -1296,13 +1330,13 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
 
     if (tt_allowed) {
         double tt_value = 0.0;
-        if (probe_tt(hv, depth, alpha, beta, tm, tt_value, ctx.thread_safe_tt)) return {tt_value, 1};
+        if (probe_tt(hv, depth, alpha, beta, tm, tt_value, ctx.thread_safe_tt, is_exact)) return {tt_value, 1};
     }
 
     Bitboard valid = get_legal_moves_optimized(p, o);
     if (!valid) {
         if (passed) {
-            double v = exact_eval(p, o);
+            double v = exact_eval(p, o, mvs, 0ULL);
             if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, v, 1, -1, ctx.thread_safe_tt);
             return {v, 1};
         }
@@ -1311,8 +1345,10 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     }
 
     if (depth <= 0) {
-        // Exact mode must stay on pure disc difference; no mobility bias here.
-        double v = is_exact ? exact_eval(p, o) : evaluate_board_full(p, o, mvs, *ctx.weights);
+        // Only use exact_eval if we are certain to be near the end of the game.
+        // If depth reached 0 but the game isn't over, heuristics are much more reliable.
+        const int empties = 64 - mvs;
+        double v = (is_exact && depth >= empties) ? exact_eval(p, o, mvs, valid) : evaluate_board_full(p, o, mvs, *ctx.weights);
         if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, v, 1, -1, ctx.thread_safe_tt);
         return {v, 1};
     }
@@ -1396,7 +1432,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     // Multi-cut pruning: shallow search of first few moves; if enough exceed beta, cut
     // Disabled in opening (mvs < 20) and endgame (empties <= 20) to avoid tactical misses
     const int empties = 64 - mvs;
-    if (ctx.multi_cut_enabled && !is_exact && depth >= ctx.multi_cut_depth && move_count >= ctx.multi_cut_threshold && mvs >= 20 && empties > 20) {
+    if (ctx.multi_cut_enabled && depth >= ctx.multi_cut_depth && move_count >= ctx.multi_cut_threshold && mvs >= 20 && empties > 20) {
         int cut_count = 0;
         double mc_best = -1e18;
         const int mc_shallow_depth = std::max(2, depth / 3);
@@ -1418,8 +1454,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         }
     }
 
-    if (is_exact &&
-        depth >= ctx.ybwc_min_depth &&
+    if (depth >= g_search_settings.ybwc_min_depth &&
         move_count >= 2 &&
         ctx.ybwc_active_workers != nullptr &&
         !check_timeout(ctx)) {
@@ -1657,6 +1692,11 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
 }
 
 std::pair<std::vector<double>, std::vector<std::int64_t>> search_root_parallel_impl(Bitboard p, Bitboard o, int mvs, int depth, bool is_exact, const std::vector<int>& ordered_indices, SearchContext& ctx) {
+    ctx.multi_cut_enabled = g_search_settings.multi_cut_enabled;
+    ctx.multi_cut_threshold = g_search_settings.multi_cut_threshold;
+    ctx.multi_cut_depth = g_search_settings.multi_cut_depth;
+    ctx.ybwc_min_depth = g_search_settings.ybwc_min_depth;
+
     std::atomic<int> ybwc_active_workers{0};
     struct YbwcScope {
         SearchContext& ctx;
@@ -1695,63 +1735,99 @@ std::pair<std::vector<double>, std::vector<std::int64_t>> search_root_parallel_i
         }
         return std::make_pair(std::move(aligned_vals), std::move(aligned_nodes));
     };
-    std::vector<double> vals(root_order.size(), 0.0);
+
+    std::vector<double> vals(root_order.size(), -1e18);
     std::vector<std::int64_t> nodes(root_order.size(), 0);
-    if (root_order.size() <= 1 || depth < 4) {
-        for (std::size_t i = 0; i < root_order.size(); ++i) {
-            if (check_timeout(ctx)) break;
-            int idx = root_order[i];
-            Bitboard bit = 1ULL << idx;
-            Bitboard f = get_flip_optimized(p, o, idx);
-            Bitboard np = (p | bit | f) & FULL_MASK;
-            Bitboard no = (o ^ f) & FULL_MASK;
-            auto [v, n] = alphabeta(no, np, mvs + 1, depth - 1, -1e18, 1e18, false, is_exact, ctx);
-            if (ctx.timed_out) break;
-            vals[i] = -v;
-            nodes[i] = n;
+
+    const int total_budget = hardware_thread_budget();
+    
+    // 1. PV-First: Parallelized if we have enough budget to avoid idle cores.
+    std::size_t start_idx = 0;
+    if (total_budget <= 4 && root_order.size() > 1 && depth >= 6) {
+        const int idx = root_order[0];
+        Bitboard bit = 1ULL << idx;
+        Bitboard f = get_flip_optimized(p, o, idx);
+        Bitboard np = (p | bit | f) & FULL_MASK;
+        Bitboard no = (o ^ f) & FULL_MASK;
+        auto [v, n] = alphabeta(no, np, mvs + 1, depth - 1, -1e18, 1e18, false, is_exact, ctx);
+        vals[0] = -v;
+        nodes[0] = n;
+        if (ctx.timed_out) return align_to_requested_order(vals, nodes);
+        start_idx = 1;
+    }
+
+    // 2. Parallel Search with Splitting
+    struct Task {
+        std::size_t root_idx;
+        int sub_idx;
+        Bitboard p, o;
+    };
+    std::vector<Task> tasks;
+    for (std::size_t i = start_idx; i < root_order.size(); ++i) {
+        const int idx = root_order[i];
+        Bitboard bit = 1ULL << idx;
+        Bitboard f = get_flip_optimized(p, o, idx);
+        Bitboard np = (p | bit | f) & FULL_MASK;
+        Bitboard no = (o ^ f) & FULL_MASK;
+
+        if ((root_order.size() - start_idx) < static_cast<std::size_t>(total_budget / 2) && depth >= 6) {
+            Bitboard sub_valid = get_legal_moves_optimized(no, np);
+            if (sub_valid) {
+                while (sub_valid) {
+                    Bitboard sub_bit = lsb(sub_valid);
+                    sub_valid ^= sub_bit;
+                    tasks.push_back({i, bit_index(sub_bit), no, np});
+                }
+                continue;
+            }
         }
-        return align_to_requested_order(vals, nodes);
+        tasks.push_back({i, -1, p, o});
     }
-    const int worker_count = estimate_root_parallel_lanes(static_cast<int>(root_order.size()), depth, is_exact);
-    if (ybwc_scope.owns) {
-        ctx.ybwc_max_workers = std::max(1, hardware_thread_budget() - worker_count);
-    }
-    std::atomic<std::size_t> next_index{0};
+
+    std::vector<std::mutex> root_mutexes(root_order.size());
+    std::atomic<std::size_t> next_task{0};
     std::atomic<bool> saw_timeout{false};
     std::vector<std::thread> workers;
-    workers.reserve(static_cast<std::size_t>(worker_count));
-    for (int worker_id = 0; worker_id < worker_count; ++worker_id) {
-        workers.emplace_back([&, worker_id]() {
+    int worker_count = std::min<int>(total_budget, static_cast<int>(tasks.size()));
+    if (worker_count < 1 && !tasks.empty()) worker_count = 1;
+
+    for (int w = 0; w < worker_count; ++w) {
+        workers.emplace_back([&]() {
             SearchContext local_ctx = ctx;
             local_ctx.thread_safe_tt = true;
             while (true) {
-                const std::size_t i = next_index.fetch_add(1, std::memory_order_relaxed);
-                if (i >= root_order.size()) break;
-                if (check_timeout(local_ctx)) {
-                    saw_timeout.store(true, std::memory_order_relaxed);
-                    break;
+                size_t t = next_task.fetch_add(1, std::memory_order_relaxed);
+                if (t >= tasks.size()) break;
+                if (check_timeout(local_ctx)) { saw_timeout.store(true); break; }
+
+                const auto& task = tasks[t];
+                if (task.sub_idx == -1) {
+                    int idx = root_order[task.root_idx];
+                    Bitboard f = get_flip_optimized(p, o, idx);
+                    Bitboard np = (p | (1ULL << idx) | f) & FULL_MASK;
+                    Bitboard no = (o ^ f) & FULL_MASK;
+                    auto [v, n] = alphabeta(no, np, mvs + 1, depth - 1, -1e18, 1e18, false, is_exact, local_ctx);
+                    std::lock_guard<std::mutex> lock(root_mutexes[task.root_idx]);
+                    vals[task.root_idx] = -v;
+                    nodes[task.root_idx] += n;
+                } else {
+                    Bitboard f = get_flip_optimized(task.p, task.o, task.sub_idx);
+                    Bitboard np = (task.p | (1ULL << task.sub_idx) | f) & FULL_MASK;
+                    Bitboard no = (task.o ^ f) & FULL_MASK;
+                    auto [v, n] = alphabeta(no, np, mvs + 2, depth - 2, -1e18, 1e18, false, is_exact, local_ctx);
+                    std::lock_guard<std::mutex> lock(root_mutexes[task.root_idx]);
+                    if (vals[task.root_idx] < -1e17 || v < vals[task.root_idx]) {
+                        vals[task.root_idx] = v;
+                    }
+                    nodes[task.root_idx] += n;
                 }
-                const int idx = root_order[i];
-                Bitboard bit = 1ULL << idx;
-                Bitboard f = get_flip_optimized(p, o, idx);
-                Bitboard np = (p | bit | f) & FULL_MASK;
-                Bitboard no = (o ^ f) & FULL_MASK;
-                auto [v, n] = alphabeta(no, np, mvs + 1, depth - 1, -1e18, 1e18, false, is_exact, local_ctx);
-                vals[i] = -v;
-                nodes[i] = n;
-                if (local_ctx.timed_out) {
-                    saw_timeout.store(true, std::memory_order_relaxed);
-                    break;
-                }
+                if (local_ctx.timed_out) saw_timeout.store(true);
             }
         });
     }
-    for (auto& worker : workers) {
-        worker.join();
-    }
-    if (saw_timeout.load(std::memory_order_relaxed)) {
-        ctx.timed_out = true;
-    }
+
+    for (auto& w : workers) w.join();
+    if (saw_timeout) ctx.timed_out = true;
     return align_to_requested_order(vals, nodes);
 }
 
@@ -1899,23 +1975,23 @@ double calculate_mcts_influence_ratio(int simulation_count, int empty_count, boo
     
     if (is_auto_mode) {
         if (empty_count >= 50) {
-            base_influence = 0.40;
+            base_influence = 0.32;
         } else if (empty_count >= 40) {
-            base_influence = 0.50;
+            base_influence = 0.40;
         } else if (empty_count >= 30) {
-            base_influence = 0.60;
+            base_influence = 0.48;
         } else if (empty_count >= 20) {
-            base_influence = 0.70;
+            base_influence = 0.55;
         } else {
-            base_influence = 0.80;
+            base_influence = 0.65;
         }
         
         if (simulation_count >= 100000) {
-            base_influence = std::min(0.90, base_influence + 0.15);
+            base_influence = std::min(0.85, base_influence + 0.12);
         } else if (simulation_count >= 50000) {
-            base_influence = std::min(0.90, base_influence + 0.10);
+            base_influence = std::min(0.85, base_influence + 0.08);
         } else if (simulation_count >= 20000) {
-            base_influence = std::min(0.90, base_influence + 0.05);
+            base_influence = std::min(0.85, base_influence + 0.04);
         }
     } else {
         if (simulation_count >= 100000) {
@@ -2815,6 +2891,11 @@ IterativeSearchResult get_best_move_ab_impl(Bitboard p, Bitboard o, int mvs, int
     SearchContext ctx;
     ctx.weights = &weights;
     ctx.order_map = &order_map;
+    ctx.multi_cut_enabled = g_search_settings.multi_cut_enabled;
+    ctx.multi_cut_threshold = g_search_settings.multi_cut_threshold;
+    ctx.multi_cut_depth = g_search_settings.multi_cut_depth;
+    ctx.ybwc_min_depth = g_search_settings.ybwc_min_depth;
+
     if (time_limit_ms > 0) {
         ctx.use_deadline = true;
         ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
@@ -2911,7 +2992,7 @@ bool should_use_early_exact(Bitboard p, Bitboard o, int empties, int base_thresh
     if (small_regions > 0) exact_score += 1;
     if (empties <= base_threshold + 3) exact_score += 1;
     if (empties <= base_threshold + 5) exact_score += 1;
-    return exact_score >= (empties <= base_threshold + 3 ? 5 : empties <= base_threshold + 5 ? 6 : 7);
+    return exact_score >= (empties <= base_threshold + 3 ? 4 : empties <= base_threshold + 5 ? 5 : 6);
 }
 
 void clear_tt() {
@@ -2941,7 +3022,7 @@ std::vector<double> benchmark_optimizations(int iterations = 1000) {
         store_tt(zobrist_hash(test_p, test_o), 10, 100.0, 1, 19, false);
         double value;
         int move;
-        probe_tt(zobrist_hash(test_p, test_o), 8, -1000.0, 1000.0, move, value, false);
+        probe_tt(zobrist_hash(test_p, test_o), 8, -1000.0, 1000.0, move, value, false, false);
     }
     auto end = std::chrono::high_resolution_clock::now();
     results[0] = std::chrono::duration<double>(end - start).count();
@@ -3053,6 +3134,15 @@ bool engine_should_use_early_exact(Bitboard p, Bitboard o, int empties, int base
 
 double engine_calculate_win_rate(double ev, bool is_exact) {
     return calculate_win_rate(ev, is_exact);
+}
+
+void engine_set_search_params(const py::dict& params) {
+    if (params.contains("pruning_enabled")) g_search_settings.pruning_enabled = params["pruning_enabled"].cast<bool>();
+    if (params.contains("traditional_pruning_enabled")) g_search_settings.traditional_pruning_enabled = params["traditional_pruning_enabled"].cast<bool>();
+    if (params.contains("multi_cut_enabled")) g_search_settings.multi_cut_enabled = params["multi_cut_enabled"].cast<bool>();
+    if (params.contains("multi_cut_threshold")) g_search_settings.multi_cut_threshold = params["multi_cut_threshold"].cast<int>();
+    if (params.contains("multi_cut_depth")) g_search_settings.multi_cut_depth = params["multi_cut_depth"].cast<int>();
+    if (params.contains("ybwc_min_depth")) g_search_settings.ybwc_min_depth = params["ybwc_min_depth"].cast<int>();
 }
 
 std::tuple<std::vector<double>, std::vector<std::int64_t>, bool> engine_search_root_parallel_layer(
@@ -3318,4 +3408,5 @@ py::dict get_best_move_ab_py(
 PYBIND11_MODULE(othello_engine, m) {
     bind_engine_free_functions(m);
     bind_engine_session_classes(m);
+    m.def("set_search_params", &engine_set_search_params, "Set search parameters for C++ engine");
 }
