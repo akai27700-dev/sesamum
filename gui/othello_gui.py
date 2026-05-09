@@ -472,6 +472,7 @@ class UltimateOthello(OthelloSearchMixin):
         self.exact_threshold = settings.get('exact_threshold', 24)
         self.auto_mode_type = 'normal'
         self.use_pondering = settings.get('use_pondering', True)
+        self.use_tt_resume = settings.get('use_tt', True)
         self.use_book = settings.get('use_book', True)
         book_source = settings.get('book_source', 'egaroucid')
         book_usage_ratio = max(0.0, min(1.0, float(settings.get('book_usage', 85)) / 100.0))
@@ -649,6 +650,7 @@ class UltimateOthello(OthelloSearchMixin):
         time_str = f'max {self.time_limit_sec:g}s'
         mode_str = {'hybrid': 'αβ+MCTS', 'ab_only': 'αβのみ', 'mcts_only': 'MCTSのみ'}.get(self.search_mode, self.search_mode)
         self.log(f"探索設定: TT size={TT_SIZE * 2}, C++={('ON' if self.use_cpp_engine else 'OFF')}, NN={('ON' if self.use_nn else 'OFF')}, モード={mode_str}, book={int(self.opening_book_rate * 100)}%, TT reuse={('ON' if self.use_tt_resume else 'OFF')}, time limit={time_str}, exact solve starts=always-auto, pondering={('ON' if self.use_pondering else 'OFF')}")
+        self.endgame_solver_active = False
         self.rt.title(f'Sesamum')
         self.rt.protocol('WM_DELETE_WINDOW', self.on_close)
         self.rt.bind('<KeyPress-z>', self.on_viewer_step_back)
@@ -774,12 +776,32 @@ class UltimateOthello(OthelloSearchMixin):
         return max(4, budget)
 
     def get_endgame_solver_threshold(self, legal_count, time_limit):
-        threshold = 24
-        if int(legal_count) <= 4:
+        lc = int(legal_count)
+        tl = float(time_limit)
+
+        if tl <= 0.7:
+            threshold = 20
+        elif tl <= 1.5:
+            threshold = 21
+        elif tl <= 3.0:
+            threshold = 22
+        elif tl <= 7.0:
+            threshold = 23
+        elif tl <= 15.0:
+            threshold = 24
+        else:
+            threshold = 25
+
+        if lc <= 4:
+            threshold += 2
+        elif lc <= 7:
             threshold += 1
-        elif int(legal_count) >= 14:
+        elif lc >= 18:
+            threshold -= 2
+        elif lc >= 14:
             threshold -= 1
-        return max(20, min(25, threshold))
+
+        return max(18, min(26, threshold))
 
     def get_endgame_solver_time_limit_ms(self, empty, legal_count, time_limit):
         base_ms = float(time_limit) * 1000.0
@@ -1221,6 +1243,8 @@ class UltimateOthello(OthelloSearchMixin):
         t = f'Sesamum{engine_tag} - αβ: {max(0.0, min(100.0, self.last_win_rate)):.1f}%'
         if self.use_mcts_enabled and self.last_mcts_win_rate is not None:
             t += f' | MCTS: {max(0.0, min(100.0, self.last_mcts_win_rate)):.1f}%'
+        if getattr(self, 'endgame_solver_active', False):
+            t += ' [endgame_solver]'
         self.rt.title(t)
 
     def on_toggle_mcts(self):
@@ -1297,6 +1321,38 @@ class UltimateOthello(OthelloSearchMixin):
             self.log_text.config(state='disabled')
         except Exception:
             pass
+
+    def upsert_log_line(self, key, message):
+        if self.log_text is None or not hasattr(self, 'log_text'):
+            return
+        try:
+            if not hasattr(self, '_log_line_marks'):
+                self._log_line_marks = {}
+            mark = self._log_line_marks.get(key)
+            self.log_text.config(state='normal')
+            if mark:
+                line_start = f'{mark} linestart'
+                line_end = f'{mark} lineend'
+                self.log_text.delete(line_start, line_end)
+                self.log_text.insert(line_start, message)
+                self.log_text.mark_set(mark, line_start)
+            else:
+                mark = f'log_line_{len(self._log_line_marks)}'
+                line_start = self.log_text.index('end-1c')
+                self.log_text.insert('end', message + '\n')
+                self.log_text.mark_set(mark, line_start)
+                self.log_text.mark_gravity(mark, 'left')
+                self._log_line_marks[key] = mark
+            self.log_text.see('end')
+            self.log_text.config(state='disabled')
+        except Exception:
+            pass
+
+    def log_update_line(self, key, message, mirror=False):
+        if mirror:
+            print(message, flush=True)
+        if hasattr(self, 'log_text'):
+            self.call_on_ui_thread(self.upsert_log_line, key, message)
 
     def log(self, message, mirror=True):
         if mirror:
@@ -2370,9 +2426,11 @@ class UltimateOthello(OthelloSearchMixin):
                 return
             initial_time_limit = self.get_auto_time_limit(empty, initial_legal_count, mvs)
             solver_threshold = self.get_endgame_solver_threshold(initial_legal_count, initial_time_limit)
-            solver_time_limit_ms = 0  # no time limit for endgame solver
+            solver_time_limit_ms = self.get_endgame_solver_time_limit_ms(empty, initial_legal_count, initial_time_limit)
             if empty <= solver_threshold and ENDGAME_SOLVER_AVAILABLE and (not is_quick_mode):
-                self.log(f'endgame: C++ solver activated (empties={empty})')
+                self.log(f'endgame: C++ solver activated (empties={empty}, tl={solver_time_limit_ms}ms)')
+                self.endgame_solver_active = True
+                self.call_on_ui_thread(self.update_title)
                 start_time = time.time()
                 try:
                     current_player = int(acting_side)
@@ -2416,6 +2474,9 @@ class UltimateOthello(OthelloSearchMixin):
                         self.log('endgame: no valid moves found, falling back to normal search')
                 except Exception as e:
                     self.log(f'endgame: solver error ({e}), falling back to normal search')
+                finally:
+                    self.endgame_solver_active = False
+                    self.call_on_ui_thread(self.update_title)
             book_move = None
             book_roll_used = False
             prior_map = {}

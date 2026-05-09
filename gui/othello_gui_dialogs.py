@@ -6,7 +6,7 @@ class StartupSettingsDialog:
         self.result = None
         self.top = tk.Toplevel(parent)
         self.top.title('Sesamum')
-        self.top.transient(parent)
+        # self.top.transient(parent)
         self.top.grab_set()
         self.top.resizable(False, False)
         self.cpp_available = cpp_available
@@ -116,10 +116,12 @@ class StartupSettingsDialog:
 
         # ダイアログ表示
         self.top.protocol('WM_DELETE_WINDOW', self.on_ok)
+        parent.update()
         self.top.update_idletasks()
-        x = parent.winfo_rootx() + max(0, (parent.winfo_width() - self.top.winfo_width()) // 2)
-        y = parent.winfo_rooty() + max(0, (parent.winfo_height() - self.top.winfo_height()) // 2)
-        self.top.geometry(f'+{x}+{y}')
+        self.top.deiconify()
+        # x = parent.winfo_rootx() + max(0, (parent.winfo_width() - self.top.winfo_width()) // 2)
+        # y = parent.winfo_rooty() + max(0, (parent.winfo_height() - self.top.winfo_height()) // 2)
+        # self.top.geometry(f'+{x}+{y}')
         self.top.wait_window()
 
     def _add_radio_pair(self, parent, label, variable, options, state='normal'):

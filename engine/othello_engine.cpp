@@ -843,6 +843,7 @@ struct SearchContext {
     bool thread_safe_tt = false;
     bool nn_enabled = false;  
     bool multi_cut_enabled = false;
+    bool multi_cut_override = false;
     int multi_cut_threshold = 3;
     int multi_cut_depth = 8;
     std::atomic<int>* ybwc_active_workers = nullptr;
@@ -1363,29 +1364,33 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
 
     double pruned_value = 0.0;
     std::int8_t pruned_flag = 0;
-    if (try_nn_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx, pruned_value, pruned_flag)) {
-        if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
-        return {pruned_value, 1};
+    const bool selective_pruning_enabled =
+        g_search_settings.pruning_enabled && g_search_settings.traditional_pruning_enabled;
+    if (selective_pruning_enabled) {
+        if (try_nn_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx, pruned_value, pruned_flag)) {
+            if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
+            return {pruned_value, 1};
+        }
+
+        if (try_mpc_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx, pruned_value, pruned_flag)) {
+            if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
+            return {pruned_value, 1};
+        }
+
+        if (try_reverse_futility_pruning(p, o, mvs, depth, beta, is_exact, ctx)) {
+            const double eval = get_static_eval();
+            if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, eval, 2, tm, ctx.thread_safe_tt);
+            return {eval, 1};
+        }
+
+        if (try_futility_pruning(p, o, mvs, depth, alpha, is_exact, ctx)) {
+            const double eval = get_static_eval();
+            if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, eval, 3, tm, ctx.thread_safe_tt);
+            return {eval, 1};
+        }
     }
 
-    if (try_mpc_pruning(p, o, mvs, depth, alpha, beta, is_exact, ctx, pruned_value, pruned_flag)) {
-        if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, pruned_value, pruned_flag, tm, ctx.thread_safe_tt);
-        return {pruned_value, 1};
-    }
-
-    if (try_reverse_futility_pruning(p, o, mvs, depth, beta, is_exact, ctx)) {
-        const double eval = get_static_eval();
-        if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, eval, 2, tm, ctx.thread_safe_tt);
-        return {eval, 1};
-    }
-
-    if (try_futility_pruning(p, o, mvs, depth, alpha, is_exact, ctx)) {
-        const double eval = get_static_eval();
-        if (!ctx.timed_out && tt_allowed) store_tt(hv, depth, eval, 3, tm, ctx.thread_safe_tt);
-        return {eval, 1};
-    }
-
-    if (try_iid(p, o, mvs, depth, alpha, beta, is_exact, ctx, tm) && tt_allowed) {
+    if (selective_pruning_enabled && try_iid(p, o, mvs, depth, alpha, beta, is_exact, ctx, tm) && tt_allowed) {
         const TTEntry* entry = probe_tt_entry(p, o);
         if (entry) tm = entry->best_move.load();
     }
@@ -1428,7 +1433,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         std::sort(ordered_moves.begin(), ordered_moves.begin() + move_count,
                   [](const OrderedMove& a, const OrderedMove& b) { return a.score > b.score; });
     }
-    const std::size_t late_move_pruning_start = !is_exact
+    const std::size_t late_move_pruning_start = (!is_exact && selective_pruning_enabled)
         ? compute_late_move_pruning_start(depth, static_cast<std::size_t>(move_count), position_complexity)
         : 0;
 
@@ -1440,7 +1445,7 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     // Multi-cut pruning: shallow search of first few moves; if enough exceed beta, cut
     // Disabled in opening (mvs < 20) and endgame (empties <= 20) to avoid tactical misses
     const int empties = 64 - mvs;
-    if (ctx.multi_cut_enabled && depth >= ctx.multi_cut_depth && move_count >= ctx.multi_cut_threshold && mvs >= 20 && empties > 20) {
+    if (g_search_settings.pruning_enabled && ctx.multi_cut_enabled && depth >= ctx.multi_cut_depth && move_count >= ctx.multi_cut_threshold && mvs >= 20 && empties > 20) {
         int cut_count = 0;
         double mc_best = -1e18;
         const int mc_shallow_depth = std::max(2, depth / 3);
@@ -1616,7 +1621,8 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         const double score_gap = i > 0 ? std::max(0.0, ordered_moves[static_cast<std::size_t>(i - 1)].score - move.score) : 0.0;
         const int flip_count = move.flip_count;
 
-        if (!is_exact &&
+        if (selective_pruning_enabled &&
+            !is_exact &&
             depth <= 3 &&
             i > 0 &&
             static_cast<std::size_t>(i) >= late_move_pruning_start &&
@@ -1629,7 +1635,8 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         }
 
         int reduction = 0;
-        if (!is_exact &&
+        if (selective_pruning_enabled &&
+            !is_exact &&
             depth >= 4 &&
             i >= 2 &&
             move_count >= 4 &&
@@ -1711,9 +1718,12 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
 }
 
 std::pair<std::vector<double>, std::vector<std::int64_t>> search_root_parallel_impl(Bitboard p, Bitboard o, int mvs, int depth, bool is_exact, const std::vector<int>& ordered_indices, SearchContext& ctx) {
-    ctx.multi_cut_enabled = g_search_settings.multi_cut_enabled;
-    ctx.multi_cut_threshold = g_search_settings.multi_cut_threshold;
-    ctx.multi_cut_depth = g_search_settings.multi_cut_depth;
+    if (!ctx.multi_cut_override) {
+        ctx.multi_cut_enabled = g_search_settings.multi_cut_enabled;
+        ctx.multi_cut_threshold = g_search_settings.multi_cut_threshold;
+        ctx.multi_cut_depth = g_search_settings.multi_cut_depth;
+    }
+    ctx.multi_cut_enabled = ctx.multi_cut_enabled && g_search_settings.pruning_enabled;
     ctx.ybwc_min_depth = g_search_settings.ybwc_min_depth;
 
     std::atomic<int> ybwc_active_workers{0};
@@ -2672,6 +2682,7 @@ public:
                     ctx.weights = &require_global_weights();
                     ctx.order_map = &require_global_order_map();
                     ctx.multi_cut_enabled = multi_cut_enabled;
+                    ctx.multi_cut_override = true;
                     ctx.multi_cut_threshold = multi_cut_threshold;
                     ctx.multi_cut_depth = multi_cut_depth;
                     if (have_root_policy) {
@@ -3178,6 +3189,9 @@ std::tuple<std::vector<double>, std::vector<std::int64_t>, bool> engine_search_r
     ctx.weights = &require_global_weights();
     ctx.order_map = &require_global_order_map();
     ctx.root_policy = root_policy;
+    ctx.multi_cut_enabled = g_search_settings.multi_cut_enabled;
+    ctx.multi_cut_threshold = g_search_settings.multi_cut_threshold;
+    ctx.multi_cut_depth = g_search_settings.multi_cut_depth;
     if (time_limit_ms > 0) {
         ctx.use_deadline = true;
         ctx.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);

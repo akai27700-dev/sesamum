@@ -67,12 +67,16 @@ class ONNXInference:
             sess_options=sess_opts
         )
         
+        applied_providers = self.session.get_providers()
+        if self.use_gpu and 'CUDAExecutionProvider' not in applied_providers:
+            raise RuntimeError("ONNX Runtime failed to initialize CUDAExecutionProvider. This usually means your CUDA version is incompatible with the installed onnxruntime-gpu.")
+            
         # 入出力名を取得
         self.input_name = self.session.get_inputs()[0].name
         self.output_names = [output.name for output in self.session.get_outputs()]
         
         print(f"ONNX model loaded: {self.model_path}")
-        print(f"Providers: {self.session.get_providers()}")
+        print(f"Providers: {applied_providers}")
     
     def infer_batch(self, input_batch: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """

@@ -68,21 +68,13 @@ import multiprocessing
 
 def get_optimal_thread_count():
     """PCスペックに応じた最適なスレッド数を返す（Egaroucid寄せ）"""
-    import wmi
     import psutil
     
     cpu_count = multiprocessing.cpu_count()
     
-    # 物理コア数と論理コア数を取得
-    try:
-        c = wmi.WMI()
-        cpu_info = c.Win32_Processor()[0]
-        physical_cores = cpu_info.NumberOfCores
-        logical_cores = cpu_info.NumberOfLogicalProcessors
-    except:
-        # WMIが使えない場合はpsutilで推定
-        physical_cores = psutil.cpu_count(logical=False) or cpu_count // 2
-        logical_cores = cpu_count
+    # WMIを使用すると特定の環境でハングするためpsutilのみを使用
+    physical_cores = psutil.cpu_count(logical=False) or cpu_count // 2
+    logical_cores = cpu_count
     
     # Egaroucid寄せ: 基本は論理コア数、ただし上限を設ける（GUI想定=32）
     thread_cap = 32
@@ -225,16 +217,9 @@ def print_system_info():
     cpu_freq = psutil.cpu_freq()
     
     # より詳細なCPU情報を取得
-    try:
-        import wmi
-        c = wmi.WMI()
-        cpu_info = c.Win32_Processor()[0]
-        cpu_name = cpu_info.Name.strip()
-    except:
-        # WMIが使えない場合はpsutilの情報を使用
-        cpu_name = platform.processor() or "Unknown CPU"
-        if "Family" in cpu_name and "Model" in cpu_name:
-            cpu_name = "Unknown CPU (see system properties)"
+    cpu_name = platform.processor() or "Unknown CPU"
+    if "Family" in cpu_name and "Model" in cpu_name:
+        cpu_name = "Unknown CPU (see system properties)"
     
     print(f"\nCPU:")
     print(f"  Model: {cpu_name}")

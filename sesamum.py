@@ -15,5 +15,7 @@ except ImportError:
 from gui.othello_gui import UltimateOthello
 if __name__ == '__main__':
     r = tk.Tk()
+    r.update()
+    r.deiconify()
     app = UltimateOthello(r)
     r.mainloop()

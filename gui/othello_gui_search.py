@@ -121,7 +121,7 @@ class OthelloSearchMixin:
                     root_policy_vector = [0.0] * 64
             candidates.append({'move': move, 'human_after': human_after, 'ai_after': ai_after, 'score': total_score, 'αβ': aB, 'oB': oB, 'legal_indices': legal_indices, 'mvs': mvs, 'empty': empty, 'is_exact': is_exact, 'root_policy_vector': root_policy_vector, 'cache_key': self.make_state_key(aB, oB, self.ac)})
         candidates.sort(key=lambda x: -x['score'])
-        return candidates[:3]
+        return candidates[:5]
 
     def merge_ponder_cache_entry(self, cache_key, ordered_moves=None, completed_depth=None, mcts_res=None, best_mcts_wr=None, root_visits=None, mcts_sim_count=None):
         with self.ponder_lock:
@@ -348,23 +348,29 @@ class OthelloSearchMixin:
                                 nodes_sum = sum((int(n) for n in nodes_raw))
                             else:
                                 nodes_sum = int(nodes_raw)
-                            best_move = curr_ordered[0] if curr_ordered else -1
-                            best_val = vals[0] if vals else 0.0
-                            best_wr = calculate_win_rate(best_val, depth_exact)
-                            if dp <= 5 or (dp <= 9 and dp % 3 == 0) or (dp >= 10 and dp % 5 == 0):
+                            combined = []
+                            for i, move in enumerate(curr_ordered):
+                                combined.append((int(move), float(vals[i]), calculate_win_rate(float(vals[i]), depth_exact)))
+                            combined.sort(key=lambda x: x[2], reverse=True)
+                            best_val = combined[0][1] if combined else 0.0
+                            best_wr = combined[0][2] if combined else 50.0
+                            if combined:
                                 # Suppress ponder logs if the position is already resolved or in deep exact solve
                                 if not (depth_exact or abs(best_val) > 5000):
-                                    move_label = self.format_move_label(candidate['move'])
-                                    self.log(f'ponder: αβ[c++] depth={dp:2d}   | best={best_wr:5.1f}%  | time={elapsed:4.1f}s  | nodes={nodes_sum:,} | move=({move_label})')
-                                    if len(curr_ordered) > 1:
-                                        moves_str = ' | '.join([f"({self.format_move_label(m)}) {calculate_win_rate(vals[i], depth_exact):5.1f}%" for i, m in enumerate(curr_ordered[:3])])
-                                        self.log(f'  moves: {moves_str}')
+                                    root_move = int(candidate['move'])
+                                    reply_move = int(combined[0][0])
+                                    line_key = f'ponder_ab_{ponder_token}_{root_move}'
+                                    line = self.format_log_columns([
+                                        f'ponder {self.format_move_label(root_move)}',
+                                        f'depth={dp:2d}',
+                                        f'eval={best_wr:5.1f}%',
+                                        f'reply={self.format_move_label(reply_move)}',
+                                        f'time={elapsed:4.1f}s',
+                                        f'nodes={nodes_sum:,}'
+                                    ], [14, 8, 11, 13, 11, 14])
+                                    self.log_update_line(line_key, line)
                         except Exception as e:
                             break
-                        combined = []
-                        for i, move in enumerate(curr_ordered):
-                            combined.append((int(move), float(vals[i]), calculate_win_rate(float(vals[i]), depth_exact)))
-                        combined.sort(key=lambda x: x[2], reverse=True)
                         curr_ordered = [x[0] for x in combined]
                         completed_depth = dp
                         self.merge_ponder_cache_entry(candidate['cache_key'], ordered_moves=curr_ordered, completed_depth=completed_depth)
