@@ -123,11 +123,11 @@ class OthelloSearchMixin:
         candidates.sort(key=lambda x: -x['score'])
         return candidates[:5]
 
-    def merge_ponder_cache_entry(self, cache_key, ordered_moves=None, completed_depth=None, mcts_res=None, best_mcts_wr=None, root_visits=None, mcts_sim_count=None):
+    def merge_ponder_cache_entry(self, cache_key, ordered_moves=None, completed_depth=None, mcts_res=None, best_mcts_wr=None, root_visits=None, mcts_sim_count=None, ab_res=None, best_ab_wr=None):
         with self.ponder_lock:
             entry = self.ponder_cache.get(cache_key)
             if entry is None:
-                entry = {'ordered_moves': [], 'completed_depth': 2, 'mcts_res': {}, 'best_mcts_wr': 50.0, 'root_visits': {}, 'mcts_sim_count': 0}
+                entry = {'ordered_moves': [], 'completed_depth': 2, 'mcts_res': {}, 'best_mcts_wr': 50.0, 'root_visits': {}, 'mcts_sim_count': 0, 'ab_res': {}, 'best_ab_wr': 50.0}
             if ordered_moves:
                 entry['ordered_moves'] = list(ordered_moves)
             if completed_depth is not None:
@@ -140,7 +140,18 @@ class OthelloSearchMixin:
                     entry['best_mcts_wr'] = float(best_mcts_wr if best_mcts_wr is not None else entry.get('best_mcts_wr', 50.0))
                     entry['root_visits'] = dict(root_visits or {})
                     entry['mcts_sim_count'] = int(mcts_sim_count if mcts_sim_count is not None else previous_sim_count)
+            if ab_res or best_ab_wr is not None:
+                if ab_res:
+                    entry['ab_res'] = dict(ab_res)
+                if best_ab_wr is not None:
+                    entry['best_ab_wr'] = float(best_ab_wr)
+                    # MCTSがない場合はbest_mcts_wr（汎用表示用）も更新しておく
+                    if not entry.get('mcts_res'):
+                        entry['best_mcts_wr'] = float(best_ab_wr)
             self.ponder_cache[cache_key] = entry
+        # Ponder中の経過をリアルタイムに盤面に反映
+        if hasattr(self, 'drw'):
+            self.call_on_ui_thread(self.drw)
 
     def stop_pondering_explicitly(self):
         """明示的にponderingを停止（exact solve時などに使用）"""
@@ -232,7 +243,7 @@ class OthelloSearchMixin:
                 cycle_budget = max(1.2, self.time_limit_sec * (0.55 if self.light_mode else 0.85))
                 cycle_budget = min(5.0, cycle_budget)
                 warm_slice = 0.22 if self.light_mode else min(0.55, max(0.25, self.time_limit_sec * 0.06))
-            candidate_weights = (0.62, 0.25, 0.13)
+            candidate_weights = (0.50, 0.25, 0.12, 0.08, 0.05)
             warm_rounds = 3 if self.time_limit_sec >= 10.0 else 2 if self.time_limit_sec >= 5.0 else 1
             round_idx = 0
             max_rounds = 100  # Prevent infinite loop
@@ -270,9 +281,19 @@ class OthelloSearchMixin:
                         cached_best_mcts_wr = 50.0
                         cached_root_visits = {}
                         cached_mcts_sim_count = 0
-                    if cached_mcts_res:
                         curr_ordered = sorted(curr_ordered, key=lambda move: cached_mcts_res.get(move, 50.0), reverse=True)
                         self.merge_ponder_cache_entry(candidate['cache_key'], ordered_moves=curr_ordered, mcts_res=cached_mcts_res, best_mcts_wr=cached_best_mcts_wr, root_visits=cached_root_visits, mcts_sim_count=cached_mcts_sim_count)
+                
+                # 優先探索: 1ラウンドごとに候補を再ソート
+                with self.ponder_lock:
+                    for c in candidates:
+                        entry = self.ponder_cache.get(c['cache_key'])
+                        if entry:
+                            c['p_wr'] = entry.get('best_mcts_wr', 50.0)
+                        else:
+                            c['p_wr'] = 0.0
+                    candidates.sort(key=lambda x: x.get('p_wr', 0.0), reverse=True)
+                
                 round_idx += 1
         except Exception:
             pass
@@ -291,7 +312,7 @@ class OthelloSearchMixin:
                 cycle_budget = max(2.0, self.time_limit_sec * 1.05)
                 cycle_budget = min(8.0, cycle_budget)
                 warm_slice = min(0.55, max(0.18, self.time_limit_sec * 0.04))
-            candidate_weights = (0.60, 0.25, 0.15)
+            candidate_weights = (0.50, 0.25, 0.12, 0.08, 0.05)
             warm_rounds = 3 if self.time_limit_sec >= 10.0 else 2 if self.time_limit_sec >= 5.0 else 1
             round_idx = 0
             max_rounds = 100  # Prevent infinite loop
@@ -373,11 +394,24 @@ class OthelloSearchMixin:
                             break
                         curr_ordered = [x[0] for x in combined]
                         completed_depth = dp
-                        self.merge_ponder_cache_entry(candidate['cache_key'], ordered_moves=curr_ordered, completed_depth=completed_depth)
+                        ab_map = {m: wr for m, v, wr in combined}
+                        self.merge_ponder_cache_entry(candidate['cache_key'], ordered_moves=curr_ordered, completed_depth=completed_depth, ab_res=ab_map, best_ab_wr=best_wr)
                         if timed_out:
                             break
                         if combined and (depth_exact or abs(combined[0][1]) > 5000):
                             break
+                
+                # 優先探索: 1ラウンドごとに候補を再ソート
+                with self.ponder_lock:
+                    for c in candidates:
+                        entry = self.ponder_cache.get(c['cache_key'])
+                        if entry:
+                            # AB勝率またはMCTS勝率のより良い方を採用
+                            c['p_wr_ab'] = entry.get('best_ab_wr', entry.get('best_mcts_wr', 50.0))
+                        else:
+                            c['p_wr_ab'] = 0.0
+                    candidates.sort(key=lambda x: x.get('p_wr_ab', 0.0), reverse=True)
+                
                 round_idx += 1
                 time.sleep(0.01)
         except Exception:
@@ -406,20 +440,20 @@ class OthelloSearchMixin:
             return 192 if time_limit <= 0.5 else 384
         if DEVICE_STR == 'cuda':
             if time_limit <= 0.5:
-                return 1024
+                return 1536
             if time_limit <= 1.0:
-                return 2048
+                return 3072
             if time_limit <= 2.0:
-                return 4096
+                return 6144
             if time_limit <= 3.0:
-                return 8192
+                return 12288
             if time_limit >= 15.0:
-                return 65536
+                return 98304
             if time_limit >= 10.0:
-                return 49152
+                return 73728
             if time_limit >= 5.0:
-                return 32768
-            return 16384
+                return 49152
+            return 24576
         if time_limit <= 0.5:
             return 96
         if time_limit <= 1.0:
@@ -508,7 +542,8 @@ class OthelloSearchMixin:
 
         if use_mcts_enabled:
             if pruning_mode:
-                self.log(self.format_log_columns(['mcts: pruning start', f'pre-time={self.mcts_pruning_time:.1f}s', f'branches={self.mcts_pruning_branches}'], [18, 16, 14]))
+                mcts_time_limit = self.get_auto_mcts_pruning_time(float(time_limit))
+                self.log(self.format_log_columns(['mcts: pruning start', f'pre-time={mcts_time_limit:.1f}s', f'branches={self.mcts_pruning_branches}'], [18, 16, 14]))
             else:
                 self.log(self.format_log_columns(['mcts: start', f'batch={self._get_live_mcts_batch_size(time_limit)}', f'limit={time_limit:.1f}s'], [11, 15, 12]))
             self.mark_modules_active('MCTS', 'NN-IN', 'TRUNK', 'POLICY', 'VALUE')
@@ -532,7 +567,7 @@ class OthelloSearchMixin:
             ab_budget_ms = int(float(search_profile['ab_budget']) * 1000)
         max_depth = int(search_profile.get('max_depth', 60))
         if pruning_mode:
-            mcts_time_limit = max(0.05, min(float(self.mcts_pruning_time), float(time_limit)))
+            # mcts_time_limit is already calculated above
             mcts_session = cpp_engine.SearchSession()
             mcts_result = mcts_session.run(
                 int(aB), int(oB), int(self.tn), int(mvs), int(max(start_dp, 2)), False,
@@ -556,7 +591,7 @@ class OthelloSearchMixin:
                 root_visits = {move: root_visits.get(move, 0) for move in pruned_rms}
                 self.log(self.format_log_columns(['mcts: pruning applied', f'top moves={len(pruned_rms)}', f'best={best_mcts_wr:.1f}%'], [20, 13, 12]))
             remaining_time = max(0.05, float(time_limit) - mcts_time_limit)
-            ab_time_limit = max(0.05, min(float(self.ab_pruning_time), remaining_time))
+            ab_time_limit = remaining_time # use all remaining time for AB pruning phase
             self.log(self.format_log_columns(['ab: delay for MCTS', f'wait={mcts_time_limit:.1f}s'], [18, 13]))
             ab_session = cpp_engine.SearchSession()
             ab_result = ab_session.run(

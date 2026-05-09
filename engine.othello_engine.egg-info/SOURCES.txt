@@ -1,0 +1,12 @@
+README.md
+setup.py
+engine/endgame_solver.cpp
+engine/othello_core_cpp.cpp
+engine/othello_engine.cpp
+engine/othello_engine_bindings.cpp
+engine/othello_engine_session.cpp
+engine.othello_engine.egg-info/PKG-INFO
+engine.othello_engine.egg-info/SOURCES.txt
+engine.othello_engine.egg-info/dependency_links.txt
+engine.othello_engine.egg-info/not-zip-safe
+engine.othello_engine.egg-info/top_level.txt

@@ -90,78 +90,67 @@ extern "C" void engine_set_openmp_threads(int32_t thread_count) {
 
 
 extern "C" uint64_t get_legal_moves_cpp(uint64_t P, uint64_t O) {
-    uint64_t occ = (P | O) & FULL_MASK;
+    const uint64_t occ = P | O;
+    const uint64_t empty = ~occ & FULL_MASK;
+    const uint64_t m = NOT_A_FILE & NOT_H_FILE;
     uint64_t legal = 0;
     
-    for (int32_t idx = 0; idx < 64; idx++) {
-        uint64_t bit = 1ULL << idx;
-        if (occ & bit) continue;
-        
-        int32_t r = idx / 8;
-        int32_t c = idx % 8;
-        bool found = false;
-        
-        const int32_t dr[8] = {0, 0, 1, -1, 1, 1, -1, -1};
-        const int32_t dc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
-        
-        for (int32_t d = 0; d < 8 && !found; d++) {
-            int32_t rr = r + dr[d];
-            int32_t cc = c + dc[d];
-            bool seen_opponent = false;
-            
-            while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
-                int32_t nidx = rr * 8 + cc;
-                uint64_t nbit = 1ULL << nidx;
-                
-                if (O & nbit) {
-                    seen_opponent = true;
-                    rr += dr[d];
-                    cc += dc[d];
-                    continue;
-                }
-                if (seen_opponent && (P & nbit)) {
-                    found = true;
-                }
-                break;
-            }
-        }
-        if (found) legal |= bit;
-    }
+    uint64_t t;
+#define DIR(SHIFT, MASK) \
+    t = (P SHIFT) & O & (MASK); \
+    t |= (t SHIFT) & O & (MASK); t |= (t SHIFT) & O & (MASK); \
+    t |= (t SHIFT) & O & (MASK); t |= (t SHIFT) & O & (MASK); \
+    t |= (t SHIFT) & O & (MASK); \
+    legal |= (t SHIFT) & empty & (MASK);
+
+    DIR(<< 1, NOT_A_FILE) DIR(>> 1, NOT_H_FILE)
+    DIR(<< 8, FULL_MASK)  DIR(>> 8, FULL_MASK)
+    DIR(<< 7, NOT_A_FILE) DIR(>> 7, NOT_H_FILE)
+    DIR(<< 9, NOT_H_FILE) DIR(>> 9, NOT_A_FILE)
+#undef DIR
     return legal & FULL_MASK;
 }
 
 
 extern "C" uint64_t get_flip_cpp(uint64_t P, uint64_t O, int32_t idx) {
-    int32_t r = idx / 8;
-    int32_t c = idx % 8;
+    const uint64_t move = 1ULL << idx;
     uint64_t flips = 0;
-    
-    const int32_t dr[8] = {0, 0, 1, -1, 1, 1, -1, -1};
-    const int32_t dc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
-    
-    for (int32_t d = 0; d < 8; d++) {
-        int32_t rr = r + dr[d];
-        int32_t cc = c + dc[d];
-        uint64_t captured = 0;
-        bool seen_opponent = false;
-        
-        while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
-            int32_t nidx = rr * 8 + cc;
-            uint64_t nbit = 1ULL << nidx;
-            
-            if (O & nbit) {
-                seen_opponent = true;
-                captured |= nbit;
-                rr += dr[d];
-                cc += dc[d];
-                continue;
-            }
-            if (seen_opponent && (P & nbit)) {
-                flips |= captured;
-            }
-            break;
-        }
+
+#define FLIP_DIR(SHIFT, MASK) \
+    { \
+        uint64_t m = (move SHIFT) & (MASK); \
+        if (m & O) { \
+            uint64_t t = m; \
+            m = (m SHIFT) & (MASK); \
+            if (m & O) { \
+                t |= m; m = (m SHIFT) & (MASK); \
+                if (m & O) { \
+                    t |= m; m = (m SHIFT) & (MASK); \
+                    if (m & O) { \
+                        t |= m; m = (m SHIFT) & (MASK); \
+                        if (m & O) { \
+                            t |= m; m = (m SHIFT) & (MASK); \
+                            if (m & O) { \
+                                t |= m; m = (m SHIFT) & (MASK); \
+                            } \
+                        } \
+                    } \
+                } \
+            } \
+            if (m & P) flips |= t; \
+        } \
     }
+
+    FLIP_DIR(<< 1, 0xFEFEFEFEFEFEFEFEULL)
+    FLIP_DIR(>> 1, 0x7F7F7F7F7F7F7F7FULL)
+    FLIP_DIR(<< 8, FULL_MASK)
+    FLIP_DIR(>> 8, FULL_MASK)
+    FLIP_DIR(<< 7, 0x7F7F7F7F7F7F7F7FULL)
+    FLIP_DIR(>> 7, 0xFEFEFEFEFEFEFEFEULL)
+    FLIP_DIR(<< 9, 0xFEFEFEFEFEFEFEFEULL)
+    FLIP_DIR(>> 9, 0x7F7F7F7F7F7F7F7FULL)
+
+#undef FLIP_DIR
     return flips & FULL_MASK;
 }
 

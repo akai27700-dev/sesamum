@@ -55,6 +55,7 @@ search_root_parallel = core.search_root_parallel
 compute_strict_stable = core.compute_strict_stable
 unrotate_move = core.unrotate_move
 zobrist_hash = core.zobrist_hash
+from core.othello_core import nn_infer_batch, make_input_tensor
 _EGAROUCID_BOOK_PATH = os.path.join(BASE_DIR, 'data', 'book.egbk3')
 _EGAROUCID_CACHE_PATH = os.path.join(BASE_DIR, 'data', 'opening_book_egbk3_cache.npz')
 _EGAROUCID_RECORD_DTYPE = np.dtype([('player', '<u8'), ('opponent', '<u8'), ('value', 'i1'), ('level', 'i1'), ('n_lines', '<u4'), ('leaf_value', 'i1'), ('leaf_move', 'i1'), ('leaf_level', 'i1')])
@@ -419,10 +420,9 @@ class UltimateOthello(OthelloSearchMixin):
         self.auto_mode_type = 'normal'
         self.readout_empty_threshold = 22
         self.exact_auto = True
-        self.mcts_batch_size = 256
+        self.mcts_batch_size = 512
         self.ab_time_limit_ms = 5000
         self.stop_flag = np.zeros(1, dtype=np.uint8)
-        self.nn_infer_batch = []
         self.rt.update_idletasks()
         nn_available = self._detect_nn_runtime_available()
         nn_reason = ''
@@ -869,6 +869,19 @@ class UltimateOthello(OthelloSearchMixin):
         final_time = base_time * move_factor * phase_factor
         return max(base_time * 0.65, min(max_time, final_time))
 
+    def get_auto_mcts_pruning_time(self, total_time_limit):
+        """MCTS事前探索時間（pruning用）を自動計算"""
+        tl = float(total_time_limit)
+        if tl <= 0.5:
+            return max(0.05, tl * 0.2)
+        if tl <= 1.5:
+            return max(0.1, tl * 0.15)
+        if tl <= 5.0:
+            return 0.35 # ユーザーの要望に合わせて0.3s付近に固定または微増
+        if tl <= 10.0:
+            return 0.5
+        return min(2.0, tl * 0.08)
+
     def get_exact_cached_move(self, aB, oB, tn):
         if self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'probe_exact_cache'):
             try:
@@ -939,7 +952,7 @@ class UltimateOthello(OthelloSearchMixin):
         branch_factor = min(1.0, max(0.0, (float(legal_count) - 3.0) / 10.0))
         ponder_bonus = 0.10 if ponder_has_mcts else 0.0
         gpu_bonus = 0.04 if DEVICE_STR == 'cuda' else 0.0
-        mcts_priority = min(1.0, max(0.0, 0.10 + 0.32 * opening_phase + 0.22 * branch_factor + ponder_bonus + gpu_bonus))
+        mcts_priority = min(1.0, max(0.0, 0.05 + 0.22 * opening_phase + 0.12 * branch_factor + ponder_bonus + gpu_bonus))
         
         max_depth = 60
         
@@ -1095,6 +1108,39 @@ class UltimateOthello(OthelloSearchMixin):
             if book_roll_used:
                 break
         return (prior_map, primary_move, book_roll_used)
+    
+    def get_search_based_probs(self, player_board, opp_board, turn):
+        """Ponder等のキャッシュを利用して現在の局面の指し手確率を計算"""
+        legal_indices = self.get_legal_index_list(player_board, opp_board)
+        if not legal_indices:
+            return None
+        
+        search_values = {}
+        with self.ponder_lock:
+            for move in legal_indices:
+                next_p, next_o = self.apply_move_pair(player_board, opp_board, move)
+                cache_key = self.make_state_key(next_p, next_o, -turn)
+                entry = self.ponder_cache.get(cache_key)
+                if entry:
+                    # MCTSまたはABの評価値を優先
+                    val = None
+                    if entry.get('mcts_res') or 'best_mcts_wr' in entry:
+                        val = float(entry.get('best_mcts_wr', 50.0))
+                    elif entry.get('ab_res') or 'best_ab_wr' in entry:
+                        val = float(entry.get('best_ab_wr', 50.0))
+                    
+                    if val is not None:
+                        search_values[move] = 100.0 - val
+
+        if not search_values:
+            return None
+            
+        mx = max(search_values.values())
+        # 温度調整: 1.5くらいに下げてコントラストを強調
+        evs = {m: math.exp(max(-20.0, (v - mx) / 1.5)) for m, v in search_values.items()}
+        se = sum(evs.values())
+        if se <= 0: return None
+        return {m: v / se * 100.0 for m, v in evs.items()}
 
     def get_exact_base_threshold(self):
         """ユーザー設定またはCPUコア数に応じた読み切り開始のベースしきい値"""
@@ -1375,7 +1421,7 @@ class UltimateOthello(OthelloSearchMixin):
     def format_move_label(self, move_idx):
         return f'({move_idx // 8 + 1},{move_idx % 8 + 1})'
 
-    def format_top_moves(self, pairs, limit=5, score_fmt='{:.1f}%'):
+    def format_top_moves(self, pairs, limit=64, score_fmt='{:.1f}%'):
         out = []
         for move, score in list(pairs)[:limit]:
             out.append(f'{self.format_move_label(int(move))} {score_fmt.format(float(score))}')
@@ -2265,7 +2311,7 @@ class UltimateOthello(OthelloSearchMixin):
                     root_policy_vector = [0.0] * 64
             candidates.append({'move': move, 'human_after': human_after, 'ai_after': ai_after, 'score': total_score, 'αβ': aB, 'oB': oB, 'legal_indices': legal_indices, 'mvs': mvs, 'empty': empty, 'is_exact': is_exact, 'root_policy_vector': root_policy_vector, 'cache_key': self.make_state_key(aB, oB, self.ac)})
         candidates.sort(key=lambda x: -x['score'])
-        return candidates[:3]
+        return candidates
 
     def drw(self, probs_map=None):
         if not self.running or not hasattr(self, 'cv'):
@@ -2292,13 +2338,26 @@ class UltimateOthello(OthelloSearchMixin):
         if (not viewing_history) and display_tn == self.hc:
             mB, mW = (display_B if self.hc == 1 else display_W, display_W if self.hc == 1 else display_B)
             tm = self.legal_moves_mask(mB, mW)
+            
+            # Ponderキャッシュ等から探索ベースの確率を取得
+            search_probs = self.get_search_based_probs(mB, mW, self.hc)
+            
             ue_list = []
             while tm:
                 ix, t = (0, tm & -tm)
                 while t > 1:
                     t >>= 1
                     ix += 1
-                if self.sp_var.get():
+                
+                if search_probs and ix in search_probs:
+                    # 探索ベースの確率が表示可能な場合はそちらを優先
+                    cx = ix % 8 * cs + cs // 2
+                    cy = ix // 8 * cs + cs // 2
+                    prob = search_probs[ix]
+                    self.cv.create_oval(cx - marker_r, cy - marker_r, cx + marker_r, cy + marker_r, fill='#4caf50', outline='')
+                    # 探索ベースであることを示すために色を変える（例：オレンジ）
+                    self.cv.create_text(cx, ix // 8 * cs + text_y, text=f'{prob:.1f}%', fill='#ff9800', font=('Arial', font_sz, 'bold'))
+                elif self.sp_var.get():
                     nP, nO = self.apply_move_pair(mB, mW, ix)
                     if self.use_cpp_engine and cpp_engine is not None:
                         try:
@@ -2313,6 +2372,7 @@ class UltimateOthello(OthelloSearchMixin):
                     cy = ix // 8 * cs + cs // 2
                     self.cv.create_oval(cx - marker_r, cy - marker_r, cx + marker_r, cy + marker_r, fill='#4caf50', outline='')
                 tm &= tm - 1
+            
             if self.sp_var.get() and ue_list:
                 mx = max([v[1] for v in ue_list])
                 evs = [math.exp(max(-20.0, (v[1] - mx) / 400.0)) for v in ue_list]
@@ -2579,8 +2639,13 @@ class UltimateOthello(OthelloSearchMixin):
             if ponder_entry:
                 self.mark_modules_active('PONDER')
                 self.mark_connections_active(('PONDER', 'αβ'), ('PONDER', 'MCTS'), ('PONDER', 'TT'))
-                cached_order = [move for move in ponder_entry.get('ordered_moves', []) if move in rms]
                 if cached_order:
+                    # 重複を除去
+                    seen_order = []
+                    for m in cached_order:
+                        if m not in seen_order:
+                            seen_order.append(m)
+                    cached_order = seen_order
                     cached_set = set(cached_order)
                     rms = cached_order + [move for move in rms if move not in cached_set]
                 cached_depth = self.clamp_search_depth(ponder_entry.get('completed_depth', 2))
@@ -2590,6 +2655,9 @@ class UltimateOthello(OthelloSearchMixin):
             ponder_best_mcts_wr = float(ponder_entry.get('best_mcts_wr', 50.0)) if ponder_entry else 50.0
             ponder_root_visits = dict(ponder_entry.get('root_visits', {})) if ponder_entry else {}
             ponder_mcts_sim_count = int(ponder_entry.get('mcts_sim_count', 0)) if ponder_entry else 0
+            if ponder_entry and ponder_mcts_res:
+                # 探索の初めに前回（Ponder）の最終結果を表示
+                self.call_on_ui_thread(self.update_gui_from_ai, ponder_best_mcts_wr, ponder_mcts_res, current_game_id)
             cached_best = self.get_exact_cached_move(aB, oB, self.tn)
             if cached_best is not None and cached_best in rms:
                 self.log(f'exact cache hit: {self.format_move_label(cached_best)}')
@@ -2635,6 +2703,7 @@ class UltimateOthello(OthelloSearchMixin):
             ab_res = {}
             ab_val_res = {}
             resolved_flag = False
+            mcts_top_moves_indices = rms # AB探索の対象を制限するために使用
             # 枝刈り設定に基づいてAB探索を使用するか決定
             if is_exact:
                 use_ab = True
@@ -2696,7 +2765,7 @@ class UltimateOthello(OthelloSearchMixin):
             threading.Thread(target=watchdog, daemon=True).start()
 
             def run_mcts():
-                nonlocal mcts_res, best_mcts_wr, root_visits, mcts_sim_count
+                nonlocal mcts_res, best_mcts_wr, root_visits, mcts_sim_count, mcts_top_moves_indices, rms
                 if use_mcts_enabled:
                     seed_mcts_res = dict(ponder_mcts_res)
                     seed_best_mcts_wr = ponder_best_mcts_wr
@@ -2708,7 +2777,7 @@ class UltimateOthello(OthelloSearchMixin):
                     
                     # MCTS枝刈りが有効な場合は事前探索時間を使用
                     if self.use_mcts_enabled and self.mcts_pruning_enabled:
-                        mcts_time_limit = self.mcts_pruning_time
+                        mcts_time_limit = self.get_auto_mcts_pruning_time(time_limit)
                         self.log(self.format_log_columns(['mcts: pruning start', f'pre-time={mcts_time_limit:.1f}s', f'branches={self.mcts_pruning_branches}'], [18, 16, 14]))
                     else:
                         mcts_time_limit = time_limit
@@ -2722,12 +2791,14 @@ class UltimateOthello(OthelloSearchMixin):
                     mcts_res, best_mcts_wr, sim_count, nn_batch_count, nn_leaf_count, root_visits = get_mcts_win_rates_time_batched(self.nn_model, aB, oB, self.tn, mcts_time_limit, mcts_batch_size, self.sf_arr)
                     mcts_sim_count = sim_count
                     
-                    # MCTS枝刈りが有効な場合は上位の手だけを選択
+                    # MCTS枝刈りが有効な場合は上位の手を選択してAB探索の対象とする
+                    mcts_top_moves_indices = rms # デフォルトは全手
                     if self.use_mcts_enabled and self.mcts_pruning_enabled and mcts_res:
                         sorted_moves = sorted(mcts_res.items(), key=lambda x: x[1], reverse=True)
                         top_moves = sorted_moves[:self.mcts_pruning_branches]
-                        mcts_res = dict(top_moves)
-                        self.log(self.format_log_columns(['mcts: pruning applied', f'top moves={len(mcts_res)}', f'best={best_mcts_wr:.1f}%'], [20, 13, 12]))
+                        mcts_top_moves_indices = [m for m, _ in top_moves]
+                        # mcts_res は表示用に全手を保持し、枝刈りされたことをログにのみ出す
+                        self.log(self.format_log_columns(['mcts: pruning ready', f'top moves={len(mcts_top_moves_indices)}', f'best={best_mcts_wr:.1f}%'], [20, 13, 12]))
                     if seed_mcts_res:
                         merged_scores = {}
                         merged_visits = {}
@@ -2763,7 +2834,7 @@ class UltimateOthello(OthelloSearchMixin):
                     self.log('mcts: disabled')
 
             def run_ab():
-                nonlocal ab_res, ab_val_res, resolved_flag
+                nonlocal ab_res, ab_val_res, resolved_flag, mcts_top_moves_indices, rms
                 if not use_ab:
                     if self.use_mcts_enabled and self.mcts_pruning_enabled:
                         self.log('ab: skipped (MCTS pruning mode)')
@@ -2774,7 +2845,7 @@ class UltimateOthello(OthelloSearchMixin):
                     return
                 # MCTS枝刈りが有効な場合はMCTS事前探索時間分だけ遅延
                 if self.use_mcts_enabled and self.mcts_pruning_enabled:
-                    ab_delay = self.mcts_pruning_time  # MCTS事前探索時間分だけ遅延
+                    ab_delay = self.get_auto_mcts_pruning_time(actual_time_limit) # MCTS事前探索時間分だけ遅延
                     self.log(self.format_log_columns(['ab: delay for MCTS', f'wait={ab_delay:.1f}s'], [18, 13]))
                 else:
                     ab_delay = float(search_profile['ab_delay'])
@@ -2789,9 +2860,8 @@ class UltimateOthello(OthelloSearchMixin):
                     self.log('[BLUE]Start Endgame Solver...[/BLUE]')
                 # MCTS枝刈りが有効な場合は残り時間をAB探索に使用
                 if self.use_mcts_enabled and self.mcts_pruning_enabled:
-                    ab_time_limit = self.ab_pruning_time
                     remaining_after_delay = max(0.0, actual_time_limit - (time.time() - ai_start_time))
-                    effective_ab_time = max(0.05, min(float(ab_time_limit), remaining_after_delay))
+                    effective_ab_time = remaining_after_delay # use all remaining time for AB
                     ab_deadline = time.time() + effective_ab_time
                     self.log(self.format_log_columns(['ab: pruning mode', f'time={effective_ab_time:.1f}s'], [16, 12]))
                 else:
@@ -2803,7 +2873,11 @@ class UltimateOthello(OthelloSearchMixin):
                 completed_depth = max(2, max(start_dp, 2) - 1)
                 attempted_depth = completed_depth
                 if self.use_cpp_engine and cpp_engine is not None:
-                    curr_ordered = [int(x) for x in rms]
+                    # MCTS枝刈りが有効な場合は上位の手のみをAB探索の対象にする
+                    if self.use_mcts_enabled and self.mcts_pruning_enabled:
+                        curr_ordered = [int(x) for x in mcts_top_moves_indices]
+                    else:
+                        curr_ordered = [int(x) for x in rms]
                     depth_start = max(start_dp, 2)
                     for dp in range(depth_start, 61):
                         attempted_depth = dp
@@ -2873,7 +2947,11 @@ class UltimateOthello(OthelloSearchMixin):
                     else:
                         self.log(self.format_log_columns(['ab: done', f'completed={completed_depth}'], [8, 15]))
                     return
-                curr_ordered = np.array(rms, dtype=np.int64)
+                # Python版エンジンでも同様に枝刈りを適用
+                if self.use_mcts_enabled and self.mcts_pruning_enabled:
+                    curr_ordered = np.array(mcts_top_moves_indices, dtype=np.int64)
+                else:
+                    curr_ordered = np.array(rms, dtype=np.int64)
                 ab_val_res = {}
                 completed_depth = max(2, max(start_dp, 2) - 1)
                 attempted_depth = completed_depth
@@ -3027,7 +3105,22 @@ class UltimateOthello(OthelloSearchMixin):
             if use_mcts_enabled:
                 self.mark_connections_active(('MCTS', 'BLEND'))
             if final_scores:
-                self.log('final: ' + self.format_top_moves(final_scores, limit=5))
+                self.log('final: ' + self.format_top_moves(final_scores, limit=64))
+                # ABとMCTSの合致率を計算・ログ出力
+                if use_ab and use_mcts_enabled and (not resolved_flag) and ab_res and mcts_res:
+                    common_moves = set(ab_res.keys()) & set(mcts_res.keys())
+                    if len(common_moves) >= 2:
+                        try:
+                            a_list = [ab_res[m] for m in common_moves]
+                            m_list = [mcts_res[m] for m in common_moves]
+                            corr = np.corrcoef(a_list, m_list)[0, 1]
+                            top_ab = max(ab_res.items(), key=lambda x: x[1])[0]
+                            top_mcts = max(mcts_res.items(), key=lambda x: x[1])[0]
+                            match_str = 'MATCH' if top_ab == top_mcts else 'MISMATCH'
+                            self.log(f'[BLUE]search agreement: corr={corr:.3f} | top_move={match_str}[/BLUE]')
+                        except Exception:
+                            pass
+
                 if use_ab and use_mcts_enabled and (not resolved_flag):
                     midpoints = []
                     for m in [move for move, _ in final_scores[:5]]:

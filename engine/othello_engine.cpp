@@ -93,22 +93,47 @@ inline __m256i simd_popcount_avx2(__m256i vec) {
     return v;
 }
 
+inline __m256i simd_neighbor_union(const __m256i& bb) {
+    const __m256i not_a = _mm256_set1_epi64x(0xFEFEFEFEFEFEFEFEULL);
+    const __m256i not_h = _mm256_set1_epi64x(0x7F7F7F7F7F7F7F7FULL);
+    __m256i n = _mm256_and_si256(_mm256_slli_epi64(bb, 1), not_a);
+    n = _mm256_or_si256(n, _mm256_and_si256(_mm256_srli_epi64(bb, 1), not_h));
+    n = _mm256_or_si256(n, _mm256_slli_epi64(bb, 8));
+    n = _mm256_or_si256(n, _mm256_srli_epi64(bb, 8));
+    n = _mm256_or_si256(n, _mm256_and_si256(_mm256_slli_epi64(bb, 7), not_h));
+    n = _mm256_or_si256(n, _mm256_and_si256(_mm256_srli_epi64(bb, 7), not_a));
+    n = _mm256_or_si256(n, _mm256_and_si256(_mm256_slli_epi64(bb, 9), not_a));
+    n = _mm256_or_si256(n, _mm256_and_si256(_mm256_srli_epi64(bb, 9), not_h));
+    return n;
+}
+
+inline __m256i simd_get_legal_moves(const __m256i& p, const __m256i& o) {
+    const __m256i mask_full = _mm256_set1_epi64x(0xFFFFFFFFFFFFFFFFULL);
+    const __m256i not_a = _mm256_set1_epi64x(0xFEFEFEFEFEFEFEFEULL);
+    const __m256i not_h = _mm256_set1_epi64x(0x7F7F7F7F7F7F7F7FULL);
+    const __m256i empty = _mm256_andnot_si256(_mm256_or_si256(p, o), mask_full);
+    __m256i legal = _mm256_setzero_si256();
+
+#define SIMD_DIR(OP, VAL, MASK) { \
+    __m256i t = _mm256_and_si256(_mm256_##OP##_epi64(p, VAL), MASK); \
+    t = _mm256_and_si256(t, o); \
+    for(int k=0; k<5; ++k) t = _mm256_or_si256(t, _mm256_and_si256(_mm256_##OP##_epi64(t, VAL), _mm256_and_si256(MASK, o))); \
+    legal = _mm256_or_si256(legal, _mm256_and_si256(_mm256_##OP##_epi64(t, VAL), _mm256_and_si256(MASK, empty))); \
+}
+    SIMD_DIR(slli, 1, not_a) SIMD_DIR(srli, 1, not_h)
+    SIMD_DIR(slli, 8, mask_full) SIMD_DIR(srli, 8, mask_full)
+    SIMD_DIR(slli, 9, not_a) SIMD_DIR(slli, 7, not_h)
+    SIMD_DIR(srli, 7, not_a) SIMD_DIR(srli, 9, not_h)
+#undef SIMD_DIR
+    return legal;
+}
+
 inline void simd_get_legal_moves_batch(const Bitboard* p_boards, const Bitboard* o_boards, Bitboard* legal_boards) {
-    const __m256i full_mask_vec = _mm256_set1_epi64x(0xFFFFFFFFFFFFFFFFULL);
-    const __m256i not_a_file_vec = _mm256_set1_epi64x(0xFEFEFEFEFEFEFEFEULL);
-    const __m256i not_h_file_vec = _mm256_set1_epi64x(0x7F7F7F7F7F7F7F7FULL);
-    
     for (int i = 0; i < 4; ++i) {
-        __m256i p = simd_load_bitboards(&p_boards[i*4]);
-        __m256i o = simd_load_bitboards(&o_boards[i*4]);
-        __m256i occ = simd_or(p, o);
-        
-        
-        
-        __m256i legal = simd_not(simd_or(p, o));
-        legal = simd_and(legal, full_mask_vec);
-        
-        simd_store_bitboards(&legal_boards[i*4], legal);
+        __m256i p = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&p_boards[i*4]));
+        __m256i o = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&o_boards[i*4]));
+        __m256i legal = simd_get_legal_moves(p, o);
+        _mm256_storeu_si256(reinterpret_cast<__m256i*>(&legal_boards[i*4]), legal);
     }
 }
 
@@ -355,47 +380,42 @@ inline Bitboard get_legal_moves_optimized(Bitboard p, Bitboard o) {
 inline Bitboard get_flip_optimized(Bitboard p, Bitboard o, int idx) {
     const Bitboard move = 1ULL << idx;
     Bitboard flips = 0;
-    Bitboard temp, c;
 
-    // Right (<< 1)
-    temp = move; c = 0;
-    while (((temp = (temp << 1) & 0xFEFEFEFEFEFEFEFEULL) & o)) c |= temp;
-    if (temp & p) flips |= c;
+#define FLIP_DIR(SHIFT, MASK) \
+    { \
+        Bitboard m = (move SHIFT) & (MASK); \
+        if (m & o) { \
+            Bitboard t = m; \
+            m = (m SHIFT) & (MASK); \
+            if (m & o) { \
+                t |= m; m = (m SHIFT) & (MASK); \
+                if (m & o) { \
+                    t |= m; m = (m SHIFT) & (MASK); \
+                    if (m & o) { \
+                        t |= m; m = (m SHIFT) & (MASK); \
+                        if (m & o) { \
+                            t |= m; m = (m SHIFT) & (MASK); \
+                            if (m & o) { \
+                                t |= m; m = (m SHIFT) & (MASK); \
+                            } \
+                        } \
+                    } \
+                } \
+            } \
+            if (m & p) flips |= t; \
+        } \
+    }
 
-    // Left (>> 1)
-    temp = move; c = 0;
-    while (((temp = (temp >> 1) & 0x7F7F7F7F7F7F7F7FULL) & o)) c |= temp;
-    if (temp & p) flips |= c;
+    FLIP_DIR(<< 1, 0xFEFEFEFEFEFEFEFEULL) // Right
+    FLIP_DIR(>> 1, 0x7F7F7F7F7F7F7F7FULL) // Left
+    FLIP_DIR(<< 8, FULL_MASK)              // Down
+    FLIP_DIR(>> 8, FULL_MASK)              // Up
+    FLIP_DIR(<< 9, 0xFEFEFEFEFEFEFEFEULL) // Down-Right
+    FLIP_DIR(<< 7, 0x7F7F7F7F7F7F7F7FULL) // Down-Left
+    FLIP_DIR(>> 7, 0xFEFEFEFEFEFEFEFEULL) // Up-Right
+    FLIP_DIR(>> 9, 0x7F7F7F7F7F7F7F7FULL) // Up-Left
 
-    // Down (<< 8)
-    temp = move; c = 0;
-    while (((temp = (temp << 8) & FULL_MASK) & o)) c |= temp;
-    if (temp & p) flips |= c;
-
-    // Up (>> 8)
-    temp = move; c = 0;
-    while (((temp = (temp >> 8)) & o)) c |= temp;
-    if (temp & p) flips |= c;
-
-    // Down-Right (<< 9)
-    temp = move; c = 0;
-    while (((temp = (temp << 9) & 0xFEFEFEFEFEFEFEFEULL) & o)) c |= temp;
-    if (temp & p) flips |= c;
-
-    // Down-Left (<< 7)
-    temp = move; c = 0;
-    while (((temp = (temp << 7) & 0x7F7F7F7F7F7F7F7FULL) & o)) c |= temp;
-    if (temp & p) flips |= c;
-
-    // Up-Right (>> 7)
-    temp = move; c = 0;
-    while (((temp = (temp >> 7) & 0xFEFEFEFEFEFEFEFEULL) & o)) c |= temp;
-    if (temp & p) flips |= c;
-
-    // Up-Left (>> 9)
-    temp = move; c = 0;
-    while (((temp = (temp >> 9) & 0x7F7F7F7F7F7F7F7FULL) & o)) c |= temp;
-    if (temp & p) flips |= c;
+#undef FLIP_DIR
 
     return flips & FULL_MASK;
 }
@@ -629,74 +649,74 @@ inline void evaluate_board_full_simd_batch(const Bitboard* p_boards, const Bitbo
                                      const std::vector<double>& w, double* scores, int batch_size) {
     if (w.size() != GENE_LEN) throw std::invalid_argument("weights size must be 243");
     
-    const int simd_batch = SIMD_BATCH_SIZE;
+    const int simd_batch = 4;
     const int full_batches = batch_size / simd_batch;
-    const int remainder = batch_size % simd_batch;
     
-    auto& lut = eval_lut();
+    const __m256i mask_full = _mm256_set1_epi64x(FULL_MASK);
+    const __m256i mask_corner = _mm256_set1_epi64x(MASK_CORNER);
     
     for (int batch = 0; batch < full_batches; ++batch) {
         int base_idx = batch * simd_batch;
         
-        __m256i p_vecs[4];
-        __m256i o_vecs[4];
-        __m256d batch_scores[4] = {_mm256_setzero_pd(), _mm256_setzero_pd(), _mm256_setzero_pd(), _mm256_setzero_pd()};
+        __m256i p_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&p_boards[base_idx]));
+        __m256i o_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&o_boards[base_idx]));
         
-        for (int quad = 0; quad < 4; ++quad) {
-            int quad_base = base_idx + quad * 8;
-            simd_prefetch_bitboards(&p_boards[quad_base]);
-            simd_prefetch_bitboards(&o_boards[quad_base]);
-            p_vecs[quad] = simd_load_bitboards(&p_boards[quad_base]);
-            o_vecs[quad] = simd_load_bitboards(&o_boards[quad_base]);
-        }
+        // 1. Piece Weights (Approximate phase using first board)
+        int st = mvs_array[base_idx] <= 15 ? 0 : (mvs_array[base_idx] <= 45 ? 80 : 160);
+        const double* w_base = w.data() + st;
+        const double* w_feat = w_base + 64;
         
-        __m256d weight_vectors[64];
-        for (int i = 0; i < 64; ++i) {
-            weight_vectors[i] = _mm256_set1_pd(w[i]);
-        }
+        __m256d total_scores = _mm256_setzero_pd();
         
+        // Fast piece weight accumulation
         for (int pos = 0; pos < 64; ++pos) {
-            __m256i pos_mask = _mm256_set1_epi64x(1ULL << pos);
+            __m256i bit = _mm256_set1_epi64x(1ULL << pos);
+            __m256i p_has = _mm256_cmpeq_epi64(_mm256_and_si256(p_vec, bit), bit);
+            __m256i o_has = _mm256_cmpeq_epi64(_mm256_and_si256(o_vec, bit), bit);
             
-            for (int quad = 0; quad < 4; ++quad) {
-                __m256i p_occupied = simd_and(p_vecs[quad], pos_mask);
-                __m256i o_occupied = simd_and(o_vecs[quad], pos_mask);
-                
-                __m256i p_popcnt = simd_popcount_avx2(p_occupied);
-                __m256i o_popcnt = simd_popcount_avx2(o_occupied);
-                
-                __m256d p_scores = _mm256_cvtepi64_pd(p_popcnt);
-                __m256d o_scores = _mm256_cvtepi64_pd(o_popcnt);
-                
-                p_scores = _mm256_mul_pd(p_scores, weight_vectors[pos]);
-                o_scores = _mm256_mul_pd(o_scores, weight_vectors[pos]);
-                
-                batch_scores[quad] = _mm256_add_pd(batch_scores[quad], _mm256_sub_pd(p_scores, o_scores));
-            }
+            __m256d weight = _mm256_set1_pd(w_base[pos]);
+            // Extract mask as double (0.0 or 1.0)
+            // Note: _mm256_cmpeq_epi64 returns all 1s (-1.0 in double bit representation? No)
+            // We use _mm256_and_pd with 1.0
+            __m256d p_val = _mm256_and_pd(_mm256_castsi256_pd(p_has), _mm256_set1_pd(1.0));
+            __m256d o_val = _mm256_and_pd(_mm256_castsi256_pd(o_has), _mm256_set1_pd(1.0));
+            total_scores = _mm256_add_pd(total_scores, _mm256_mul_pd(_mm256_sub_pd(p_val, o_val), weight));
         }
+
+        // 2. Mobility
+        __m256i legal_p = simd_get_legal_moves(p_vec, o_vec);
+        __m256i legal_o = simd_get_legal_moves(o_vec, p_vec);
+        __m256i lp_cnt = simd_popcount_avx2(legal_p);
+        __m256i lo_cnt = simd_popcount_avx2(legal_o);
         
-        for (int quad = 0; quad < 4; ++quad) {
-            _mm256_storeu_pd(&scores[base_idx + quad * 8], batch_scores[quad]);
-            
-            for (int i = 0; i < 8; ++i) {
-                int idx = base_idx + quad * 8 + i;
-                Bitboard p_quad = p_boards[idx];
-                Bitboard o_quad = o_boards[idx];
-                
-                int corner_idx = (p_quad & 0xFFFF) & 0xFFFF;
-                scores[idx] += lut.corner_xc_table[corner_idx];
-                
-                int pattern_idx = (p_quad >> 16) & 0xFFFF;
-                scores[idx] += lut.pattern_table[pattern_idx];
-                
-                Bitboard legal_p = get_legal_moves_optimized(p_quad, o_quad);
-                Bitboard legal_o = get_legal_moves_optimized(o_quad, p_quad);
-                int lm = count_bits(legal_p);
-                int lo = count_bits(legal_o);
-                int mobility_idx = (lm & 0xF) | ((lo & 0xF) << 4);
-                scores[idx] += lut.mobility_table[mobility_idx];
-            }
-        }
+        __m256d m_diff = _mm256_cvtepi64_pd(_mm256_sub_epi64(lp_cnt, lo_cnt));
+        
+        double m_mult = (mvs_array[base_idx] >= 20 && mvs_array[base_idx] <= 45) ? 2.5 : 1.0;
+        total_scores = _mm256_add_pd(total_scores, _mm256_mul_pd(m_diff, _mm256_set1_pd(m_mult * 4.0)));
+
+        // 3. Potential Mobility / Frontier
+        __m256i emp = _mm256_andnot_si256(_mm256_or_si256(p_vec, o_vec), mask_full);
+        __m256i np = simd_neighbor_union(p_vec);
+        __m256i no = simd_neighbor_union(o_vec);
+        
+        __m256i pot_p = simd_popcount_avx2(_mm256_and_si256(emp, no));
+        __m256i pot_o = simd_popcount_avx2(_mm256_and_si256(emp, np));
+        __m256d pot_diff = _mm256_cvtepi64_pd(_mm256_sub_epi64(pot_p, pot_o));
+        total_scores = _mm256_add_pd(total_scores, _mm256_mul_pd(pot_diff, _mm256_set1_pd(2.0)));
+        
+        // 4. Parity (empties % 2)
+        // We can approximate this or use a SIMD version
+        __m256i mvs_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&mvs_array[base_idx]));
+        __m256i empties = _mm256_sub_epi64(_mm256_set1_epi64x(64), mvs_vec);
+        __m256i parity_mask = _mm256_and_si256(empties, _mm256_set1_epi64x(1));
+        __m256i is_odd = _mm256_cmpeq_epi64(parity_mask, _mm256_set1_epi64x(1));
+        __m256d parity_score = _mm256_blendv_pd(_mm256_set1_pd(-12.0), _mm256_set1_pd(12.0), _mm256_castsi256_pd(is_odd));
+        total_scores = _mm256_add_pd(total_scores, parity_score);
+
+        // 5. Feature Weights (feat[1] is potential mobility weight in scalar code)
+        total_scores = _mm256_add_pd(total_scores, _mm256_mul_pd(pot_diff, _mm256_set1_pd(w_feat[1] / 64.0)));
+
+        _mm256_storeu_pd(&scores[base_idx], total_scores);
     }
     
     for (int i = full_batches * simd_batch; i < batch_size; ++i) {
