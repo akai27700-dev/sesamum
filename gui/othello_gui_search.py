@@ -108,7 +108,10 @@ class OthelloSearchMixin:
             mvs = int((human_after | ai_after).bit_count() - 4)
             empty = 64 - (mvs + 4)
             candidate_time_limit = self.get_auto_time_limit(empty, len(legal_indices), mvs)
-            is_exact = self.should_start_exact_early(aB, oB, empty, len(legal_indices), 2, candidate_time_limit)
+            if self.use_mcts_only:
+                is_exact = False
+            else:
+                is_exact = self.should_start_exact_early(aB, oB, empty, len(legal_indices), 2, candidate_time_limit)
             root_policy_vector = [0.0] * 64
             if self.use_nn and self.nn_model is not None:
                 try:
@@ -260,7 +263,21 @@ class OthelloSearchMixin:
                     if round_idx < warm_rounds:
                         candidate_time = warm_slice
                     else:
-                        candidate_time = cycle_budget * candidate_weights[min(rank, len(candidate_weights) - 1)]
+                        # 候補の勝率に基づいて動的に重み付け
+                        wr = candidate.get('p_wr', 50.0)
+                        # 勝率を指数的に評価し、有望な手に大きくリソースを割く
+                        weight = math.exp((wr - 50.0) / 15.0)
+                        candidate['temp_weight'] = weight
+                        
+                        # rank=0のときだけ全体の合計を計算して正規化
+                        if rank == 0:
+                            total_w = sum(math.exp((c.get('p_wr', 50.0) - 50.0) / 15.0) for c in candidates if not c.get('is_exact'))
+                            for c in candidates:
+                                c['norm_weight'] = math.exp((c.get('p_wr', 50.0) - 50.0) / 15.0) / max(1.0, total_w)
+                        
+                        dynamic_weight = candidate.get('norm_weight', candidate_weights[min(rank, len(candidate_weights) - 1)])
+                        candidate_time = cycle_budget * dynamic_weight
+                        
                     if candidate_time <= 0.05:
                         continue
                     try:
@@ -281,8 +298,8 @@ class OthelloSearchMixin:
                         cached_best_mcts_wr = 50.0
                         cached_root_visits = {}
                         cached_mcts_sim_count = 0
-                        curr_ordered = sorted(curr_ordered, key=lambda move: cached_mcts_res.get(move, 50.0), reverse=True)
-                        self.merge_ponder_cache_entry(candidate['cache_key'], ordered_moves=curr_ordered, mcts_res=cached_mcts_res, best_mcts_wr=cached_best_mcts_wr, root_visits=cached_root_visits, mcts_sim_count=cached_mcts_sim_count)
+                    curr_ordered = sorted(curr_ordered, key=lambda move: cached_mcts_res.get(move, 50.0), reverse=True)
+                    self.merge_ponder_cache_entry(candidate['cache_key'], ordered_moves=curr_ordered, mcts_res=cached_mcts_res, best_mcts_wr=cached_best_mcts_wr, root_visits=cached_root_visits, mcts_sim_count=cached_mcts_sim_count)
                 
                 # 優先探索: 1ラウンドごとに候補を再ソート
                 with self.ponder_lock:
@@ -328,7 +345,15 @@ class OthelloSearchMixin:
                     if round_idx < warm_rounds:
                         candidate_time = warm_slice
                     else:
-                        candidate_time = cycle_budget * candidate_weights[min(rank, len(candidate_weights) - 1)]
+                        wr = candidate.get('p_wr_ab', 50.0)
+                        weight = math.exp((wr - 50.0) / 15.0)
+                        candidate['temp_weight_ab'] = weight
+                        if rank == 0:
+                            total_w = sum(math.exp((c.get('p_wr_ab', 50.0) - 50.0) / 15.0) for c in candidates if (not self.use_mcts_only or c.get('is_exact')))
+                            for c in candidates:
+                                c['norm_weight_ab'] = math.exp((c.get('p_wr_ab', 50.0) - 50.0) / 15.0) / max(1.0, total_w)
+                        dynamic_weight = candidate.get('norm_weight_ab', candidate_weights[min(rank, len(candidate_weights) - 1)])
+                        candidate_time = cycle_budget * dynamic_weight
                     if candidate_time <= 0.05:
                         continue
                     with self.ponder_lock:

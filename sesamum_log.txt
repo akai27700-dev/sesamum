@@ -1,4 +1,4 @@
-# Sesamum log started: 2026-05-09 23:37:30
+# Sesamum log started: 2026-05-10 21:22:48
 C:\Users\Owner\Desktop\GeNeLy_Dev\Sesamum\data\best_weights.json
 遺伝子ファイルを読み込みました。遺伝子長: 243
 weights:  | len=243    | max_abs=72.513000  | mean_abs=19.126000  | sum=380.612000 
@@ -8,529 +8,365 @@ C:\Users\Owner\Desktop\GeNeLy_Dev\Sesamum\data\model_best.pth | device=cuda
 ニューラルネットワークのウォームアップが完了しました。
 npz キャッシュから定石を読み込み中: C:\Users\Owner\Desktop\GeNeLy_Dev\Sesamum\data\opening_book_egbk3_cache.npz
 [OK] Egaroucid npz キャッシュ読み込み完了: 局面数 1302175
-探索設定: TT size=8388608, C++=ON, NN=ON, モード=αβ+MCTS, book=100%, TT reuse=ON, time limit=max 5s, exact solve starts=always-auto, pondering=ON
+探索設定: TT size=8388608, C++=ON, NN=ON, モード=αβのみ, book=100%, TT reuse=ON, time limit=max 1s, exact solve starts=always-auto, pondering=ON
 book: found in opening book | primary_move=29 | prior_map={29: 0.5, 45: 0.5}
 book: move available primary_move=29
-ply=1    | empties=59   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.4s 
+ply=1    | empties=59   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
 book: use (4,6)
 tt: miss | start depth=2
 legal moves=3
-scheduler: mcts_priority=0.31    | ab_delay=0.01s     | ab_budget=3.04s    
-mcts: pruning start | pre-time=0.3s    | branches=3    
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.17s    
+mcts: disabled
 ab: start | depth=2   
-mcts: done | sims=4608      | nn_batches=4     | best=65.3% 
-mcts: root visits | (6,6)=4318 | (4,6)=236 | (6,4)=54
-mcts: pruning applied | top moves=3   | best=65.3%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth= 2    | best= 50.2%  | time= 0.0s  | nodes=20      
-  moves: (6,4) 50.2% | (6,6) 49.9% | (4,6) 49.8%
-[]αβ[c++] depth= 3    | best= 48.7%  | time= 0.0s  | nodes=48      
-  moves: (6,6) 48.7% | (4,6) 48.2% | (6,4) 47.5%
-[]αβ[c++] depth= 4    | best= 51.4%  | time= 0.0s  | nodes=237     
-  moves: (6,6) 51.4% | (4,6) 50.1% | (6,4) 49.5%
-[]αβ[c++] depth= 5    | best= 49.3%  | time= 0.0s  | nodes=543     
-  moves: (6,6) 49.3% | (4,6) 48.7% | (6,4) 47.7%
-[]αβ[c++] depth= 6    | best= 51.3%  | time= 0.0s  | nodes=3756    
-  moves: (6,6) 51.3% | (6,4) 50.4% | (4,6) 49.8%
-[]αβ[c++] depth= 7    | best= 50.1%  | time= 0.0s  | nodes=11345   
-  moves: (6,6) 50.1% | (6,4) 48.8% | (4,6) 48.2%
-[]αβ[c++] depth= 8    | best= 51.8%  | time= 0.0s  | nodes=36138   
-  moves: (6,6) 51.8% | (4,6) 50.2% | (6,4) 50.0%
-[]αβ[c++] depth= 9    | best= 49.9%  | time= 0.1s  | nodes=96928   
-  moves: (6,6) 49.9% | (4,6) 49.0% | (6,4) 48.4%
-[]αβ[c++] depth=10    | best= 51.9%  | time= 0.1s  | nodes=308774  
-  moves: (6,6) 51.9% | (4,6) 50.6% | (6,4) 49.9%
-[]αβ[c++] depth=11    | best= 50.0%  | time= 0.2s  | nodes=880437  
-  moves: (6,6) 50.0% | (4,6) 49.2% | (6,4) 48.8%
-[]αβ[c++] depth=12    | best= 51.6%  | time= 0.5s  | nodes=2653754 
-  moves: (6,6) 51.6% | (4,6) 50.8% | (6,4) 50.7%
-[]αβ[c++] depth=13    | best= 50.1%  | time= 1.1s  | nodes=6154128 
-  moves: (6,6) 50.1% | (6,4) 49.3% | (4,6) 48.6%
-[]αβ[c++] depth=14    | best= 51.6%  | time= 2.1s  | nodes=10713222
-  moves: (6,6) 51.6% | (6,4) 50.9% | (4,6) 50.1%
-[]αβ[c++] depth=15    | best= 50.8%  | time= 3.3s  | nodes=13469285
-  moves: (6,6) 50.8% | (6,4) 48.7% | (4,6) 48.6%
-ab: done | completed=15   
-mcts: dynamic influence adjusted from 50% to 32% based on 4608 sims
-final: (6,6) 54.0% | (4,6) 45.6% | (6,4) 45.5%
-[BLUE]search agreement: corr=0.977 | top_move=MATCH[/BLUE]
-[GREEN]midpoint: (6,6) 58.0% | (4,6) 40.8% | (6,4) 36.7%[/GREEN]
+ab: done | completed=2    
+final: (6,6) 50.0% | (6,4) 50.0% | (4,6) 50.0%
 book: AB/MCTS evaluation - book_rate=100% (forced 100%)
 selected by book: (4,6)
 move: (4,6)
 Pondering start
-book: found in opening book | primary_move=52 | prior_map={52: 0.5, 26: 0.5}
-book: move available primary_move=52
-Ponder hit: reused cached ordering. cached depth=14, start depth=15
-ply=3    | empties=57   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.0s 
-book: use (7,5)
-tt: miss | start depth=2
-legal moves=5
-scheduler: mcts_priority=0.43    | ab_delay=0.02s     | ab_budget=2.98s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=15  
-mcts: done | sims=1536      | nn_batches=2     | best=37.3% 
-mcts: root visits | (4,3)=511 | (6,4)=407 | (7,5)=344 | (2,3)=161 | (6,3)=113
-mcts: pruning applied | top moves=3   | best=37.3%  
-ab: delay for MCTS | wait=0.3s    
-ab: done | completed=14    | attempted=15   
-mcts: merged ponder cache | sims=9728     
-mcts: root visits | (4,3)=3228 | (6,4)=2582 | (7,5)=2182 | (2,3)=861 | (6,3)=601
-mcts: dynamic influence adjusted from 50% to 32% based on 9728 sims
-final: (7,5) 47.8% | (4,3) 47.1% | (6,4) 46.5% | (2,3) 46.4% | (6,3) 44.9%
-book: AB/MCTS evaluation - book_rate=100% (forced 100%)
-selected by book: (7,5)
-move: (7,5)
-Pondering start
+book: found in opening book | primary_move=43 | prior_map={43: 1.0}
+book: move available primary_move=43
 Ponder hit: reused cached ordering. cached depth=11, start depth=12
-ply=5    | empties=55   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.0s 
+ply=3    | empties=57   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
+book: use (6,4)
 tt: miss | start depth=2
-legal moves=5
-scheduler: mcts_priority=0.43    | ab_delay=0.02s     | ab_budget=2.96s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
+legal moves=4
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.70s    
+mcts: disabled
 ab: start | depth=12  
-mcts: done | sims=1536      | nn_batches=2     | best=71.5% 
-mcts: root visits | (6,6)=1129 | (6,4)=244 | (3,5)=115 | (4,7)=47 | (4,3)=1
-mcts: pruning applied | top moves=3   | best=71.5%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=12    | best= 51.3%  | time= 1.0s  | nodes=11605768
-  moves: (6,6) 51.3% | (6,4) 49.9% | (3,5) 49.0%
-[]αβ[c++] depth=13    | best= 49.9%  | time= 2.6s  | nodes=20564303
-  moves: (6,6) 49.9% | (6,4) 49.2% | (3,5) 48.4%
-ab: done | completed=13    | attempted=14   
-mcts: merged ponder cache | sims=9728     
-mcts: root visits | (6,6)=7137 | (6,4)=1554 | (3,5)=729 | (4,7)=256 | (4,3)=4
-mcts: dynamic influence adjusted from 50% to 32% based on 9728 sims
-final: (6,6) 55.1% | (4,7) 48.4% | (6,4) 47.1% | (3,5) 45.7% | (4,3) 43.8%
-[BLUE]search agreement: corr=0.879 | top_move=MATCH[/BLUE]
-[GREEN]midpoint: (6,6) 60.6% | (6,4) 44.5% | (3,5) 42.4%[/GREEN]
-move: (6,6)
-Pondering start
-Ponder hit: reused cached ordering. cached depth=15, start depth=16
-ply=7    | empties=53   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.0s 
-tt: miss | start depth=2
-legal moves=7
-scheduler: mcts_priority=0.46    | ab_delay=0.02s     | ab_budget=2.69s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=16  
-mcts: done | sims=1536      | nn_batches=2     | best=82.6% 
-mcts: root visits | (7,4)=889 | (6,4)=626 | (5,3)=7 | (3,3)=6 | (4,3)=5
-mcts: pruning applied | top moves=3   | best=82.6%  
-ab: delay for MCTS | wait=0.3s    
-ab: done | completed=15    | attempted=16   
-mcts: merged ponder cache | sims=9728     
-mcts: root visits | (7,4)=5630 | (6,4)=3961 | (5,3)=46 | (3,3)=34 | (4,3)=29
-mcts: dynamic influence adjusted from 50% to 32% based on 9728 sims
-final: (7,4) 58.2% | (6,4) 54.4% | (8,4) 50.5% | (3,3) 49.8% | (4,3) 49.7% | (5,3) 49.4% | (2,3) 49.1%
-move: (7,4)
-Pondering start
-Ponder hit: reused cached ordering. cached depth=10, start depth=11
-ply=9    | empties=51   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.0s 
-tt: miss | start depth=2
-legal moves=8
-scheduler: mcts_priority=0.37    | ab_delay=0.02s     | ab_budget=2.85s    
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=11  
-mcts: done | sims=4608      | nn_batches=4     | best=86.8% 
-mcts: root visits | (6,4)=3424 | (8,4)=1135 | (8,6)=24 | (3,3)=9 | (4,3)=6
-mcts: pruning applied | top moves=3   | best=86.8%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=11    | best= 53.8%  | time= 0.2s  | nodes=2252772 
-  moves: (8,6) 53.8% | (8,4) 52.6% | (6,4) 52.3%
-[]αβ[c++] depth=12    | best= 54.7%  | time= 0.7s  | nodes=4912656 
-  moves: (8,4) 54.7% | (8,6) 54.4% | (6,4) 54.2%
-[]αβ[c++] depth=13    | best= 53.9%  | time= 1.3s  | nodes=8041777 
-  moves: (6,4) 53.9% | (8,4) 53.9% | (8,6) 53.5%
-ab: done | completed=13    | attempted=14   
-mcts: dynamic influence adjusted from 50% to 32% based on 4608 sims
-final: (6,4) 62.0% | (8,4) 58.0% | (8,6) 54.7% | (4,3) 50.0% | (3,3) 50.0% | (5,3) 50.0% | (2,3) 50.0% | (7,7) 50.0%
-[BLUE]search agreement: corr=0.789 | top_move=MATCH[/BLUE]
-[GREEN]midpoint: (6,4) 70.4% | (8,4) 62.6% | (8,6) 58.3%[/GREEN]
+ab: done | completed=11    | attempted=12   
+final: (2,4) 50.0% | (6,4) 50.0% | (6,6) 50.0% | (2,6) 50.0%
+book: AB/MCTS evaluation - book_rate=100% (forced 100%)
+selected by book: (6,4)
 move: (6,4)
 Pondering start
-Ponder hit: reused cached ordering. cached depth=11, start depth=12
-ply=11   | empties=49   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
-tt: miss | start depth=2
-legal moves=10
-scheduler: mcts_priority=0.49    | ab_delay=0.02s     | ab_budget=2.40s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=12  
-mcts: done | sims=4608      | nn_batches=4     | best=94.1% 
-mcts: root visits | (3,5)=3981 | (6,3)=264 | (5,3)=134 | (8,7)=112 | (8,3)=35
-mcts: pruning applied | top moves=3   | best=94.1%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=12    | best= 57.6%  | time= 0.5s  | nodes=5959913 
-  moves: (6,3) 57.6% | (5,3) 56.2% | (3,5) 55.0%
-[]αβ[c++] depth=13    | best= 56.0%  | time= 1.1s  | nodes=6458297 
-  moves: (6,3) 56.0% | (3,5) 55.1% | (5,3) 54.4%
-ab: done | completed=13    | attempted=14   
-mcts: merged ponder cache | sims=12800    
-mcts: root visits | (3,5)=11012 | (6,3)=746 | (5,3)=386 | (8,7)=201 | (8,3)=68
-mcts: dynamic influence adjusted from 50% to 40% based on 12800 sims
-final: (3,5) 67.1% | (6,3) 59.4% | (5,3) 57.6% | (8,7) 55.0% | (8,6) 53.2% | (7,3) 53.1% | (8,3) 53.1% | (3,3) 52.3% | (2,3) 51.3% | (4,3) 50.0%
-[BLUE]search agreement: corr=0.018 | top_move=MISMATCH[/BLUE]
-[GREEN]midpoint: (3,5) 74.3% | (6,3) 62.1% | (5,3) 60.3%[/GREEN]
-move: (3,5)
-Pondering start
-Ponder hit: reused cached ordering. cached depth=10, start depth=11
-ply=13   | empties=47   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
-tt: miss | start depth=2
-legal moves=9
-scheduler: mcts_priority=0.38    | ab_delay=0.01s     | ab_budget=2.52s    
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=11  
-mcts: done | sims=4608      | nn_batches=4     | best=80.6% 
-mcts: root visits | (5,3)=1803 | (6,3)=1694 | (2,4)=421 | (4,3)=183 | (8,3)=179
-mcts: pruning applied | top moves=3   | best=80.6%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=11    | best= 57.6%  | time= 0.2s  | nodes=2958041 
-  moves: (6,3) 57.6% | (5,3) 54.6% | (2,4) 49.7%
-[]αβ[c++] depth=12    | best= 58.3%  | time= 0.9s  | nodes=8474908 
-  moves: (6,3) 58.3% | (5,3) 55.1% | (2,4) 50.2%
-[]αβ[c++] depth=13    | best= 57.3%  | time= 2.0s  | nodes=13996792
-  moves: (6,3) 57.3% | (5,3) 56.5% | (2,4) 49.9%
-ab: done | completed=13    | attempted=14   
-mcts: dynamic influence adjusted from 50% to 40% based on 4608 sims
-final: (6,3) 64.0% | (5,3) 63.7% | (2,4) 55.3% | (8,6) 50.0% | (8,3) 50.0% | (7,3) 50.0% | (3,3) 50.0% | (4,3) 50.0% | (2,3) 50.0%
-[BLUE]search agreement: corr=0.982 | top_move=MISMATCH[/BLUE]
-[GREEN]midpoint: (6,3) 68.4% | (5,3) 68.5% | (2,4) 59.7%[/GREEN]
-move: (6,3)
-Pondering start
-Ponder hit: reused cached ordering. cached depth=12, start depth=13
-ply=15   | empties=45   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
-tt: miss | start depth=2
-legal moves=10
-scheduler: mcts_priority=0.49    | ab_delay=0.02s     | ab_budget=2.16s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=13  
-mcts: done | sims=4608      | nn_batches=4     | best=90.6% 
-mcts: root visits | (4,3)=3369 | (6,7)=353 | (4,7)=333 | (8,6)=202 | (8,3)=194
-mcts: pruning applied | top moves=3   | best=90.6%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=13    | best= 54.8%  | time= 2.0s  | nodes=19599899
-  moves: (4,3) 54.8% | (4,7) 53.5% | (6,7) 51.4%
-ab: done | completed=13   
-mcts: merged ponder cache | sims=12800    
-mcts: root visits | (4,3)=9339 | (6,7)=984 | (4,7)=928 | (8,6)=364 | (8,3)=351
-mcts: dynamic influence adjusted from 50% to 40% based on 12800 sims
-final: (4,3) 65.9% | (4,7) 58.3% | (6,7) 57.1% | (3,7) 55.3% | (8,6) 55.3% | (8,3) 55.2% | (8,7) 52.9% | (1,5) 52.6% | (2,4) 52.3% | (2,7) 49.7%
-[BLUE]search agreement: corr=0.781 | top_move=MATCH[/BLUE]
-[GREEN]midpoint: (4,3) 72.5% | (4,7) 61.7% | (6,7) 60.8%[/GREEN]
-move: (4,3)
-Pondering start
-Ponder hit: reused cached ordering. cached depth=10, start depth=11
-ply=17   | empties=43   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.5s 
+Ponder hit: reused cached ordering. cached depth=20, start depth=21
+ply=5    | empties=55   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
 tt: miss | start depth=2
 legal moves=7
-scheduler: mcts_priority=0.35    | ab_delay=0.02s     | ab_budget=3.52s    
-mcts: pruning start | pre-time=0.3s    | branches=3    
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.66s    
+mcts: disabled
+ab: start | depth=21  
+ab: done | completed=20    | attempted=21   
+final: (5,3) 50.0% | (2,6) 50.0% | (7,4) 50.0% | (2,5) 50.0% | (7,5) 50.0% | (2,4) 50.0% | (7,3) 50.0%
+move: (5,3)
+Pondering start
+Ponder hit: reused cached ordering. cached depth=9, start depth=10
+ply=7    | empties=53   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
+tt: miss | start depth=2
+legal moves=7
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.64s    
+mcts: disabled
+ab: start | depth=10  
+[]αβ[c++] depth=10    | best= 50.8%  | time= 0.4s  | nodes=5931694 
+  moves: (7,3) 50.8% | (3,3) 49.9% | (2,5) 48.6% | (2,6) 48.5% | (7,5) 48.1%
+ab: done | completed=10    | attempted=11   
+final: (7,3) 50.8% | (3,3) 49.9% | (2,5) 48.6% | (2,6) 48.5% | (7,5) 48.1% | (2,4) 48.0% | (4,3) 47.6%
+move: (7,3)
+Pondering start
+Ponder hit: reused cached ordering. cached depth=9, start depth=10
+ply=9    | empties=51   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=0.9s 
+tt: miss | start depth=2
+legal moves=9
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.56s    
+mcts: disabled
+ab: start | depth=10  
+ab: done | completed=9     | attempted=10   
+final: (2,5) 50.0% | (6,6) 50.0% | (3,3) 50.0% | (3,6) 50.0% | (4,3) 50.0% | (8,5) 50.0% | (7,5) 50.0% | (2,4) 50.0% | (2,6) 50.0%
+move: (2,5)
+Pondering start
+ply=11   | empties=49   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
+tt: miss | start depth=2
+legal moves=8
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.69s    
+mcts: disabled
+ab: start | depth=2   
+[]αβ[c++] depth= 2    | best= 50.6%  | time= 0.0s  | nodes=105     
+  moves: (6,6) 50.6% | (5,6) 50.5% | (3,6) 49.6% | (4,3) 48.1% | (2,6) 47.3%
+[]αβ[c++] depth= 3    | best= 49.1%  | time= 0.0s  | nodes=318     
+  moves: (6,6) 49.1% | (5,6) 48.7% | (3,6) 48.6% | (2,6) 46.6% | (8,5) 45.9%
+[]αβ[c++] depth= 4    | best= 51.5%  | time= 0.0s  | nodes=1718    
+  moves: (6,6) 51.5% | (5,6) 51.3% | (3,6) 49.8% | (8,5) 49.1% | (2,6) 48.2%
+[]αβ[c++] depth= 5    | best= 51.9%  | time= 0.0s  | nodes=6205    
+  moves: (6,6) 51.9% | (5,6) 49.6% | (3,6) 49.3% | (8,5) 49.0% | (2,4) 47.9%
+[]αβ[c++] depth= 6    | best= 51.5%  | time= 0.0s  | nodes=78387   
+  moves: (6,6) 51.5% | (3,6) 50.8% | (8,5) 50.6% | (5,6) 50.4% | (2,4) 49.3%
+[]αβ[c++] depth= 7    | best= 51.2%  | time= 0.0s  | nodes=291040  
+  moves: (6,6) 51.2% | (3,6) 51.1% | (8,5) 50.5% | (5,6) 49.3% | (7,5) 47.8%
+[]αβ[c++] depth= 8    | best= 52.8%  | time= 0.1s  | nodes=745757  
+  moves: (6,6) 52.8% | (8,5) 51.4% | (3,6) 51.0% | (5,6) 50.2% | (7,5) 49.1%
+[]αβ[c++] depth= 9    | best= 52.3%  | time= 0.2s  | nodes=2153464 
+  moves: (6,6) 52.3% | (3,6) 52.0% | (5,6) 51.1% | (8,5) 50.4% | (7,5) 48.3%
+[]αβ[c++] depth=10    | best= 52.3%  | time= 0.7s  | nodes=6164219 
+  moves: (3,6) 52.3% | (6,6) 52.2% | (5,6) 52.0% | (8,5) 51.9% | (4,3) 49.4%
+ab: done | completed=10   
+final: (3,6) 52.3% | (6,6) 52.2% | (5,6) 52.0% | (8,5) 51.9% | (4,3) 49.4% | (7,5) 49.0% | (2,4) 49.0% | (2,6) 47.9%
+move: (3,6)
+Pondering start
+ply=13   | empties=47   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=0.8s 
+tt: miss | start depth=2
+legal moves=13
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.52s    
+mcts: disabled
+ab: start | depth=2   
+[]αβ[c++] depth= 2    | best= 52.7%  | time= 0.0s  | nodes=141     
+  moves: (6,6) 52.7% | (5,6) 52.3% | (4,3) 51.6% | (7,5) 50.6% | (8,4) 50.4%
+[]αβ[c++] depth= 3    | best= 52.0%  | time= 0.0s  | nodes=616     
+  moves: (6,6) 52.0% | (5,6) 50.0% | (2,6) 49.6% | (4,3) 47.8% | (2,8) 47.7%
+[]αβ[c++] depth= 4    | best= 53.4%  | time= 0.0s  | nodes=2749    
+  moves: (6,6) 53.4% | (2,6) 51.1% | (8,4) 50.0% | (5,6) 49.3% | (4,3) 49.3%
+[]αβ[c++] depth= 5    | best= 52.5%  | time= 0.0s  | nodes=9747    
+  moves: (6,6) 52.5% | (2,6) 51.3% | (5,6) 50.4% | (7,6) 49.1% | (8,5) 49.0%
+[]αβ[c++] depth= 6    | best= 51.4%  | time= 0.0s  | nodes=31598   
+  moves: (6,6) 51.4% | (2,6) 50.6% | (5,6) 50.6% | (2,3) 49.0% | (8,4) 48.6%
+[]αβ[c++] depth= 7    | best= 52.8%  | time= 0.0s  | nodes=93021   
+  moves: (6,6) 52.8% | (5,6) 51.5% | (2,6) 51.0% | (8,4) 50.1% | (8,5) 50.1%
+[]αβ[c++] depth= 8    | best= 53.0%  | time= 0.1s  | nodes=288523  
+  moves: (6,6) 53.0% | (2,6) 52.1% | (5,6) 52.0% | (8,4) 51.7% | (4,3) 51.4%
+[]αβ[c++] depth= 9    | best= 52.5%  | time= 0.1s  | nodes=819101  
+  moves: (6,6) 52.5% | (4,3) 51.7% | (2,6) 51.4% | (5,6) 50.9% | (8,4) 50.6%
+[]αβ[c++] depth=10    | best= 53.0%  | time= 0.4s  | nodes=2817768 
+  moves: (4,3) 53.0% | (5,6) 52.2% | (6,6) 52.2% | (8,5) 51.5% | (2,6) 51.5%
+ab: done | completed=10   
+final: (4,3) 53.0% | (5,6) 52.2% | (6,6) 52.2% | (8,5) 51.5% | (2,6) 51.5% | (4,7) 51.3% | (2,4) 51.0% | (7,6) 50.8% | (8,4) 50.4% | (2,3) 49.9% | (2,8) 46.8% | (7,5) 46.6% | (2,7) 37.8%
+move: (4,3)
+Pondering start
+Ponder hit: reused cached ordering. cached depth=9, start depth=10
+ply=15   | empties=45   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=0.8s 
+tt: miss | start depth=2
+legal moves=13
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.53s    
+mcts: disabled
+ab: start | depth=10  
+[]αβ[c++] depth=10    | best= 55.3%  | time= 0.4s  | nodes=3772891 
+  moves: (1,6) 55.3% | (2,4) 52.8% | (5,6) 52.4% | (8,4) 52.3% | (6,6) 51.7%
+ab: done | completed=10   
+final: (1,6) 55.3% | (2,4) 52.8% | (5,6) 52.4% | (8,4) 52.3% | (6,6) 51.7% | (4,7) 51.6% | (2,6) 51.5% | (7,6) 50.7% | (8,5) 50.1% | (2,3) 49.6% | (7,5) 48.7% | (2,8) 46.3% | (2,7) 34.7%
+move: (1,6)
+Pondering start
+Ponder hit: reused cached ordering. cached depth=9, start depth=10
+ply=17   | empties=43   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=0.9s 
+tt: miss | start depth=2
+legal moves=13
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.58s    
+mcts: disabled
+ab: start | depth=10  
+[]αβ[c++] depth=10    | best= 55.9%  | time= 0.4s  | nodes=3497068 
+  moves: (6,6) 55.9% | (4,7) 55.9% | (2,6) 55.0% | (5,6) 54.7% | (8,4) 54.4%
+ab: done | completed=10    | attempted=11   
+final: (6,6) 55.9% | (4,7) 55.9% | (2,6) 55.0% | (5,6) 54.7% | (8,4) 54.4% | (2,3) 54.1% | (3,8) 54.0% | (8,5) 54.0% | (3,2) 53.4% | (7,6) 53.3% | (7,5) 50.5% | (2,8) 47.9% | (2,7) 33.0%
+move: (6,6)
+Pondering start
+ply=19   | empties=41   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=0.9s 
+tt: miss | start depth=2
+legal moves=13
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.60s    
+mcts: disabled
+ab: start | depth=2   
+[]αβ[c++] depth= 2    | best= 59.6%  | time= 0.0s  | nodes=165     
+  moves: (5,6) 59.6% | (3,8) 57.8% | (4,7) 55.5% | (8,4) 55.1% | (8,5) 54.9%
+[]αβ[c++] depth= 3    | best= 58.1%  | time= 0.0s  | nodes=678     
+  moves: (5,6) 58.1% | (3,8) 56.5% | (4,7) 55.7% | (8,4) 55.7% | (2,6) 55.6%
+[]αβ[c++] depth= 4    | best= 58.5%  | time= 0.0s  | nodes=3667    
+  moves: (5,6) 58.5% | (3,8) 57.7% | (4,7) 57.2% | (2,3) 57.0% | (8,4) 56.9%
+[]αβ[c++] depth= 5    | best= 56.1%  | time= 0.0s  | nodes=13922   
+  moves: (3,2) 56.1% | (4,7) 56.1% | (8,4) 55.2% | (5,6) 54.9% | (3,8) 54.5%
+[]αβ[c++] depth= 6    | best= 56.1%  | time= 0.0s  | nodes=47683   
+  moves: (8,4) 56.1% | (5,6) 55.7% | (3,8) 55.7% | (8,5) 55.3% | (8,3) 54.8%
+[]αβ[c++] depth= 7    | best= 56.0%  | time= 0.0s  | nodes=143058  
+  moves: (4,7) 56.0% | (5,6) 55.5% | (8,4) 55.3% | (3,8) 54.8% | (3,2) 53.4%
+[]αβ[c++] depth= 8    | best= 56.5%  | time= 0.1s  | nodes=363919  
+  moves: (5,6) 56.5% | (4,7) 56.4% | (8,4) 55.9% | (8,3) 55.1% | (3,2) 54.9%
+[]αβ[c++] depth= 9    | best= 57.4%  | time= 0.2s  | nodes=1305402 
+  moves: (5,6) 57.4% | (4,7) 54.7% | (8,4) 54.6% | (3,8) 54.3% | (8,3) 53.4%
+ab: done | completed=9     | attempted=10   
+final: (5,6) 57.4% | (4,7) 54.7% | (8,4) 54.6% | (3,8) 54.3% | (8,3) 53.4% | (8,5) 53.4% | (2,6) 53.2% | (3,2) 53.0% | (2,3) 51.9% | (7,5) 51.2% | (2,8) 49.9% | (2,2) 39.7% | (2,7) 36.0%
+move: (5,6)
+Pondering start
+Ponder hit: reused cached ordering. cached depth=10, start depth=11
+ply=21   | empties=39   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=0.9s 
+tt: miss | start depth=2
+legal moves=10
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.67s    
+mcts: disabled
 ab: start | depth=11  
-mcts: done | sims=4608      | nn_batches=4     | best=87.1% 
-mcts: root visits | (6,7)=2932 | (8,3)=997 | (4,7)=368 | (1,5)=212 | (8,7)=45
-mcts: pruning applied | top moves=3   | best=87.1%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=11    | best= 59.7%  | time= 0.6s  | nodes=6759931 
-  moves: (8,3) 59.7% | (4,7) 53.6% | (6,7) 51.2%
-[]αβ[c++] depth=12    | best= 59.1%  | time= 2.0s  | nodes=19346057
-  moves: (8,3) 59.1% | (4,7) 54.4% | (6,7) 53.0%
-ab: done | completed=12    | attempted=13   
-mcts: dynamic influence adjusted from 50% to 40% based on 4608 sims
-final: (8,3) 63.7% | (6,7) 63.4% | (4,7) 58.5% | (1,5) 50.0% | (1,6) 50.0% | (8,7) 50.0% | (2,7) 50.0%
-[BLUE]search agreement: corr=-0.428 | top_move=MISMATCH[/BLUE]
-[GREEN]midpoint: (8,3) 67.0% | (6,7) 70.0% | (4,7) 62.0%[/GREEN]
+ab: done | completed=10    | attempted=11   
+final: (4,7) 50.0% | (2,6) 50.0% | (8,5) 50.0% | (8,4) 50.0% | (8,3) 50.0% | (7,5) 50.0% | (2,8) 50.0% | (2,3) 50.0% | (2,2) 50.0% | (2,7) 50.0%
+move: (4,7)
+Pondering start
+Ponder hit: reused cached ordering. cached depth=10, start depth=11
+ply=23   | empties=37   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=0.9s 
+tt: miss | start depth=2
+legal moves=10
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.69s    
+mcts: disabled
+ab: start | depth=11  
+ab: done | completed=10    | attempted=11   
+final: (8,3) 50.0% | (2,2) 50.0% | (3,8) 50.0% | (2,3) 50.0% | (8,4) 50.0% | (2,8) 50.0% | (8,5) 50.0% | (7,5) 50.0% | (2,6) 50.0% | (2,7) 50.0%
 move: (8,3)
 Pondering start
 Ponder hit: reused cached ordering. cached depth=10, start depth=11
-ply=19   | empties=41   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.5s 
+ply=25   | empties=35   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
 tt: miss | start depth=2
 legal moves=8
-scheduler: mcts_priority=0.44    | ab_delay=0.02s     | ab_budget=3.10s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.71s    
+mcts: disabled
 ab: start | depth=11  
-mcts: done | sims=4608      | nn_batches=4     | best=82.1% 
-mcts: root visits | (2,4)=2147 | (6,7)=1978 | (8,7)=339 | (1,5)=69 | (4,7)=58
-mcts: pruning applied | top moves=3   | best=82.1%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=11    | best= 59.3%  | time= 0.7s  | nodes=7139001 
-  moves: (2,4) 59.3% | (6,7) 57.4% | (8,7) 48.8%
-[]αβ[c++] depth=12    | best= 59.9%  | time= 2.5s  | nodes=19353977
-  moves: (2,4) 59.9% | (6,7) 58.6% | (8,7) 48.2%
-ab: done | completed=12    | attempted=13   
-mcts: merged ponder cache | sims=12800    
-mcts: root visits | (2,4)=5956 | (6,7)=5459 | (8,7)=958 | (1,5)=123 | (4,7)=106
-mcts: dynamic influence adjusted from 50% to 40% based on 12800 sims
-final: (2,4) 66.3% | (6,7) 65.1% | (1,5) 54.4% | (8,7) 53.9% | (4,7) 53.8% | (2,7) 51.7% | (1,6) 51.5% | (7,7) 48.9%
-[BLUE]search agreement: corr=1.000 | top_move=MATCH[/BLUE]
-[GREEN]midpoint: (2,4) 71.0% | (6,7) 69.8% | (8,7) 58.5%[/GREEN]
-move: (2,4)
+[]αβ[c++] depth=11    | best= 58.2%  | time= 0.6s  | nodes=6860887 
+  moves: (7,5) 58.2% | (8,5) 56.4% | (2,6) 56.2% | (2,3) 55.3% | (3,8) 53.5%
+ab: done | completed=11   
+final: (7,5) 58.2% | (8,5) 56.4% | (2,6) 56.2% | (2,3) 55.3% | (3,8) 53.5% | (2,8) 51.9% | (2,2) 24.4% | (2,7) 20.0%
+move: (7,5)
 Pondering start
-Ponder hit: reused cached ordering. cached depth=11, start depth=12
-ply=21   | empties=39   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
+Ponder hit: reused cached ordering. cached depth=10, start depth=11
+ply=27   | empties=33   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
 tt: miss | start depth=2
-legal moves=13
-scheduler: mcts_priority=0.39    | ab_delay=0.02s     | ab_budget=2.80s    
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=12  
-mcts: done | sims=4608      | nn_batches=4     | best=81.5% 
-mcts: root visits | (5,2)=2352 | (1,6)=1048 | (1,5)=580 | (3,7)=294 | (4,7)=132
-mcts: pruning applied | top moves=3   | best=81.5%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=12    | best= 60.5%  | time= 1.0s  | nodes=10646889
-  moves: (5,2) 60.5% | (1,6) 59.5% | (1,5) 58.1%
-[]αβ[c++] depth=13    | best= 59.2%  | time= 2.2s  | nodes=12005233
-  moves: (1,5) 59.2% | (5,2) 58.9% | (1,6) 58.4%
-ab: done | completed=13    | attempted=14   
-mcts: dynamic influence adjusted from 50% to 48% based on 4608 sims
-final: (5,2) 66.3% | (1,6) 63.4% | (1,5) 62.8% | (2,6) 50.0% | (3,7) 50.0% | (6,7) 50.0% | (4,7) 50.0% | (5,7) 50.0% | (6,2) 50.0% | (8,7) 50.0% | (7,7) 50.0% | (2,7) 50.0% | (7,2) 50.0%
-[BLUE]search agreement: corr=-0.101 | top_move=MISMATCH[/BLUE]
-[GREEN]midpoint: (5,2) 70.2% | (1,6) 66.2% | (1,5) 65.2%[/GREEN]
-move: (5,2)
-Pondering start
+legal moves=6
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.71s    
+mcts: disabled
+ab: start | depth=11  
+[]αβ[c++] depth=11    | best= 64.8%  | time= 0.4s  | nodes=3772361 
+  moves: (2,6) 64.8% | (2,3) 61.3% | (3,8) 60.3% | (2,2) 23.8% | (2,7) 21.9%
+ab: done | completed=11    | attempted=12   
+final: (2,6) 64.8% | (2,3) 61.3% | (3,8) 60.3% | (2,2) 23.8% | (2,7) 21.9% | (7,2) 18.3%
+move: (2,6)
 Ponder hit: reused cached ordering. cached depth=11, start depth=12
-ply=23   | empties=37   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=4.0s 
+ply=29   | empties=31   | exact=OFF  | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
 tt: miss | start depth=2
-legal moves=12
-scheduler: mcts_priority=0.46    | ab_delay=0.02s     | ab_budget=2.55s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=12  
-mcts: done | sims=4608      | nn_batches=4     | best=78.6% 
-mcts: root visits | (6,2)=1425 | (4,2)=1364 | (3,2)=630 | (6,7)=500 | (1,5)=264
-mcts: pruning applied | top moves=3   | best=78.6%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=12    | best= 61.1%  | time= 1.1s  | nodes=12208298
-  moves: (4,2) 61.1% | (6,2) 60.4% | (3,2) 59.1%
-[]αβ[c++] depth=13    | best= 60.1%  | time= 2.4s  | nodes=10873525
-  moves: (4,2) 60.1% | (3,2) 57.8% | (6,2) 56.7%
-ab: done | completed=13   
-mcts: merged ponder cache | sims=12800    
-mcts: root visits | (6,2)=3942 | (4,2)=3777 | (3,2)=1742 | (6,7)=908 | (1,5)=475
-mcts: dynamic influence adjusted from 50% to 48% based on 12800 sims
-final: (4,2) 65.6% | (6,2) 63.5% | (3,2) 62.5% | (6,7) 56.7% | (1,5) 56.1% | (4,7) 55.5% | (2,6) 55.1% | (8,7) 54.4% | (5,7) 52.7% | (1,6) 52.5% | (7,2) 51.4% | (2,7) 50.3%
-[BLUE]search agreement: corr=0.140 | top_move=MISMATCH[/BLUE]
-[GREEN]midpoint: (4,2) 69.0% | (6,2) 67.5% | (3,2) 65.5%[/GREEN]
-move: (4,2)
-Pondering start
-Ponder hit: reused cached ordering. cached depth=11, start depth=12
-ply=25   | empties=35   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
-tt: miss | start depth=2
-legal moves=13
-scheduler: mcts_priority=0.45    | ab_delay=0.02s     | ab_budget=2.43s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=12  
-mcts: done | sims=4608      | nn_batches=4     | best=93.1% 
-mcts: root visits | (6,2)=3675 | (6,7)=436 | (1,6)=137 | (1,5)=120 | (2,6)=84
-mcts: pruning applied | top moves=3   | best=93.1%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=12    | best= 62.7%  | time= 1.0s  | nodes=10912598
-  moves: (6,2) 62.7% | (1,6) 61.2% | (6,7) 60.5%
-[]αβ[c++] depth=13    | best= 61.1%  | time= 2.4s  | nodes=13552709
-  moves: (1,6) 61.1% | (6,2) 60.3% | (6,7) 57.8%
-ab: done | completed=13   
-mcts: merged ponder cache | sims=12800    
-mcts: root visits | (6,2)=10174 | (6,7)=1221 | (1,6)=387 | (1,5)=221 | (2,6)=159
-mcts: dynamic influence adjusted from 50% to 48% based on 12800 sims
-final: (6,2) 70.2% | (1,6) 63.0% | (6,7) 61.7% | (1,5) 54.9% | (8,7) 54.5% | (2,6) 54.4% | (4,7) 54.3% | (2,1) 52.4% | (5,7) 52.4% | (8,6) 51.7% | (7,2) 51.7% | (2,7) 51.4% | (2,2) 49.6%
-[BLUE]search agreement: corr=0.208 | top_move=MISMATCH[/BLUE]
-[GREEN]midpoint: (6,2) 76.7% | (1,6) 64.9% | (6,7) 64.6%[/GREEN]
-move: (6,2)
-Pondering start
-Ponder hit: reused cached ordering. cached depth=11, start depth=12
-ply=27   | empties=33   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.6s 
-tt: miss | start depth=2
-legal moves=14
-scheduler: mcts_priority=0.44    | ab_delay=0.02s     | ab_budget=2.79s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=12  
-mcts: done | sims=4608      | nn_batches=4     | best=78.9% 
-mcts: root visits | (3,1)=1414 | (6,7)=1054 | (4,7)=742 | (3,7)=537 | (2,6)=433
-mcts: pruning applied | top moves=3   | best=78.9%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=12    | best= 67.1%  | time= 1.2s  | nodes=12150770
-  moves: (3,1) 67.1% | (4,7) 64.2% | (6,7) 61.7%
-[]αβ[c++] depth=13    | best= 67.4%  | time= 2.8s  | nodes=11805310
-  moves: (3,1) 67.4% | (4,7) 61.7% | (6,7) 59.0%
-ab: done | completed=13    | attempted=14   
-mcts: merged ponder cache | sims=12800    
-mcts: root visits | (3,1)=3918 | (6,7)=2929 | (4,7)=2066 | (3,7)=953 | (2,6)=772
-mcts: dynamic influence adjusted from 50% to 48% based on 12800 sims
-final: (3,1) 70.5% | (4,7) 65.1% | (6,7) 63.8% | (3,7) 56.5% | (2,6) 56.2% | (1,5) 55.6% | (8,7) 55.4% | (2,1) 52.7% | (5,7) 52.4% | (5,1) 52.4% | (8,6) 52.1% | (7,2) 52.0% | (2,7) 51.9% | (2,2) 51.5%
-[BLUE]search agreement: corr=0.694 | top_move=MATCH[/BLUE]
-[GREEN]midpoint: (3,1) 73.1% | (4,7) 68.0% | (6,7) 67.7%[/GREEN]
-move: (3,1)
-Ponder hit: reused cached ordering. cached depth=11, start depth=12
-ply=29   | empties=31   | exact=OFF  | C++=ON  | NN=ON  | MCTS=ON  | MCTS influence=auto% | TT=ON  | limit=3.9s 
-tt: miss | start depth=2
-legal moves=13
-scheduler: mcts_priority=0.42    | ab_delay=0.00s     | ab_budget=2.77s    
-mcts: ponder cache hit | sims=8192     
-mcts: pruning start | pre-time=0.3s    | branches=3    
-ab: start | depth=12  
-mcts: done | sims=4608      | nn_batches=4     | best=83.5% 
-mcts: root visits | (5,1)=2138 | (2,3)=1786 | (3,7)=274 | (6,7)=146 | (2,6)=132
-mcts: pruning applied | top moves=3   | best=83.5%  
-ab: delay for MCTS | wait=0.3s    
-[]αβ[c++] depth=12    | best= 69.0%  | time= 0.9s  | nodes=7061190 
-  moves: (2,3) 69.0% | (5,1) 65.5% | (3,7) 64.3%
-[]αβ[c++] depth=13    | best= 69.7%  | time= 1.7s  | nodes=6503733 
-  moves: (2,3) 69.7% | (5,1) 68.1% | (3,7) 63.2%
-ab: done | completed=13    | attempted=14   
-mcts: merged ponder cache | sims=12800    
-mcts: root visits | (5,1)=5911 | (2,3)=4975 | (3,7)=764 | (6,7)=264 | (2,6)=244
-mcts: dynamic influence adjusted from 50% to 48% based on 12800 sims
-final: (2,3) 72.5% | (5,1) 72.0% | (3,7) 64.9% | (6,7) 55.0% | (2,6) 54.4% | (1,5) 53.8% | (4,7) 53.7% | (8,7) 52.4% | (2,2) 52.1% | (5,7) 51.9% | (7,2) 51.8% | (8,6) 51.7% | (2,7) 51.3%
-[BLUE]search agreement: corr=0.906 | top_move=MISMATCH[/BLUE]
-[GREEN]midpoint: (2,3) 75.3% | (5,1) 75.8% | (3,7) 67.0%[/GREEN]
-move: (2,3)
-Ponder hit: reused cached ordering. cached depth=11, start depth=12
-ponder: stopped for exact solve
-ply=31   | empties=29   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=3.9s 
-tt: miss | start depth=2
-legal moves=13
-scheduler: exact solve -> MCTS skipped, AB runs with time limit
-mcts: skipped during exact solve
-ab: start | depth=12  
-[]αβ[c++] depth=12    | best= 93.9%  | time= 0.7s  | nodes=4235017 
-  moves: (1,4) 93.9% | (8,6) 88.1% | (5,1) 70.9% | (2,6) 69.9% | (4,7) 65.7%
-[]αβ[c++] depth=13    | best= 94.6%  | time= 1.6s  | nodes=5519234 
-  moves: (8,6) 94.6% | (1,4) 94.6% | (2,6) 69.8% | (5,1) 69.0% | (5,7) 66.8%
-[]αβ[c++] depth=14    | best= 96.3%  | time= 3.0s  | nodes=11883581
-  moves: (8,6) 96.3% | (1,4) 79.6% | (5,1) 72.1% | (2,6) 68.4% | (3,7) 65.9%
-ab: done | completed=14    | attempted=15   
-mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
-final: (8,6) 96.3% | (1,4) 79.6% | (5,1) 72.1% | (2,6) 68.4% | (3,7) 65.9% | (6,7) 65.0% | (5,7) 64.7% | (4,7) 64.7% | (1,5) 63.0% | (7,2) 62.3% | (8,7) 57.6% | (2,7) 41.1% | (2,2) 16.7%
-move: (8,6)
-ponder: all candidates exact, AB-only ponder
-Ponder hit: reused cached ordering. cached depth=12, start depth=14
-ponder: stopped for exact solve
-ply=33   | empties=27   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=4.3s 
-tt: hit | start depth=14
-legal moves=12
-scheduler: exact solve -> MCTS skipped, AB runs with time limit
-mcts: skipped during exact solve
-ab: start | depth=14  
-[*]αβ[c++] depth=14   | best= 86.8%  | time= 1.1s  | nodes=6397394 
-  moves: (5,1) 86.8% | (7,2) 81.0% | (1,4) 69.9% | (6,7) 68.0% | (2,6) 66.6%
-[*]αβ[c++] depth=15   | best= 98.7%  | time= 3.9s  | nodes=10822403
-  moves: (1,4) 98.7% | (5,1) 95.8% | (3,7) 68.4% | (2,6) 66.5% | (4,7) 66.3%
-ab: done | completed=15    | attempted=16   
-mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
-final: (1,4) 98.7% | (5,1) 95.8% | (3,7) 68.4% | (2,6) 66.5% | (4,7) 66.3% | (6,7) 64.6% | (5,7) 63.9% | (7,2) 58.6% | (1,5) 58.2% | (2,7) 23.5% | (2,2) 13.8% | (7,7) 6.7%
-move: (1,4)
-Ponder hit: reused cached ordering. cached depth=11, start depth=12
-ponder: stopped for exact solve
-ply=35   | empties=25   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=3.9s 
-tt: hit | start depth=12
-legal moves=13
-scheduler: exact solve -> MCTS skipped, AB runs with time limit
-mcts: skipped during exact solve
-ab: start | depth=12  
-[*]αβ[c++] depth=12   | best= 99.6%  | time= 0.3s  | nodes=1611324 
-  moves: (6,1) 99.6% | (7,2) 71.7% | (1,6) 67.4% | (5,1) 67.4% | (5,7) 64.3%
-[*]αβ[c++] depth=13   | best= 99.6%  | time= 1.0s  | nodes=4210021 
-  moves: (6,1) 99.6% | (5,1) 92.4% | (7,2) 68.3% | (1,6) 67.9% | (2,6) 65.2%
-[*]αβ[c++] depth=14   | best= 99.7%  | time= 1.7s  | nodes=4916478 
-  moves: (6,1) 99.7% | (7,2) 95.1% | (5,1) 67.7% | (1,6) 66.2% | (6,7) 64.3%
-ab: done | completed=14    | attempted=15   
-mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
-final: (6,1) 99.7% | (7,2) 95.1% | (5,1) 67.7% | (1,6) 66.2% | (6,7) 64.3% | (2,6) 63.1% | (5,7) 61.7% | (4,7) 59.0% | (3,7) 52.1% | (2,7) 18.9% | (2,2) 14.0% | (7,7) 8.1% | (1,2) 3.3%
-move: (6,1)
-ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=23, tl=6739ms)
-endgame: partial solve depth=22/23 -> falling back to normal search
-Ponder hit: reused cached ordering. cached depth=13, start depth=14
-ponder: stopped for exact solve
-ply=37   | empties=23   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=3.9s 
-tt: miss | start depth=2
-legal moves=13
-scheduler: exact solve -> MCTS skipped, AB runs with time limit
-mcts: skipped during exact solve
-ab: start | depth=14  
-ab: done | completed=13   
-mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
-final: (1,6) 50.0% | (5,7) 50.0% | (2,6) 50.0% | (4,7) 50.0% | (6,7) 50.0% | (1,2) 50.0% | (1,1) 50.0% | (7,2) 50.0% | (3,7) 50.0% | (7,1) 50.0% | (7,7) 50.0% | (2,7) 50.0% | (2,2) 50.0%
-move: (1,6)
-ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=21, tl=8408ms)
-endgame: partial solve depth=19/21 -> falling back to normal search
-Ponder hit: reused cached ordering. cached depth=16, start depth=17
-ponder: stopped for exact solve
-ply=39   | empties=21   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=4.7s 
-tt: hit | start depth=17
 legal moves=10
+scheduler: mcts_priority=0.00    | ab_delay=0.00s     | ab_budget=0.72s    
+mcts: disabled
+ab: start | depth=12  
+[]αβ[c++] depth=12    | best= 69.2%  | time= 0.5s  | nodes=2705704 
+  moves: (1,3) 69.2% | (8,6) 68.6% | (3,8) 68.3% | (3,2) 67.9% | (5,8) 65.5%
+ab: done | completed=12    | attempted=13   
+final: (1,3) 69.2% | (8,6) 68.6% | (3,8) 68.3% | (3,2) 67.9% | (5,8) 65.5% | (2,3) 63.7% | (7,6) 63.4% | (2,8) 61.8% | (2,2) 23.4% | (7,2) 18.9%
+move: (1,3)
+ponder: stopped for exact solve
+ply=31   | empties=29   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
+tt: hit | start depth=11
+legal moves=11
 scheduler: exact solve -> MCTS skipped, AB runs with time limit
 mcts: skipped during exact solve
-ab: start | depth=17  
-ab: done | completed=16   
-mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
-final: (1,2) 50.0% | (4,7) 50.0% | (2,6) 50.0% | (5,7) 50.0% | (3,7) 50.0% | (6,7) 50.0% | (7,2) 50.0% | (7,7) 50.0% | (2,7) 50.0% | (2,2) 50.0%
+ab: start | depth=11  
+[*]αβ[c++] depth=11   | best= 89.2%  | time= 0.4s  | nodes=2053007 
+  moves: (1,8) 89.2% | (2,3) 72.9% | (5,1) 71.2% | (5,8) 71.2% | (3,8) 71.2%
+ab: done | completed=11    | attempted=12   
+final: (1,8) 89.2% | (2,3) 72.9% | (5,1) 71.2% | (5,8) 71.2% | (3,8) 71.2% | (6,2) 70.3% | (4,2) 69.7% | (3,2) 69.1% | (2,8) 65.5% | (2,2) 29.1% | (7,2) 23.2%
+move: (1,8)
+ponder: all candidates exact, AB-only ponder
+Ponder hit: reused cached ordering. cached depth=11, start depth=12
+ponder: stopped for exact solve
+ply=33   | empties=27   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
+tt: miss | start depth=2
+legal moves=11
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=12  
+[]αβ[c++] depth=12    | best= 91.9%  | time= 0.5s  | nodes=2355239 
+  moves: (7,2) 91.9% | (3,8) 91.8% | (2,8) 91.5% | (7,6) 90.3% | (6,1) 90.1%
+ab: done | completed=12   
+final: (7,2) 91.9% | (3,8) 91.8% | (2,8) 91.5% | (7,6) 90.3% | (6,1) 90.1% | (6,2) 89.7% | (3,2) 89.6% | (4,2) 89.4% | (5,8) 88.7% | (7,7) 69.2% | (2,2) 67.0%
+move: (7,2)
+ponder: all candidates exact, AB-only ponder
+Ponder hit: reused cached ordering. cached depth=11, start depth=12
+ponder: stopped for exact solve
+ply=35   | empties=25   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=0.9s 
+tt: hit | start depth=12
+legal moves=16
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=12  
+ab: done | completed=11    | attempted=12   
+final: (2,8) 50.0% | (1,2) 50.0% | (6,2) 50.0% | (5,8) 50.0% | (7,6) 50.0% | (4,1) 50.0% | (5,1) 50.0% | (3,8) 50.0% | (3,2) 50.0% | (6,8) 50.0% | (4,2) 50.0% | (2,2) 50.0% | (6,1) 50.0% | (5,7) 50.0% | (7,7) 50.0% | (7,8) 50.0%
+move: (2,8)
+ponder: all candidates exact, AB-only ponder
+Ponder hit: reused cached ordering. cached depth=10, start depth=11
+ponder: stopped for exact solve
+ply=37   | empties=23   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=0.9s 
+tt: hit | start depth=11
+legal moves=15
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=11  
+[*]αβ[c++] depth=11   | best= 98.4%  | time= 0.1s  | nodes=422324  
+  moves: (3,8) 98.4% | (1,2) 94.6% | (2,2) 86.5% | (5,8) 84.6% | (6,8) 80.9%
+[*]αβ[c++] depth=12   | best= 98.2%  | time= 0.4s  | nodes=807534  
+  moves: (3,8) 98.2% | (1,2) 97.2% | (5,8) 89.7% | (2,2) 87.9% | (6,8) 79.0%
+ab: done | completed=12    | attempted=13   
+final: (3,8) 98.2% | (1,2) 97.2% | (5,8) 89.7% | (2,2) 87.9% | (6,8) 79.0% | (5,7) 78.2% | (4,2) 77.4% | (4,1) 75.3% | (6,2) 72.9% | (7,7) 71.6% | (6,1) 70.9% | (7,6) 69.2% | (5,1) 65.6% | (3,2) 64.2% | (7,8) 61.2%
+move: (3,8)
+ponder: all candidates exact, AB-only ponder
+endgame: C++ solver activated (empties=21, tl=3800ms)
+endgame: partial solve depth=20/21 -> falling back to normal search
+Ponder hit: reused cached ordering. cached depth=12, start depth=13
+ponder: stopped for exact solve
+ply=39   | empties=21   | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
+tt: hit | start depth=13
+legal moves=13
+scheduler: exact solve -> MCTS skipped, AB runs with time limit
+mcts: skipped during exact solve
+ab: start | depth=13  
+ab: done | completed=12   
+final: (1,2) 50.0% | (4,1) 50.0% | (5,8) 50.0% | (7,8) 50.0% | (6,2) 50.0% | (7,6) 50.0% | (5,1) 50.0% | (2,2) 50.0% | (6,8) 50.0% | (6,1) 50.0% | (4,2) 50.0% | (3,2) 50.0% | (7,7) 50.0%
 move: (1,2)
 ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=19, tl=8808ms)
-endgame: exact solved in 1.72s | depth=19/19 | best move=((1,7))
+endgame: C++ solver activated (empties=19, tl=5100ms)
+endgame: exact solved in 1.31s | depth=19/19 | best move=((8,1))
 ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=17, tl=9500ms)
-endgame: exact solved in 0.08s | depth=17/17 | best move=((1,1))
+endgame: C++ solver activated (empties=17, tl=5100ms)
+endgame: exact solved in 0.10s | depth=17/17 | best move=((8,6))
 ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=15, tl=8808ms)
-endgame: exact solved in 0.04s | depth=15/15 | best move=((8,1))
-endgame: C++ solver activated (empties=14, tl=8808ms)
-endgame: exact solved in 0.03s | depth=14/14 | best move=((8,8))
-endgame: C++ solver activated (empties=13, tl=9100ms)
-endgame: exact solved in 0.02s | depth=13/13 | best move=((1,8))
+endgame: C++ solver activated (empties=15, tl=4200ms)
+endgame: exact solved in 0.09s | depth=15/15 | best move=((6,8))
 ponder: all candidates exact, AB-only ponder
+endgame: C++ solver activated (empties=13, tl=5100ms)
+endgame: exact solved in 0.01s | depth=13/13 | best move=((1,1))
 ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=11, tl=9500ms)
-endgame: exact solved in 0.01s | depth=11/11 | best move=((7,2))
+endgame: C++ solver activated (empties=11, tl=5100ms)
+endgame: exact solved in 0.01s | depth=11/11 | best move=((3,1))
 ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=9, tl=9500ms)
-endgame: exact solved in 0.00s | depth=9/9 | best move=((5,8))
+endgame: C++ solver activated (empties=9, tl=5500ms)
+endgame: exact solved in 0.00s | depth=9/9 | best move=((8,8))
+endgame: C++ solver activated (empties=8, tl=5500ms)
+endgame: exact solved in 0.00s | depth=8/8 | best move=((4,1))
 ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=7, tl=9800ms)
-endgame: exact solved in 0.00s | depth=7/7 | best move=((3,7))
-ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=5, tl=9800ms)
-endgame: exact solved in 0.00s | depth=5/5 | best move=((7,7))
-endgame: C++ solver activated (empties=4, tl=9800ms)
-endgame: exact solved in 0.00s | depth=4/4 | best move=((6,8))
-ponder: all candidates exact, AB-only ponder
-endgame: C++ solver activated (empties=2, tl=9800ms)
+endgame: C++ solver activated (empties=6, tl=5800ms)
+endgame: exact solved in 0.00s | depth=6/6 | best move=((7,1))
+endgame: C++ solver activated (empties=5, tl=5800ms)
+endgame: exact solved in 0.00s | depth=5/5 | best move=((5,1))
+endgame: C++ solver activated (empties=4, tl=5800ms)
+endgame: exact solved in 0.00s | depth=4/4 | best move=((3,2))
+endgame: C++ solver activated (empties=3, tl=5800ms)
 endgame: no valid moves found, falling back to normal search
 ponder: stopped for exact solve
-ply=58   | empties=2    | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=5.0s 
+ply=57   | empties=3    | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
 tt: miss | start depth=2
 legal moves=2
 scheduler: exact solve -> MCTS skipped, AB runs with time limit
 mcts: skipped during exact solve
 ab: start | depth=2   
-[*]αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=8       
-  moves: (4,8) 100.0% | (7,8) 100.0%
-ab: done | completed=2    
-exact result cached: (4,8)
-mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
-final: (4,8) 100.0% | (7,8) 100.0%
-move: (4,8)
-endgame: C++ solver activated (empties=1, tl=9800ms)
+[]αβ[c++] depth= 2    | best=100.0%  | time= 0.0s  | nodes=4       
+  moves: (7,6) 100.0% | (7,7) 99.9%
+[*]αβ[c++] depth= 3   | best=100.0%  | time= 0.0s  | nodes=8       
+  moves: (7,6) 100.0% | (7,7) 100.0%
+ab: done | completed=3    
+exact result cached: (7,6)
+final: (7,6) 100.0% | (7,7) 100.0%
+move: (7,6)
+ponder: all candidates exact, AB-only ponder
+endgame: C++ solver activated (empties=1, tl=5800ms)
 endgame: no valid moves found, falling back to normal search
 ponder: stopped for exact solve
-ply=59   | empties=1    | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=5.0s 
+ply=59   | empties=1    | exact=ON   | C++=ON  | NN=ON  | MCTS=OFF | MCTS influence=0%    | TT=ON  | limit=1.0s 
 tt: miss | start depth=2
 legal moves=1
 scheduler: exact solve -> MCTS skipped, AB runs with time limit
 mcts: skipped during exact solve
 ab: start | depth=2   
 [*]αβ[c++] depth= 2   | best=100.0%  | time= 0.0s  | nodes=2       
-  moves: (7,8) 100.0%
+  moves: (8,7) 100.0%
 ab: done | completed=2    
-exact result cached: (7,8)
-mcts: dynamic influence adjusted from 50% to 0% based on 0 sims
-final: (7,8) 100.0%
-move: (7,8)
+exact result cached: (8,7)
+final: (8,7) 100.0%
+move: (8,7)

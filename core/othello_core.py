@@ -942,8 +942,20 @@ def board_to_tensor_batch(states):
 
 def nn_infer_batch(model, tensor_batch):
     """バッチ推論を実行（ONNX/PyTorch自動選択）"""
-    if _use_onnx and _onnx_inference_engine is not None:
-        # ONNX推論を使用
+    # model 自体が ONNXInference オブジェクトである場合
+    if ONNX_AVAILABLE and isinstance(model, ONNXInference):
+        try:
+            if hasattr(tensor_batch, "cpu"):
+                onnx_input = tensor_batch.cpu().numpy()
+            else:
+                onnx_input = np.asarray(tensor_batch, dtype=np.float32)
+            return model.infer_batch(onnx_input)
+        except Exception as e:
+            print(f"ONNX inference failed: {e}")
+            raise e
+
+    if _use_onnx and _onnx_inference_engine is not None and (model is None):
+        # グローバルな ONNX エンジンを使用（後方互換性）
         try:
             if hasattr(tensor_batch, "cpu"):
                 onnx_input = tensor_batch.cpu().numpy()
@@ -951,8 +963,7 @@ def nn_infer_batch(model, tensor_batch):
                 onnx_input = np.asarray(tensor_batch, dtype=np.float32)
             return _onnx_inference_engine.infer_batch(onnx_input)
         except Exception as e:
-            print(f"ONNX inference failed: {e}, falling back to PyTorch", flush=True)
-            # フォールバックしてPyTorchを使用
+            print(f"Global ONNX inference failed: {e}, falling back to PyTorch")
     
     # PyTorch推論
     if torch is None:

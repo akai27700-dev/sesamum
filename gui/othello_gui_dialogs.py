@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import filedialog
 
 class StartupSettingsDialog:
 
@@ -197,6 +198,7 @@ class StartupSettingsDialog:
             'use_pondering': self.use_pondering.get(),
             
             # 枝刈り設定の統合マッピング
+            'pruning_level': pruning,
             'pruning_enabled': pruning != 'none',
             'traditional_pruning_enabled': pruning != 'none',
             'mcts_pruning_enabled': pruning in ('extreme', 'aggressive') and nn_enabled and mode != 'ab_only',
@@ -212,3 +214,153 @@ class StartupSettingsDialog:
         }
         self.result = res
         self.top.destroy()
+
+
+class AutoMatchConfigDialog:
+    def __init__(self, parent, initial_w1='', initial_w2='', initial_nn1='', initial_nn2=''):
+        self.result = None
+        self.top = tk.Toplevel(parent)
+        self.top.title('自動対戦設定')
+        self.top.grab_set()
+        self.top.resizable(False, False)
+        
+        self.w1_path = tk.StringVar(value=initial_w1)
+        self.w2_path = tk.StringVar(value=initial_w2)
+        self.nn1_path = tk.StringVar(value=initial_nn1)
+        self.nn2_path = tk.StringVar(value=initial_nn2)
+        self.num_games = tk.IntVar(value=2)
+        self.time_limit = tk.DoubleVar(value=1.0)
+        self.use_ponder = tk.BooleanVar(value=True)
+        self.pruning_level = tk.StringVar(value='aggressive')
+        self.search_mode = tk.StringVar(value='hybrid')
+        
+        main_frame = tk.Frame(self.top, padx=20, pady=20, bg='#f8fafc')
+        main_frame.pack(fill='both', expand=True)
+        
+        tk.Label(main_frame, text='自動対戦の設定', font=('Yu Gothic UI', 14, 'bold'), bg='#f8fafc', fg='#1e293b').pack(anchor='w', pady=(0, 15))
+        
+        # Player 1 (Black by default in game 1)
+        p1_frame = tk.LabelFrame(main_frame, text='プレイヤー1 (基準)', padx=10, pady=10, bg='#f8fafc', font=('Yu Gothic UI', 9, 'bold'))
+        p1_frame.pack(fill='x', pady=(0, 10))
+        self._add_file_selector(p1_frame, '評価重み (JSON):', self.w1_path, [('JSON files', '*.json'), ('All files', '*.*')])
+        self._add_file_selector(p1_frame, 'NNモデル (PTH/ONNX):', self.nn1_path, [('Model files', '*.pth *.onnx'), ('All files', '*.*')])
+        
+        # Player 2 (White by default in game 1)
+        p2_frame = tk.LabelFrame(main_frame, text='プレイヤー2 (比較対象)', padx=10, pady=10, bg='#f8fafc', font=('Yu Gothic UI', 9, 'bold'))
+        p2_frame.pack(fill='x', pady=(0, 10))
+        self._add_file_selector(p2_frame, '評価重み (JSON):', self.w2_path, [('JSON files', '*.json'), ('All files', '*.*')])
+        self._add_file_selector(p2_frame, 'NNモデル (PTH/ONNX):', self.nn2_path, [('Model files', '*.pth *.onnx'), ('All files', '*.*')])
+        
+        # Match settings
+        settings_frame = tk.LabelFrame(main_frame, text='対戦条件', padx=10, pady=10, bg='#f8fafc', font=('Yu Gothic UI', 9, 'bold'))
+        settings_frame.pack(fill='x', pady=(10, 0))
+        
+        row1 = tk.Frame(settings_frame, bg='#f8fafc')
+        row1.pack(fill='x', pady=2)
+        tk.Label(row1, text='試合数:', bg='#f8fafc', width=8, anchor='w').pack(side='left')
+        tk.Entry(row1, textvariable=self.num_games, width=5).pack(side='left')
+        tk.Label(row1, text='  持ち時間(秒):', bg='#f8fafc').pack(side='left')
+        tk.Entry(row1, textvariable=self.time_limit, width=5).pack(side='left')
+        tk.Checkbutton(row1, text='Ponder(裏読み)', variable=self.use_ponder, bg='#f8fafc').pack(side='left', padx=10)
+        
+        row2 = tk.Frame(settings_frame, bg='#f8fafc')
+        row2.pack(fill='x', pady=2)
+        tk.Label(row2, text='枝刈り:', bg='#f8fafc', width=8, anchor='w').pack(side='left')
+        from tkinter import ttk
+        pruning_cb = ttk.Combobox(row2, textvariable=self.pruning_level, values=['none', 'standard', 'aggressive', 'extreme'], width=10, state='readonly')
+        pruning_cb.pack(side='left')
+        tk.Label(row2, text='  探索モード:', bg='#f8fafc').pack(side='left')
+        mode_cb = ttk.Combobox(row2, textvariable=self.search_mode, values=['hybrid', 'mcts_only', 'ab_only'], width=10, state='readonly')
+        mode_cb.pack(side='left')
+        
+        # Buttons
+        btn_frame = tk.Frame(main_frame, bg='#f8fafc')
+        btn_frame.pack(fill='x', pady=(20, 0))
+        tk.Button(btn_frame, text='キャンセル', command=self.top.destroy, padx=15).pack(side='right', padx=(10, 0))
+        tk.Button(btn_frame, text='対戦開始', command=self.on_ok, bg='#2563eb', fg='white', font=('Yu Gothic UI', 10, 'bold'), padx=20).pack(side='right')
+        
+        self.top.wait_window()
+
+    def _add_file_selector(self, parent, label, variable, filetypes):
+        frame = tk.Frame(parent, bg='#f8fafc')
+        frame.pack(fill='x', pady=2)
+        tk.Label(frame, text=label, bg='#f8fafc', width=20, anchor='w').pack(side='left')
+        tk.Entry(frame, textvariable=variable, width=40).pack(side='left', padx=5)
+        tk.Button(frame, text='参照...', command=lambda: self._browse(variable, filetypes)).pack(side='left')
+
+    def _browse(self, variable, filetypes):
+        path = filedialog.askopenfilename(filetypes=filetypes)
+        if path:
+            variable.set(path)
+
+    def on_ok(self):
+        self.result = {
+            'w1': self.w1_path.get(),
+            'w2': self.w2_path.get(),
+            'nn1': self.nn1_path.get(),
+            'nn2': self.nn2_path.get(),
+            'num_games': self.num_games.get(),
+            'time_limit': self.time_limit.get(),
+            'use_ponder': self.use_ponder.get(),
+            'pruning_level': self.pruning_level.get(),
+            'search_mode': self.search_mode.get()
+        }
+        self.top.destroy()
+
+class RuntimeSettingsDialog:
+    def __init__(self, parent, current_time_limit, current_pruning_level):
+        self.result = None
+        self.top = tk.Toplevel(parent)
+        self.top.title('実行時設定変更')
+        self.top.grab_set()
+        self.top.resizable(False, False)
+        
+        # 変数の初期化
+        self.time_limit = tk.StringVar(value=str(float(current_time_limit)))
+        self.pruning_level = tk.StringVar(value=current_pruning_level)
+        
+        main_frame = tk.Frame(self.top, padx=20, pady=20, bg='#f8fafc')
+        main_frame.pack(fill='both', expand=True)
+        
+        tk.Label(main_frame, text='対戦中の設定変更', font=('Yu Gothic UI', 12, 'bold'), bg='#f8fafc', fg='#1e293b').pack(anchor='w', pady=(0, 15))
+        
+        # 持ち時間設定
+        time_frame = tk.LabelFrame(main_frame, text='持ち時間設定', padx=10, pady=10, bg='#f8fafc', font=('Yu Gothic UI', 9, 'bold'))
+        time_frame.pack(fill='x', pady=(0, 10))
+        time_options = [('1秒', '1.0'), ('3秒', '3.0'), ('5秒', '5.0'), ('10秒', '10.0'), ('30秒', '30.0')]
+        for i, (text, value) in enumerate(time_options):
+            tk.Radiobutton(time_frame, text=text, value=value, variable=self.time_limit, bg='#f8fafc').pack(side='left', padx=5)
+            
+        # 自由入力欄
+        custom_time_frame = tk.Frame(time_frame, bg='#f8fafc')
+        custom_time_frame.pack(side='left', padx=10)
+        tk.Label(custom_time_frame, text='任意(秒):', bg='#f8fafc').pack(side='left')
+        tk.Entry(custom_time_frame, textvariable=self.time_limit, width=5).pack(side='left')
+        
+        # 枝刈り設定
+        pruning_frame = tk.LabelFrame(main_frame, text='枝刈り', padx=10, pady=10, bg='#f8fafc', font=('Yu Gothic UI', 9, 'bold'))
+        pruning_frame.pack(fill='x', pady=(0, 10))
+        pruning_options = [('Multi-Cut,MCTS追加', 'extreme'), ('MCTS枝刈り追加', 'aggressive'), ('標準', 'standard'), ('なし', 'none')]
+        for i, (text, value) in enumerate(pruning_options):
+            tk.Radiobutton(pruning_frame, text=text, value=value, variable=self.pruning_level, bg='#f8fafc').pack(side='left', padx=5)
+            
+        # ボタン
+        btn_frame = tk.Frame(main_frame, bg='#f8fafc')
+        btn_frame.pack(fill='x', pady=(15, 0))
+        tk.Button(btn_frame, text='キャンセル', command=self.top.destroy, padx=15).pack(side='right', padx=(10, 0))
+        tk.Button(btn_frame, text='適用', command=self.on_ok, bg='#2563eb', fg='white', font=('Yu Gothic UI', 10, 'bold'), padx=20).pack(side='right')
+        
+        self.top.wait_window()
+
+    def on_ok(self):
+        try:
+            time_val = float(self.time_limit.get())
+        except ValueError:
+            time_val = 5.0
+            
+        self.result = {
+            'time_limit_sec': time_val,
+            'pruning_level': self.pruning_level.get()
+        }
+        self.top.destroy()
+

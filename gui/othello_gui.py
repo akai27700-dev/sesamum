@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import core.othello_core as core
 cpp_engine = core.cpp_engine
 get_endgame_best_move = core.get_endgame_best_move
-from gui.othello_gui_dialogs import StartupSettingsDialog
+from gui.othello_gui_dialogs import StartupSettingsDialog, AutoMatchConfigDialog, RuntimeSettingsDialog
 from gui.othello_gui_search import OthelloSearchMixin
 BASE_DIR = core.BASE_DIR
 BEST_MODEL_PATH = core.BEST_MODEL_PATH
@@ -380,6 +380,7 @@ class UltimateOthello(OthelloSearchMixin):
         self.history_heuristic = [[0.0 for _ in range(64)] for _ in range(2)]  # [side][move]
         self.killer_moves_root = [[-1, -1] for _ in range(64)]  # [ply][killer1, killer2]
         self.side_weight_profiles = None
+        self.side_nn_profiles = None
         # 自動対戦: 重み比較モード（weights_1 vs weights_2）
         self.weights_match_active = False
         self.weights_match_game_index = 0
@@ -476,8 +477,8 @@ class UltimateOthello(OthelloSearchMixin):
         self.use_book = settings.get('use_book', True)
         book_source = settings.get('book_source', 'egaroucid')
         book_usage_ratio = max(0.0, min(1.0, float(settings.get('book_usage', 85)) / 100.0))
-        
         # 枝刈り設定を読み込み
+        self.pruning_level = settings.get('pruning_level', 'aggressive')
         self.pruning_enabled = settings.get('pruning_enabled', False)
         self.mcts_pruning_enabled = settings.get('mcts_pruning_enabled', False)
         self.mcts_pruning_time = settings.get('mcts_pruning_time', 2.0)
@@ -664,6 +665,9 @@ class UltimateOthello(OthelloSearchMixin):
         um.add_checkbutton(label='盤面のみ表示', variable=self.board_only_var, command=self.toggle_board_only_mode)
         self.auto_battle_var = tk.BooleanVar(value=self.auto_battle)
         um.add_checkbutton(label='自動対戦モード', variable=self.auto_battle_var, command=self.toggle_auto_battle_mode)
+        um.add_command(label='自動対戦設定...', command=self.open_auto_match_settings)
+        um.add_separator()
+        um.add_command(label='実行時設定変更...', command=self.open_runtime_settings)
         um.add_separator()
         um.add_command(label='先後交代', command=self.c_col)
         um.add_separator()
@@ -1870,6 +1874,149 @@ class UltimateOthello(OthelloSearchMixin):
         self.drw()
         self.chk()
 
+    def open_auto_match_settings(self):
+        """自動対戦の設定ダイアログを開く"""
+        initial_w1 = WEIGHTS_1_PATH
+        initial_w2 = WEIGHTS_2_PATH
+        initial_nn1 = BEST_MODEL_PATH
+        initial_nn2 = BEST_MODEL_PATH # デフォルトは同じモデル
+        
+        dialog = AutoMatchConfigDialog(self.rt, initial_w1, initial_w2, initial_nn1, initial_nn2)
+        if dialog.result:
+            self.start_custom_auto_match(dialog.result)
+
+    def open_runtime_settings(self):
+        """試合中から枝刈り設定や制限時間を変更する"""
+        dialog = RuntimeSettingsDialog(self.rt, self.time_limit_sec, self.pruning_level)
+        if dialog.result:
+            old_time = self.time_limit_sec
+            old_pruning = self.pruning_level
+            
+            self.time_limit_sec = dialog.result['time_limit_sec']
+            self.pruning_level = dialog.result['pruning_level']
+            
+            # C++エンジンの枝刈りパラメータ更新
+            if self.use_cpp_engine and hasattr(cpp_engine, 'set_search_params'):
+                mc_thresh = 3
+                mc_depth = 8
+                
+                if self.pruning_level == 'extreme':
+                    mc_thresh = 3
+                    mc_depth = 8
+                elif self.pruning_level == 'aggressive':
+                    mc_thresh = 3
+                    mc_depth = 8
+                elif self.pruning_level == 'standard':
+                    mc_thresh = 4
+                    mc_depth = 10
+                elif self.pruning_level == 'none':
+                    mc_thresh = 99
+                    mc_depth = 99
+                
+                try:
+                    cpp_engine.set_search_params({
+                        'pruning_enabled': self.pruning_level != 'none',
+                        'traditional_pruning_enabled': self.pruning_level != 'none',
+                        'multi_cut_enabled': self.pruning_level == 'extreme',
+                        'multi_cut_threshold': mc_thresh,
+                        'multi_cut_depth': mc_depth,
+                        'ybwc_min_depth': 6
+                    })
+                except Exception as e:
+                    self.log(f'[WARN] C++ set_search_params error: {e}')
+            
+            self.log(f'設定を変更しました: 思考時間 {old_time}秒 -> {self.time_limit_sec}秒, 枝刈り {old_pruning} -> {self.pruning_level}')
+
+    def start_custom_auto_match(self, config):
+        """設定された重みとモデルで自動対戦を開始"""
+        w1 = self.load_weights_from_file(config['w1'])
+        w2 = self.load_weights_from_file(config['w2'])
+        nn1 = self.load_nn_model(config['nn1'])
+        nn2 = self.load_nn_model(config['nn2'])
+        
+        if w1 is None or w2 is None:
+            messagebox.showerror('Error', '重みファイルの読み込みに失敗しました')
+            return
+        
+        self.weights_match_active = True
+        self.weights_match_game_index = 0
+        self.weights_match_score = {'w1': 0, 'w2': 0, 'draw': 0}
+        self.weights_match_profiles = {'w1': w1, 'w2': w2}
+        self.side_nn_profiles = {1: nn1, -1: nn2} # とりあえず初期設定
+        self.weights_match_max_games = config.get('num_games', 2)
+        self.weights_match_nn_paths = {'w1': config['nn1'], 'w2': config['nn2']}
+        
+        # UIから取得した各種パラメータを適用
+        if 'time_limit' in config:
+            self.time_limit_sec = float(config['time_limit'])
+        if 'use_ponder' in config:
+            self.use_pondering = bool(config['use_ponder'])
+            
+        pruning = config.get('pruning_level', 'aggressive')
+        self.pruning_level = pruning
+        self.pruning_enabled = pruning != 'none'
+        self.traditional_pruning_enabled = pruning != 'none'
+        self.multi_cut_enabled = pruning == 'extreme'
+        
+        mode = config.get('search_mode', 'hybrid')
+        self.search_mode = mode
+        self.use_mcts_only = (mode == 'mcts_only')
+        self.use_mcts_enabled = (mode != 'ab_only')
+        self.mcts_pruning_enabled = pruning in ('extreme', 'aggressive') and getattr(self, 'use_nn', False) and mode != 'ab_only'
+        
+        # エンジンに枝刈り設定を反映
+        if self.use_cpp_engine and cpp_engine is not None and hasattr(cpp_engine, 'set_search_params'):
+            mc_thresh = 3 if pruning in ('extreme', 'aggressive') else 4 if pruning == 'standard' else 99
+            mc_depth = 8 if pruning in ('extreme', 'aggressive') else 10 if pruning == 'standard' else 99
+            try:
+                cpp_engine.set_search_params({
+                    'pruning_enabled': self.pruning_enabled,
+                    'traditional_pruning_enabled': self.traditional_pruning_enabled,
+                    'multi_cut_enabled': self.multi_cut_enabled,
+                    'multi_cut_threshold': mc_thresh,
+                    'multi_cut_depth': mc_depth,
+                    'ybwc_min_depth': 6
+                })
+            except Exception:
+                pass
+        
+        self.auto_battle = True
+        self.auto_battle_var.set(True)
+        
+        self.log(f'custom match: start ({self.weights_match_max_games} games) | w1={os.path.basename(config["w1"])} nn1={os.path.basename(config["nn1"])} | w2={os.path.basename(config["w2"])} nn2={os.path.basename(config["nn2"])}')
+        self._setup_weights_match_game()
+
+    def load_nn_model(self, path):
+        """モデルファイルをロード（PTH または ONNX）"""
+        if not path or not os.path.exists(path):
+            return None
+        
+        if path.endswith('.onnx'):
+            if core.ONNX_AVAILABLE:
+                try:
+                    from core.onnx_inference import ONNXInference
+                    return ONNXInference(path, use_gpu=(DEVICE_STR == 'cuda'))
+                except Exception as e:
+                    self.log(f'ONNX load error: {e}')
+                    return None
+            else:
+                self.log('ONNX is not available')
+                return None
+        else:
+            # PyTorch (.pth)
+            if torch is not None:
+                try:
+                    model = core.OthelloNet().to(DEVICE)
+                    model.load_state_dict(torch.load(path, map_location=DEVICE, weights_only=True))
+                    model.eval()
+                    return model
+                except Exception as e:
+                    self.log(f'PTH load error: {e}')
+                    return None
+            else:
+                self.log('PyTorch is not available')
+                return None
+
     def load_weights_from_file(self, path):
         try:
             if not os.path.exists(path):
@@ -1908,17 +2055,37 @@ class UltimateOthello(OthelloSearchMixin):
     def _setup_weights_match_game(self):
         if not self.weights_match_active or not self.weights_match_profiles:
             return
-        # game0: w1 black vs w2 white / game1: w2 black vs w1 white
+        
+        # game0, 2, 4...: w1 black vs w2 white / game1, 3, 5...: w2 black vs w1 white
         swap = bool(self.weights_match_game_index % 2 == 1)
         w1 = self.weights_match_profiles['w1']
         w2 = self.weights_match_profiles['w2']
+        nn1_path = self.weights_match_nn_paths['w1'] if hasattr(self, 'weights_match_nn_paths') else BEST_MODEL_PATH
+        nn2_path = self.weights_match_nn_paths['w2'] if hasattr(self, 'weights_match_nn_paths') else BEST_MODEL_PATH
+        
         if not swap:
             black_w, white_w = w1, w2
-            self.log('weights match: game 1/2 | black=w1 white=w2')
+            black_nn_path, white_nn_path = nn1_path, nn2_path
+            self.log(f'weights match: game {self.weights_match_game_index + 1}/{getattr(self, "weights_match_max_games", 2)} | black=w1 white=w2')
         else:
             black_w, white_w = w2, w1
-            self.log('weights match: game 2/2 | black=w2 white=w1')
+            black_nn_path, white_nn_path = nn2_path, nn1_path
+            self.log(f'weights match: game {self.weights_match_game_index + 1}/{getattr(self, "weights_match_max_games", 2)} | black=w2 white=w1')
+        
         self.side_weight_profiles = {1: np.array(black_w, dtype=np.float64), -1: np.array(white_w, dtype=np.float64)}
+        
+        # NNモデルのロード（キャッシュがあれば再利用したいが、今は毎回ロードするか、profileに保持）
+        if not hasattr(self, 'side_nn_profiles') or self.side_nn_profiles is None:
+            self.side_nn_profiles = {
+                1: self.load_nn_model(black_nn_path),
+                -1: self.load_nn_model(white_nn_path)
+            }
+        else:
+            self.side_nn_profiles = {
+                1: self.load_nn_model(black_nn_path),
+                -1: self.load_nn_model(white_nn_path)
+            }
+        
         self.ng()
 
     def _finalize_weights_match_game(self, black_discs, white_discs):
@@ -1947,9 +2114,9 @@ class UltimateOthello(OthelloSearchMixin):
                     self.weights_match_score['w2'] += 1
                 else:
                     self.weights_match_score['w1'] += 1
-        self.log(f'weights match: result game {self.weights_match_game_index + 1}/2 | B={black_discs} W={white_discs} | score={self.weights_match_score}')
+        self.log(f'weights match: result game {self.weights_match_game_index + 1}/{getattr(self, "weights_match_max_games", 2)} | B={black_discs} W={white_discs} | score={self.weights_match_score}')
         self.weights_match_game_index += 1
-        if self.weights_match_game_index >= 2:
+        if self.weights_match_game_index >= getattr(self, 'weights_match_max_games', 2):
             # finish
             w1w = int(self.weights_match_score['w1'])
             w2w = int(self.weights_match_score['w2'])
@@ -1968,6 +2135,7 @@ class UltimateOthello(OthelloSearchMixin):
                 pass
             self.auto_battle = False
             self.side_weight_profiles = None
+            self.side_nn_profiles = None
             return
         self._setup_weights_match_game()
 
@@ -2468,10 +2636,21 @@ class UltimateOthello(OthelloSearchMixin):
             empty = 64
             self.sf_arr[0] = 0
             acting_side = self.tn if self.auto_battle else self.ac
-            if self.auto_battle and self.weights_match_active and self.side_weight_profiles is not None:
-                active_profile = self.side_weight_profiles.get(int(acting_side))
-                if active_profile is not None:
-                    self.apply_weight_profile(active_profile, profile_label=f'auto_side_{acting_side}')
+            if self.auto_battle and self.weights_match_active:
+                if self.side_weight_profiles is not None:
+                    active_profile = self.side_weight_profiles.get(int(acting_side))
+                    if active_profile is not None:
+                        self.apply_weight_profile(active_profile, profile_label=f'auto_side_{acting_side}')
+                
+                # NNモデルの切り替え
+                if self.side_nn_profiles is not None:
+                    active_nn = self.side_nn_profiles.get(int(acting_side))
+                    if active_nn is not None:
+                        self.nn_model = active_nn
+                    else:
+                        # プロファイルにない場合はデフォルトに戻す
+                        pass
+            
             aB, oB = (self.B if acting_side == 1 else self.W, self.W if acting_side == 1 else self.B)
             mvs = int((aB | oB).bit_count()) - 4
             empty = 64 - int((aB | oB).bit_count())
@@ -2487,7 +2666,7 @@ class UltimateOthello(OthelloSearchMixin):
             initial_time_limit = self.get_auto_time_limit(empty, initial_legal_count, mvs)
             solver_threshold = self.get_endgame_solver_threshold(initial_legal_count, initial_time_limit)
             solver_time_limit_ms = self.get_endgame_solver_time_limit_ms(empty, initial_legal_count, initial_time_limit)
-            if empty <= solver_threshold and ENDGAME_SOLVER_AVAILABLE and (not is_quick_mode):
+            if empty <= solver_threshold and ENDGAME_SOLVER_AVAILABLE and (not is_quick_mode) and (not self.use_mcts_only):
                 self.log(f'endgame: C++ solver activated (empties={empty}, tl={solver_time_limit_ms}ms)')
                 self.endgame_solver_active = True
                 self.call_on_ui_thread(self.update_title)
@@ -2639,6 +2818,7 @@ class UltimateOthello(OthelloSearchMixin):
             if ponder_entry:
                 self.mark_modules_active('PONDER')
                 self.mark_connections_active(('PONDER', 'αβ'), ('PONDER', 'MCTS'), ('PONDER', 'TT'))
+                cached_order = ponder_entry.get('ordered_moves', [])
                 if cached_order:
                     # 重複を除去
                     seen_order = []
@@ -2673,8 +2853,11 @@ class UltimateOthello(OthelloSearchMixin):
                 self.call_on_ui_thread(self.chk)
                 return
             time_limit = self.get_auto_time_limit(empty, len(rms), mvs)
-            force_normal_exact = empty <= min(32, int(self.get_exact_base_threshold()))
-            is_exact = force_normal_exact or self.should_start_exact_early(aB, oB, empty, len(rms), start_dp, time_limit)
+            if self.use_mcts_only:
+                is_exact = False
+            else:
+                force_normal_exact = empty <= min(32, int(self.get_exact_base_threshold()))
+                is_exact = force_normal_exact or self.should_start_exact_early(aB, oB, empty, len(rms), start_dp, time_limit)
             start_dp = self.clamp_search_depth(start_dp, empty, is_exact)
             if is_exact:
                 self.stop_pondering_explicitly()
