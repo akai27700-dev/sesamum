@@ -41,6 +41,17 @@ std::tuple<std::vector<double>, std::vector<std::int64_t>, bool> engine_search_r
     int time_limit_ms
 );
 
+extern "C" int solve_endgame_exact_status(
+    uint64_t P,
+    uint64_t O,
+    int32_t player_to_move,
+    int32_t max_depth,
+    int32_t time_limit_ms,
+    int32_t* out_best_move,
+    int32_t* out_score,
+    int32_t* out_completed_depth
+);
+
 void bind_engine_session_classes(py::module_& m);
 
 namespace {
@@ -653,12 +664,22 @@ SearchSessionResult SearchSession::run(Bitboard p,
         mcts_thread = std::thread([&, this]() {
             result.mcts.nn_batch_count = 1;
             result.mcts.nn_leaf_count = 1;
+            int warmup_count = 0;
             while (true) {
                 if (stop_ptr != nullptr && stop_ptr[0] != 0) break;
                 const auto now = std::chrono::steady_clock::now();
                 if (now >= overall_deadline) break;
                 const double remain = std::chrono::duration<double>(overall_deadline - now).count();
                 if (remain <= 0.0) break;
+
+                // --- Endgame Solver Warmup ---
+                // Populate the endgame solver's TT incrementally during pondering.
+                // This helps avoid the "last depth timeout" by pre-filling the cache.
+                if (++warmup_count % 8 == 0 && empty_count <= 45 && empty_count >= 15) {
+                    int b = -1, s = 0, d = 0;
+                    solve_endgame_exact_status(p, o, turn, empty_count, 15, &b, &s, &d);
+                }
+
                 const int curr_batch = current_mcts_batch_size(mcts_batch_size, remain);
                 BatchMCTS::BatchStepResult step = mcts_.collect_and_expand_plain(p, o, turn, curr_batch, stop_ptr, infer_batch);
                 result.mcts.simulation_count += step.simulation_count;
@@ -678,6 +699,7 @@ SearchSessionResult SearchSession::run(Bitboard p,
             SearchSessionABResult ab_result;
             ab_result.completed_depth = std::max(2, start_depth - 1);
             ab_result.attempted_depth = ab_result.completed_depth;
+            int ab_warmup_count = 0;
             if (ab_delay_sec > 0.0) {
                 const auto delay_deadline = start_time + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(ab_delay_sec));
                 while (std::chrono::steady_clock::now() < delay_deadline) {
@@ -685,6 +707,13 @@ SearchSessionResult SearchSession::run(Bitboard p,
                         result.ab = ab_result;
                         return;
                     }
+
+                    // --- Endgame Solver Warmup during delay ---
+                    if (++ab_warmup_count % 2 == 0 && empty_count <= 45 && empty_count >= 15) {
+                        int b = -1, s = 0, d = 0;
+                        solve_endgame_exact_status(p, o, turn, empty_count, 18, &b, &s, &d);
+                    }
+
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 }
             }

@@ -27,7 +27,10 @@ except ImportError:
     cpp_engine = None
 
 if cpp_engine is not None:
-    print("C++ engine: othello_engine loaded.", flush=True)
+    build_date = ""
+    if hasattr(cpp_engine, 'get_build_datetime'):
+        build_date = f" (build: {cpp_engine.get_build_datetime()})"
+    print(f"C++ engine: othello_engine loaded.{build_date}", flush=True)
 else:
     print("C++ engine: othello_engine unavailable. Python fallback will be used.", flush=True)
 
@@ -274,7 +277,7 @@ _FULL_MASK = np.uint64(0xFFFFFFFFFFFFFFFF)
 _NOT_A_FILE = np.uint64(0xFEFEFEFEFEFEFEFE)
 _NOT_H_FILE = np.uint64(0x7F7F7F7F7F7F7F7F)
 GENE_LEN = 243
-TT_SIZE = int(2**22)
+TT_SIZE = int(2**24)
 
 MASK_CORNER = np.uint64(0x8100000000000081)
 MASK_X = np.uint64(0x0042000000004200)
@@ -661,7 +664,12 @@ def _evaluate_board_full_python(P, O, mvs, W):
     lm, lo = count_bits(_get_legal_moves_numba(P, O)), count_bits(_get_legal_moves_numba(O, P))
     emp = ~(P | O) & _FULL_MASK; np_, no = neighbor_union(P), neighbor_union(O)
     sp, so = compute_strict_stable(P, O), compute_strict_stable(O, P); occ = P | O
-    m_mult = np.float64(2.5) if np.int64(20) <= mvs <= np.int64(45) else np.float64(1.0)
+    m_mult = np.float64(1.0)
+    if np.int64(37) <= mvs <= np.int64(46):
+        m_mult = np.float64(4.8) # 27 to 18 empties: severely restrict
+    elif np.int64(20) <= mvs <= np.int64(45):
+        m_mult = np.float64(2.5)
+    
     sc += np.float64(lm - lo) * m_mult * np.float64(4.0) * meta_mob
     # パリティ
     if (np.int64(64) - mvs) % np.int64(2) == np.int64(0): sc += np.float64(10.0) * meta_mob
@@ -675,7 +683,12 @@ def _evaluate_board_full_python(P, O, mvs, W):
     sc += eval_xc(P, O, c2, x2, cc2) * meta_shape
     sc += eval_xc(P, O, c3, x3, cc3) * meta_shape
     sc += eval_xc(P, O, c4, x4, cc4) * meta_shape
-    if mvs >= np.int64(30): sc += np.float64(count_bits(sp & P) - count_bits(so & O)) * np.float64(25.0) * meta_stable
+    
+    stable_w = np.float64(25.0)
+    if mvs >= np.int64(37): stable_w = np.float64(35.0)
+    if mvs >= np.int64(45): stable_w = np.float64(45.0)
+    
+    if mvs >= np.int64(30): sc += np.float64(count_bits(sp & P) - count_bits(so & O)) * stable_w * meta_stable
     sc += (np.float64(lm - lo) / np.float64(20.0)) * we[np.int64(0)]
     sc += (np.float64(count_bits(emp & np_) - count_bits(emp & no)) / np.float64(64.0)) * we[np.int64(1)]
     sc += np.float64(count_bits(sp & P) - count_bits(so & O)) * we[np.int64(2)]

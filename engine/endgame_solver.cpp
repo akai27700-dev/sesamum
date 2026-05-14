@@ -4,8 +4,11 @@
 #include <atomic>
 #include <array>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
+#include <functional>
 #include <mutex>
+#include <queue>
 #include <shared_mutex>
 #include <thread>
 #include <vector>
@@ -24,8 +27,8 @@ constexpr Bitboard FULL_MASK = 0xFFFFFFFFFFFFFFFFULL;
 constexpr Bitboard NOT_A_FILE = 0xFEFEFEFEFEFEFEFEULL;
 constexpr Bitboard NOT_H_FILE = 0x7F7F7F7F7F7F7F7FULL;
 constexpr int EXACT_INF = 65;
-constexpr std::size_t DEFAULT_TT_SIZE = 1u << 22;
-constexpr int TIME_CHECK_INTERVAL_MASK = 2047;
+constexpr std::size_t DEFAULT_TT_SIZE = 1u << 26;
+constexpr int TIME_CHECK_INTERVAL_MASK = 4095;
 
 struct TTEntry {
     Bitboard key = 0;
@@ -42,7 +45,7 @@ struct SearchContext {
     std::uint64_t nodes = 0;
     std::atomic<int>* ybwc_active_workers = nullptr;
     int ybwc_max_workers = 1;
-    int ybwc_min_empties = 10;
+    int ybwc_min_empties = 6;
 };
 
 struct MoveInfo {
@@ -60,9 +63,64 @@ struct EndgameIterativeResult {
 
 TTEntry* tt_table = nullptr;
 std::size_t tt_size = 0;
-std::array<std::shared_mutex, 4096> tt_mutexes;
+std::array<std::shared_mutex, 65536> tt_mutexes;
+
+class EndgameThreadPool {
+public:
+    EndgameThreadPool(size_t threads) : stop(false) {
+        for (size_t i = 0; i < threads; ++i)
+            workers.emplace_back([this] {
+                for (;;) {
+                    std::function<void()> task;
+                    {
+                        std::unique_lock<std::mutex> lock(this->queue_mutex);
+                        this->condition.wait(lock, [this] { return this->stop || !this->tasks.empty(); });
+                        if (this->stop && this->tasks.empty()) return;
+                        task = std::move(this->tasks.front());
+                        this->tasks.pop();
+                    }
+                    task();
+                }
+            });
+    }
+    template<class F> void enqueue(F&& f) {
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            tasks.emplace(std::forward<F>(f));
+        }
+        condition.notify_one();
+    }
+    ~EndgameThreadPool() {
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            stop = true;
+        }
+        condition.notify_all();
+        for (std::thread &worker : workers) worker.join();
+    }
+private:
+    std::vector<std::thread> workers;
+    std::queue<std::function<void()>> tasks;
+    std::mutex queue_mutex;
+    std::condition_variable condition;
+    bool stop;
+};
+
+static std::unique_ptr<EndgameThreadPool> g_endgame_pool;
+static std::mutex g_pool_init_mutex;
+
+inline void ensure_endgame_pool() {
+    if (!g_endgame_pool) {
+        std::lock_guard<std::mutex> lock(g_pool_init_mutex);
+        if (!g_endgame_pool) {
+            unsigned int hw = std::thread::hardware_concurrency();
+            g_endgame_pool = std::make_unique<EndgameThreadPool>(hw == 0 ? 8 : hw);
+        }
+    }
+}
 
 inline void init_endgame_tt() {
+    ensure_endgame_pool();
     if (tt_table == nullptr) {
         tt_size = DEFAULT_TT_SIZE;
         tt_table = new TTEntry[tt_size]();
@@ -117,10 +175,10 @@ inline bool probe_tt(Bitboard p, Bitboard o, int& score, int& best_move, int dep
     if (entry.key == position_key(p, o)) {
         score = static_cast<int>(entry.score);
         best_move = static_cast<int>(entry.best_move);
-        if (entry.depth >= depth) {
-            if (entry.flag == 0) { // exact
-                return true;
-            } else if (entry.flag == 1) { // lower bound
+        if (entry.flag == 0) { // exact - always use regardless of depth
+            return true;
+        } else if (entry.depth >= depth) { // bounds only use if depth is sufficient
+            if (entry.flag == 1) { // lower bound
                 if (score >= beta) { alpha = beta; return true; }
                 if (score > alpha) alpha = score;
             } else if (entry.flag == 2) { // upper bound
@@ -211,10 +269,10 @@ inline int get_quadrant(int sq) {
 // Compute parity bitfield: bit i set if quadrant i has odd empties
 inline int compute_parity(Bitboard empty) {
     int parity = 0;
-    int q0 = count_bits(empty & 0x0000000000FFFFFFULL); // simplified quadrant approx
-    int q1 = count_bits(empty & 0x00000000FF000000ULL);
-    int q2 = count_bits(empty & 0x000000FF00000000ULL);
-    int q3 = count_bits(empty & 0xFFFFFF0000000000ULL);
+    int q0 = count_bits(empty & 0x0000000000FFFFFFULL); // TL: rows 0-3, cols 0-3
+    int q1 = count_bits(empty & 0x00000000FFFFFF00ULL) - q0; // TR: rows 0-3, cols 4-7
+    int q2 = count_bits(empty & 0xFFFFFFFF00000000ULL) - count_bits(empty & 0xFFFF000000000000ULL); // BL: rows 4-7, cols 0-3
+    int q3 = count_bits(empty & 0xFFFF000000000000ULL); // BR: rows 4-7, cols 4-7
     if (q0 & 1) parity |= 1;
     if (q1 & 1) parity |= 2;
     if (q2 & 1) parity |= 4;
@@ -222,13 +280,9 @@ inline int compute_parity(Bitboard empty) {
     return parity;
 }
 
-// Egaroucid-style end_evaluate: final score with all empties going to winner
-inline int end_evaluate(Bitboard p, int empties) {
-    int score = count_bits(p) * 2 - 64;
-    int diff = score + empties; // = n_discs_p - (64 - empties - n_discs_p)
-    if (diff == 0) return 0;
-    if (diff > 0) return diff + empties;
-    return diff - empties;
+// Terminal evaluation when both players pass and no further moves are possible.
+inline int end_evaluate(Bitboard p, Bitboard o) {
+    return count_bits(p) - count_bits(o);
 }
 
 inline Bitboard compute_stable_fast(Bitboard p, Bitboard o) {
@@ -395,11 +449,19 @@ void build_region_size_map(Bitboard empty_mask, std::array<int, 64>& region_size
     }
 }
 
-std::vector<MoveInfo> generate_ordered_moves(Bitboard p, Bitboard o, Bitboard legal, int tt_move, int parity = 0) {
+std::vector<MoveInfo> generate_ordered_moves(Bitboard p, Bitboard o, Bitboard legal, int tt_move, int parity = 0, int empties = 64) {
     const int canput = count_bits(legal);
     std::vector<MoveInfo> moves;
     moves.reserve(static_cast<std::size_t>(canput));
     Bitboard bits = legal;
+    
+    // Pre-compute stable discs for endgame phase
+    Bitboard stable_p = 0, stable_o = 0;
+    bool use_stable_bonus = (empties <= 27 && empties >= 18);
+    if (use_stable_bonus) {
+        stable_p = compute_stable_fast(p, o);
+        stable_o = compute_stable_fast(o, p);
+    }
     while (bits) {
         Bitboard move_bit = lsb(bits);
         bits ^= move_bit;
@@ -423,10 +485,17 @@ std::vector<MoveInfo> generate_ordered_moves(Bitboard p, Bitboard o, Bitboard le
         // TT best move first (Egaroucid: W_1ST_MOVE)
         if (sq == tt_move) priority += 1000000;
         // Corner/X/C/Edge (Egaroucid-style)
-        if (is_corner(sq)) priority += 50000;
+        if (is_corner(sq)) {
+            priority += (empties <= 30 && empties >= 18) ? 100000 : 50000;
+        }
         else if (is_x_square(sq)) priority -= 30000;
         else if (is_c_square(sq)) priority -= 12000;
         else if (is_edge(sq)) priority += 5000;
+
+        // Mobility reduction bonus (Late midgame / Early endgame focus)
+        if (empties >= 18) {
+            priority += (20 - opp_mobility_cornerX2) * 800;
+        }
 
         // Parity bonus (Egaroucid: W_END_NWS_SIMPLE_PARITY = 17)
         // Moves in odd-empty quadrants should be searched first
@@ -434,11 +503,6 @@ std::vector<MoveInfo> generate_ordered_moves(Bitboard p, Bitboard o, Bitboard le
             priority += 1700;
         }
 
-        // Opponent mobility penalty (Egaroucid: cornerX2 weighted, W_END_NWS_MOBILITY = 40)
-        // MO_OFFSET_L_PM = 38, so priority += (38 - nm) * 40
-        if (opp_mobility_cornerX2 == 0) priority += 18000;
-        priority += (38 - opp_mobility_cornerX2) * 40;
-        priority -= flip_count * 24;
 
         moves.push_back(MoveInfo{sq, flip, priority});
     }
@@ -487,24 +551,37 @@ int exact_negamax_limited(Bitboard p, Bitboard o, int depth, bool passed, int al
         return -exact_negamax_limited(o, p, depth, true, -beta, -alpha, ctx);
     }
 
+    const int orig_alpha = alpha;
+    const int orig_beta = beta;
+
     int tt_best_move = -1;
-    int tt_score_dummy = 0;
-    int dummy_a = -EXACT_INF, dummy_b = EXACT_INF;
-    probe_tt(p, o, tt_score_dummy, tt_best_move, depth, dummy_a, dummy_b);
+    int tt_score = 0;
+    if (probe_tt(p, o, tt_score, tt_best_move, depth, alpha, beta)) {
+        return tt_score;
+    }
+    if (alpha >= beta) return tt_score;
 
     const Bitboard empty_bb_l = ~(p | o) & FULL_MASK;
     const int parity_l = compute_parity(empty_bb_l);
     std::vector<MoveInfo> moves = generate_ordered_moves(p, o, legal, tt_best_move, parity_l);
     int best_score = -EXACT_INF;
+    int best_move = -1;
     for (const MoveInfo& move : moves) {
         const Bitboard move_bit = 1ULL << move.square;
         const Bitboard np = (p | move.flip | move_bit) & FULL_MASK;
         const Bitboard no = (o & ~move.flip) & FULL_MASK;
         const int child_score = -exact_negamax_limited(no, np, depth - 1, false, -beta, -alpha, ctx);
         if (ctx.timed_out) return 0;
-        if (child_score > best_score) best_score = child_score;
+        if (child_score > best_score) {
+            best_score = child_score;
+            best_move = move.square;
+        }
         if (child_score > alpha) alpha = child_score;
         if (alpha >= beta) break;
+    }
+    
+    if (!ctx.timed_out) {
+        store_tt(p, o, best_score, best_move, depth, orig_alpha, orig_beta);
     }
     return best_score;
 }
@@ -544,13 +621,13 @@ int exact_negamax(Bitboard p, Bitboard o, int empties, bool passed, int alpha, i
     const Bitboard legal = get_legal_moves_fast(p, o);
     if (legal == 0) {
         if (passed) {
-            const int final_score = end_evaluate(p, empties);
+            const int final_score = end_evaluate(p, o);
             store_tt(p, o, final_score, -1, empties, orig_alpha, orig_beta);
             return final_score;
         }
         const int score = -exact_negamax(o, p, empties, true, -beta, -alpha, ctx);
         if (!ctx.timed_out) {
-            store_tt(p, o, score, -1, empties, -orig_beta, -orig_alpha);
+            store_tt(p, o, score, -1, empties, orig_alpha, orig_beta);
         }
         return score;
     }
@@ -604,10 +681,10 @@ int exact_negamax(Bitboard p, Bitboard o, int empties, bool passed, int alpha, i
                 std::atomic<int> shared_alpha{alpha};
                 std::atomic<bool> saw_timeout{false};
                 std::atomic<bool> cutoff{false};
-                std::vector<std::thread> workers;
-                workers.reserve(static_cast<std::size_t>(worker_count));
+                std::atomic<int> active_tasks{worker_count};
+
                 for (int worker_id = 0; worker_id < worker_count; ++worker_id) {
-                    workers.emplace_back([&, worker_id]() {
+                    g_endgame_pool->enqueue([&, worker_id]() {
                         SearchContext local_ctx;
                         local_ctx.use_deadline = ctx.use_deadline;
                         local_ctx.deadline = ctx.deadline;
@@ -616,9 +693,7 @@ int exact_negamax(Bitboard p, Bitboard o, int empties, bool passed, int alpha, i
                         local_ctx.ybwc_min_empties = ctx.ybwc_min_empties;
                         while (!cutoff.load(std::memory_order_relaxed)) {
                             const std::size_t i = next_index.fetch_add(1, std::memory_order_relaxed);
-                            if (i >= moves.size()) {
-                                break;
-                            }
+                            if (i >= moves.size()) break;
                             if (moves[i].flip == o) {
                                 scores[i] = 64;
                                 searched[i] = 1;
@@ -650,11 +725,15 @@ int exact_negamax(Bitboard p, Bitboard o, int empties, bool passed, int alpha, i
                                 }
                             }
                         }
+                        active_tasks.fetch_sub(1, std::memory_order_release);
                     });
                 }
-                for (auto& worker : workers) {
-                    worker.join();
+                
+                // Wait for pool workers to finish using busy-yield loop
+                while (active_tasks.load(std::memory_order_acquire) > 0) {
+                    std::this_thread::yield();
                 }
+
                 release_ybwc_workers(ctx, worker_count);
                 if (saw_timeout.load(std::memory_order_relaxed)) {
                     ctx.timed_out = true;
@@ -806,7 +885,7 @@ EndgameIterativeResult solve_endgame_exact_internal(Bitboard p, Bitboard o, int3
     const int empties = 64 - count_bits(p | o);
     const Bitboard legal = get_legal_moves_fast(p, o);
     std::atomic<int> ybwc_active_workers{0};
-    const int ybwc_max_workers = std::max(1, hardware_thread_count() - 1);
+    const int ybwc_max_workers = std::max(1, hardware_thread_count());
     if (legal == 0) {
         const Bitboard opp_legal = get_legal_moves_fast(o, p);
         if (opp_legal == 0) {
@@ -831,25 +910,46 @@ EndgameIterativeResult solve_endgame_exact_internal(Bitboard p, Bitboard o, int3
     // --- Iterative deepening ---
     // Start from a shallow depth and work up to full depth.
     // This warms up the TT and provides partial results on timeout.
-    int start_depth = std::max(4, empties - 16);
+    int start_depth = std::max(4, empties - 24);
     int best_move = -1;
     int best_score = 0;
     int completed_depth = 0;
+
+    TimePoint deadline;
+    if (time_limit_ms > 0) {
+        deadline = Clock::now() + std::chrono::milliseconds(time_limit_ms);
+    }
 
     for (int depth = start_depth; depth <= empties; ++depth) {
         SearchContext ctx;
         ctx.ybwc_active_workers = &ybwc_active_workers;
         ctx.ybwc_max_workers = ybwc_max_workers;
         if (time_limit_ms > 0) {
-            // Reserve 15% of remaining time for deeper iterations
             ctx.use_deadline = true;
-            ctx.deadline = Clock::now() + std::chrono::milliseconds(time_limit_ms);
+            // Final depth grace period: allow 20% or at least 500ms extra for the last iteration
+            // to prevent "22/23" style failures where it was almost finished.
+            if (depth == empties) {
+                const int grace = std::max(800, time_limit_ms / 4);
+                ctx.deadline = deadline + std::chrono::milliseconds(grace);
+            } else if (depth >= empties - 2) {
+                // When 2 or fewer empties left, solve completely regardless of time
+                ctx.use_deadline = false;
+            } else {
+                ctx.deadline = deadline;
+            }
         }
 
         int tt_score = 0;
         int tt_best_move = -1;
         int dummy_alpha = -EXACT_INF, dummy_beta = EXACT_INF;
-        probe_tt(p, o, tt_score, tt_best_move, depth, dummy_alpha, dummy_beta);
+        if (probe_tt(p, o, tt_score, tt_best_move, depth, dummy_alpha, dummy_beta)) {
+            best_score = tt_score;
+            best_move = tt_best_move;
+            completed_depth = depth;
+            if (depth == empties) break;
+            continue;
+        }
+        
         const Bitboard empty_bb_id = ~(p | o) & FULL_MASK;
         const int parity_id = compute_parity(empty_bb_id);
         std::vector<MoveInfo> moves = generate_ordered_moves(p, o, legal, tt_best_move, parity_id);
@@ -885,7 +985,13 @@ EndgameIterativeResult solve_endgame_exact_internal(Bitboard p, Bitboard o, int3
                     for (std::size_t i = 1; i < moves.size(); ++i) {
                         const int child_score = search_endgame_root_child(moves[i], p, o, empties, depth, alpha, beta, ctx);
                         if (ctx.timed_out) {
-                            break;
+                            // If we're at the final depth and only 1-2 moves are left at root,
+                            // don't break. Just finish the last few moves.
+                            if (depth == empties && (moves.size() - i) <= 2) {
+                                // Continue
+                            } else {
+                                break;
+                            }
                         }
                         scores[i] = child_score;
                         searched[i] = 1;
@@ -901,11 +1007,11 @@ EndgameIterativeResult solve_endgame_exact_internal(Bitboard p, Bitboard o, int3
                     std::atomic<int> shared_alpha{alpha};
                     std::atomic<bool> saw_timeout{false};
                     std::atomic<bool> cutoff{false};
-                    std::vector<std::thread> workers;
                     const int spawned = std::max(1, std::min(worker_count, static_cast<int>(moves.size() - 1)));
-                    workers.reserve(static_cast<std::size_t>(spawned));
+                    std::atomic<int> active_tasks{spawned};
+                    
                     for (int worker_id = 0; worker_id < spawned; ++worker_id) {
-                        workers.emplace_back([&, worker_id]() {
+                        g_endgame_pool->enqueue([&, worker_id]() {
                             SearchContext local_ctx;
                             local_ctx.use_deadline = ctx.use_deadline;
                             local_ctx.deadline = ctx.deadline;
@@ -914,12 +1020,13 @@ EndgameIterativeResult solve_endgame_exact_internal(Bitboard p, Bitboard o, int3
                             local_ctx.ybwc_min_empties = ctx.ybwc_min_empties;
                             while (!cutoff.load(std::memory_order_relaxed)) {
                                 const std::size_t i = next_index.fetch_add(1, std::memory_order_relaxed);
-                                if (i >= moves.size()) {
-                                    break;
-                                }
+                                if (i >= moves.size()) break;
                                 if (check_timeout(local_ctx)) {
-                                    saw_timeout.store(true, std::memory_order_relaxed);
-                                    break;
+                                    if (depth == empties && (moves.size() - i) <= 2) {
+                                    } else {
+                                        saw_timeout.store(true, std::memory_order_relaxed);
+                                        break;
+                                    }
                                 }
                                 const int alpha_snapshot = shared_alpha.load(std::memory_order_acquire);
                                 if (alpha_snapshot >= beta) {
@@ -941,10 +1048,11 @@ EndgameIterativeResult solve_endgame_exact_internal(Bitboard p, Bitboard o, int3
                                     }
                                 }
                             }
+                            active_tasks.fetch_sub(1, std::memory_order_release);
                         });
                     }
-                    for (auto& worker : workers) {
-                        worker.join();
+                    while (active_tasks.load(std::memory_order_acquire) > 0) {
+                        std::this_thread::yield();
                     }
                     if (saw_timeout.load(std::memory_order_relaxed)) {
                         ctx.timed_out = true;
@@ -1022,6 +1130,24 @@ extern "C" int get_endgame_best_move(
     }
     EndgameIterativeResult result = solve_endgame_exact_internal(P, O, player_to_move, time_limit_ms);
     return result.fully_solved ? result.best_move : -1;
+}
+
+extern "C" void store_endgame_tt_from_midgame(uint64_t P, uint64_t O, int score, int flag, int best_move, int depth) {
+    init_endgame_tt();
+    const Bitboard key = position_key(P, O);
+    const std::size_t idx = hash_key(P, O);
+    
+    std::unique_lock<std::shared_mutex> lock(tt_mutexes[idx % tt_mutexes.size()]);
+    // Only overwrite if new info is deeper or if the existing info is just a hint
+    if (tt_table[idx].key == key && tt_table[idx].depth >= depth && tt_table[idx].flag <= 2) {
+        return;
+    }
+    
+    tt_table[idx].key = key;
+    tt_table[idx].score = static_cast<std::int16_t>(score);
+    tt_table[idx].flag = static_cast<std::int8_t>(flag);
+    tt_table[idx].best_move = static_cast<std::int8_t>(best_move);
+    tt_table[idx].depth = static_cast<std::int8_t>(depth);
 }
 
 extern "C" int solve_endgame_exact_status(

@@ -24,6 +24,8 @@
 namespace py = pybind11;
 
 using Bitboard = std::uint64_t;
+
+extern "C" void store_endgame_tt_from_midgame(Bitboard P, Bitboard O, int score, int flag, int best_move, int depth);
 struct GlobalSearchSettings {
     bool pruning_enabled = true;
     bool traditional_pruning_enabled = true;
@@ -141,7 +143,7 @@ constexpr Bitboard FULL_MASK = 0xFFFFFFFFFFFFFFFFULL;
 constexpr Bitboard NOT_A_FILE = 0xFEFEFEFEFEFEFEFEULL;
 constexpr Bitboard NOT_H_FILE = 0x7F7F7F7F7F7F7F7FULL;
 constexpr std::size_t GENE_LEN = 243;
-constexpr std::size_t TT_SIZE = 1u << 18;
+constexpr std::size_t TT_SIZE = 1u << 20;
 constexpr std::size_t MAX_BATCH_SIZE = 262144;
 constexpr std::size_t SIMD_BATCH_SIZE = 64;
 
@@ -569,8 +571,10 @@ double evaluate_board_full(Bitboard p, Bitboard o, int mvs, const std::vector<do
 
     // --- Mobility (Egaroucid-inspired phase-dependent) ---
     double m_mult = 1.0;
-    if (mvs >= 20 && mvs <= 45) m_mult = 2.5;
-    else if (mvs > 45) m_mult = 1.8;
+    if (mvs >= 30 && mvs <= 42) m_mult = 6.0; // 30 to 18 empties: Late midgame squeeze
+    else if (mvs >= 37 && mvs <= 46) m_mult = 4.8; 
+    else if (mvs >= 20 && mvs <= 45) m_mult = 3.0;
+    else if (mvs > 45) m_mult = 2.0;
     sc += static_cast<double>(lm - lo) * m_mult * 4.0;
 
     // --- Parity: odd empties = last mover advantage ---
@@ -607,7 +611,8 @@ double evaluate_board_full(Bitboard p, Bitboard o, int mvs, const std::vector<do
     // --- Stability with phase-dependent weight ---
     double stable_weight = 15.0;
     if (mvs >= 30) stable_weight = 25.0;
-    if (mvs >= 45) stable_weight = 40.0;
+    if (mvs >= 37 && mvs <= 46) stable_weight = 35.0; // Higher weight for stable stones in mid-late game
+    if (mvs >= 45) stable_weight = 45.0;
     sc += static_cast<double>(stable_diff) * stable_weight;
 
     // --- Frontier disc penalty (Egaroucid-inspired) ---
@@ -691,7 +696,7 @@ inline void evaluate_board_full_simd_batch(const Bitboard* p_boards, const Bitbo
         
         __m256d m_diff = _mm256_cvtepi64_pd(_mm256_sub_epi64(lp_cnt, lo_cnt));
         
-        double m_mult = (mvs_array[base_idx] >= 20 && mvs_array[base_idx] <= 45) ? 2.5 : 1.0;
+        double m_mult = (mvs_array[base_idx] >= 30 && mvs_array[base_idx] <= 42) ? 6.0 : ((mvs_array[base_idx] >= 20 && mvs_array[base_idx] <= 45) ? 3.0 : 1.2);
         total_scores = _mm256_add_pd(total_scores, _mm256_mul_pd(m_diff, _mm256_set1_pd(m_mult * 4.0)));
 
         // 3. Potential Mobility / Frontier
@@ -1054,7 +1059,7 @@ inline void store_tt(Bitboard hv, int depth, double value, std::int8_t flag, int
     }
     
     if (new_priority >= min_priority) {
-        table[replace_idx] = new_entry;
+        table[tx0 + replace_idx] = new_entry;
     }
 }
 
@@ -1106,7 +1111,7 @@ inline bool probe_tt(Bitboard hv, int depth, double alpha, double beta, int& tm,
                 double v = table[tx0 + i].value.load();
                 if (f == 1 || (f == 2 && v >= beta) || (f == 3 && v <= alpha)) {
                     // If we need an exact result but the entry is heuristic, ignore the value
-                    bool is_exact_entry = (std::abs(v) > 20000.0);
+                    bool is_exact_entry = (std::abs(v) > 5000.0);
                     if (is_exact && !is_exact_entry) continue;
                     
                     value = v;
@@ -1419,7 +1424,6 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
     // Pass is a real game mechanic here, so "skip a move and still hold beta"
     // is much less reliable than in chess-like search and was causing tactical misses.
 
-    tt_generation().fetch_add(1, std::memory_order_relaxed);
     const double position_complexity = estimate_search_complexity(p, o, valid);
     const std::size_t legal_move_count = static_cast<std::size_t>(count_bits(valid));
     const bool use_nn_ordering = should_use_nn_move_ordering(ctx.nn_enabled, depth, legal_move_count, position_complexity);
@@ -1732,6 +1736,25 @@ std::pair<double, std::int64_t> alphabeta(Bitboard p, Bitboard o, int mvs, int d
         if (max_val >= beta) flag = 2;
         else if (max_val <= oa) flag = 3;
         store_tt(hv, depth, max_val, flag, bm, ctx.thread_safe_tt);
+        
+        // Endgame TT hinting: start warming up the endgame solver's TT
+        if (mvs >= 20 && bm >= 0) {
+            int score_to_hint = 0;
+            int flag_to_hint = 3; // Default to hint-only
+            if (is_exact && std::abs(max_val) > 1000.0) {
+                score_to_hint = static_cast<int>(std::round(max_val / 10000.0));
+                // Convert AB flag to endgame flag: 1=exact, 2=lower(>=beta), 3=upper(<=alpha)
+                // Endgame solver flags: 0=exact, 1=lower, 2=upper
+                if (flag == 1) flag_to_hint = 0;
+                else if (flag == 2) flag_to_hint = 1;
+                else if (flag == 3) flag_to_hint = 2;
+            } else if (depth >= 8) {
+                // Also hint for deeper non-exact searches
+                score_to_hint = static_cast<int>(std::round(max_val / 10000.0));
+                flag_to_hint = 3; // hint-only
+            }
+            store_endgame_tt_from_midgame(p, o, score_to_hint, flag_to_hint, bm, depth);
+        }
     }
     
     return {max_val, nodes};
@@ -1745,6 +1768,8 @@ std::pair<std::vector<double>, std::vector<std::int64_t>> search_root_parallel_i
     }
     ctx.multi_cut_enabled = ctx.multi_cut_enabled && g_search_settings.pruning_enabled;
     ctx.ybwc_min_depth = g_search_settings.ybwc_min_depth;
+
+    tt_generation().fetch_add(1, std::memory_order_relaxed);
 
     std::atomic<int> ybwc_active_workers{0};
     struct YbwcScope {
@@ -3462,4 +3487,7 @@ PYBIND11_MODULE(othello_engine, m) {
     bind_engine_free_functions(m);
     bind_engine_session_classes(m);
     m.def("set_search_params", &engine_set_search_params, "Set search parameters for C++ engine");
+    m.def("get_build_datetime", []() {
+        return std::string(__DATE__) + " " + std::string(__TIME__);
+    }, "Get the build date and time of the C++ engine");
 }
